@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SolaraDocs Editor</title>
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <style>
+        body { background-color: #0a0a0a; color: #ffffff; font-family: Inter, sans-serif; padding: 20px; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; }
+        .users-online { display: flex; gap: 10px; align-items: center; }
+        .user-badge { padding: 5px 12px; background: #222; border: 1px solid #333; border-radius: 20px; font-size: 13px; }
+        .user-badge.typing { border-color: #00ff88; }
+        .typing-indicator { color: #00ff88; font-size: 12px; margin-left: 10px; }
+        #editor-container { background-color: #111; border: 1px solid #333; border-radius: 10px; min-height: 500px; }
+        .ql-toolbar { background: #1a1a1a; border: none; border-bottom: 1px solid #333; border-radius: 10px 10px 0 0; }
+        .ql-toolbar button { color: #fff; }
+        .ql-toolbar button:hover { color: #00ff88; }
+        .ql-toolbar button.ql-active { color: #00ff88; }
+        .ql-toolbar .ql-stroke { stroke: #fff; }
+        .ql-toolbar button:hover .ql-stroke { stroke: #00ff88; }
+        .ql-toolbar button.ql-active .ql-stroke { stroke: #00ff88; }
+        .ql-toolbar .ql-fill { fill: #fff; }
+        .ql-toolbar button:hover .ql-fill { fill: #00ff88; }
+        .ql-toolbar button.ql-active .ql-fill { fill: #00ff88; }
+        .ql-container { border: none; font-size: 16px; }
+        .ql-editor { min-height: 450px; color: #fff; }
+        .ql-editor.ql-blank::before { color: #666; }
+        .save-btn { margin-top: 15px; background: white; color: #000; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .save-btn:hover { opacity: 0.9; }
+        .status { margin-top: 10px; color: #666; font-size: 13px; }
+        .status.connected { color: #00ff88; }
+        .status.disconnected { color: #ff4444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 {{ project.project_name }}</h1>
+        <div class="users-online" id="usersOnline"></div>
+    </div>
+
+    <div id="editor-container">
+        <div id="editor"></div>
+    </div>
+
+    <button class="save-btn" id="saveBtn">Save</button>
+    <div class="status" id="status">Connecting...</div>
+
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <script>
+        const projectId = {{ project.id }};
+        const currentUser = "{{ request.user.username }}";
+        const editorToken = "{{ editor_token }}";
+
+        let socket = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        const usersOnline = new Map();
+        const typingUsers = new Map();
+
+        function getAuthToken() { return localStorage.getItem('auth_token'); }
+
+        function handleAuthError(response) {
+            if (response.status === 401) {
+                localStorage.removeItem('auth_token');
+                window.location.href = '/login/';
+                return true;
+            }
+            return false;
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            placeholder: 'Start writing...',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['blockquote', 'code-block'],
+                    ['link'],
+                    ['clean']
+                ]
+            }
+        });
+
+        const initialContent = `{{ project.content|escapejs }}`;
+        if (initialContent) {
+            quill.root.innerHTML = initialContent;
+        }
+
+        function updateUsersUI() {
+            const container = document.getElementById('usersOnline');
+            container.innerHTML = '';
+
+            usersOnline.forEach((_, username) => {
+                const badge = document.createElement('span');
+                badge.className = 'user-badge';
+                if (typingUsers.has(username)) {
+                    badge.classList.add('typing');
+                    badge.innerHTML = `${username} <span class="typing-indicator">typing...</span>`;
+                } else {
+                    badge.textContent = username;
+                }
+                container.appendChild(badge);
+            });
+        }
+
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws/doc/${projectId}/`);
+
+            socket.onopen = () => {
+                document.getElementById('status').textContent = 'Connected';
+                document.getElementById('status').className = 'status connected';
+                reconnectAttempts = 0;
+                usersOnline.set(currentUser, true);
+                updateUsersUI();
+            };
+
+            socket.onclose = () => {
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('status').className = 'status disconnected';
+
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    setTimeout(connectWebSocket, 2000 * reconnectAttempts);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            socket.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+
+                switch (data.type) {
+                    case 'delta':
+                        quill.updateContents(data.delta, 'api');
+                        break;
+
+                    case 'user_joined':
+                        usersOnline.set(data.username, true);
+                        updateUsersUI();
+                        break;
+
+                    case 'user_left':
+                        usersOnline.delete(data.username);
+                        typingUsers.delete(data.username);
+                        updateUsersUI();
+                        break;
+
+                    case 'typing':
+                        typingUsers.set(data.username, Date.now());
+                        updateUsersUI();
+                        setTimeout(() => {
+                            if (Date.now() - typingUsers.get(data.username) >= 1000) {
+                                typingUsers.delete(data.username);
+                                updateUsersUI();
+                            }
+                        }, 1500);
+                        break;
+
+                    case 'cursor':
+                        break;
+                }
+            };
+        }
+
+        quill.on('text-change', (delta, oldDelta, source) => {
+            if (source === 'user' && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'delta',
+                    delta: delta
+                }));
+
+                socket.send(JSON.stringify({
+                    type: 'typing'
+                }));
+            }
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            const content = quill.root.innerHTML;
+
+            try {
+                const response = await fetch('/save-doc/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + getAuthToken(),
+                        'X-Editor-Token': editorToken,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        project_id: projectId,
+                        content: content,
+                        editor_token: editorToken
+                    }),
+                });
+
+                if (handleAuthError(response)) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.pending ? 'Changes submitted for review' : 'Saved!');
+                } else {
+                    alert('Save failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Save failed');
+            }
+        });
+
+        connectWebSocket();
+    </script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Solara Docs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; min-height: 100vh; }
+        .navbar { background: #0a0a0a; border-bottom: 1px solid #222; padding: 1.5rem 3rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 700; color: #fff; }
+        .nav-user { display: flex; align-items: center; gap: 2rem; }
+        .username { color: #888; }
+        .logout-btn { padding: 0.75rem 1.5rem; background: transparent; color: #fff; border: 1px solid #333; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .logout-btn:hover { border-color: #fff; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+        .header-title { font-size: 2.5rem; font-weight: 800; }
+        .create-btn { padding: 1rem 2rem; background: #fff; color: #000; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .create-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
+        .projects-grid { display: grid; gap: 1.5rem; }
+        .project-card { background: #0a0a0a; border: 1px solid #222; padding: 2rem; transition: all 0.3s; }
+        .project-card:hover { border-color: #fff; }
+        .project-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .project-name { font-size: 1.5rem; font-weight: 700; color: #fff; }
+        .project-actions { display: flex; gap: 1rem; }
+        .btn-icon { padding: 0.5rem 1rem; background: transparent; color: #888; border: 1px solid #222; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
+        .btn-icon:hover { color: #fff; border-color: #fff; }
+        .btn-delete-project { padding: 0.5rem 1rem; background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
+        .btn-delete-project:hover { background: #ff4444; color: #000; }
+        .project-meta { display: flex; gap: 2rem; margin-top: 1rem; color: #666; font-size: 0.9rem; }
+        .meta-item { display: flex; align-items: center; gap: 0.5rem; }
+        .project-details { display: none; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #222; }
+        .project-details.expanded { display: block; }
+        .detail-section { margin-bottom: 1.5rem; }
+        .detail-label { font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.75rem; }
+        .detail-value { color: #fff; font-size: 1rem; }
+        .users-list { display: flex; flex-direction: column; gap: 1rem; }
+        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #111; border: 1px solid #222; }
+        .user-info { display: flex; align-items: center; gap: 1rem; }
+        .user-name { font-size: 0.95rem; color: #fff; }
+        .user-controls { display: flex; align-items: center; gap: 1rem; }
+        .role-select { padding: 0.5rem 1rem; background: #0a0a0a; border: 1px solid #333; color: #fff; font-size: 0.9rem; cursor: pointer; }
+        .role-select:focus { outline: none; border-color: #fff; }
+        .save-btn { padding: 0.5rem 1rem; background: #fff; color: #000; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .save-btn:hover { opacity: 0.8; }
+        .delete-btn { padding: 0.5rem 1rem; background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .delete-btn:hover { background: #ff4444; color: #000; }
+        .role-badge { padding: 0.25rem 0.75rem; background: #222; border: 1px solid #333; font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        .add-people-section { margin-top: 1rem; padding: 1rem; background: #0a0a0a; border: 1px solid #222; }
+        .add-people-input { width: 100%; padding: 0.75rem; background: #111; border: 1px solid #222; color: #fff; font-size: 0.9rem; margin-bottom: 1rem; }
+        .add-people-input:focus { outline: none; border-color: #fff; }
+        .add-people-input::placeholder { color: #555; }
+        .add-people-btn { padding: 0.75rem 1.5rem; background: #fff; color: #000; border: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .add-people-btn:hover { opacity: 0.8; }
+        .pending-list { display: flex; flex-direction: column; gap: 1rem; }
+        .pending-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #111; border: 1px solid #444; }
+        .pending-info { color: #fff; font-size: 0.95rem; }
+        .pending-actions { display: flex; gap: 0.5rem; }
+        .accept-btn { padding: 0.5rem 1rem; background: #00ff88; color: #000; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .accept-btn:hover { opacity: 0.8; }
+        .decline-btn { padding: 0.5rem 1rem; background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .decline-btn:hover { background: #ff4444; color: #000; }
+        .empty-state { text-align: center; padding: 4rem 2rem; }
+        .empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
+        .empty-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .empty-text { color: #666; margin-bottom: 2rem; }
+        @media (max-width: 768px) { .navbar { padding: 1rem 1.5rem; } .header { flex-direction: column; gap: 1.5rem; align-items: flex-start; } .project-header { flex-direction: column; gap: 1rem; } .project-meta { flex-direction: column; gap: 0.5rem; } .user-item { flex-direction: column; gap: 1rem; align-items: flex-start; } .user-controls { width: 100%; justify-content: space-between; } .pending-item { flex-direction: column; gap: 1rem; align-items: flex-start; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Solara Docs</div>
+        <div class="nav-user">
+            <span class="username">{{ request.user.username }}</span>
+            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1 class="header-title">My Projects</h1>
+            <button class="create-btn" onclick="window.location.href='/setup'">+ New Project</button>
+        </div>
+        {% if projects %}
+        <div class="projects-grid">
+            {% for project in projects %}
+            <div class="project-card">
+                <div class="project-header">
+                    <h2 class="project-name">{{ project.project_name }}</h2>
+                    <div class="project-actions">
+                        <button class="btn-icon" onclick="toggleDetails('project-{{ project.id }}')">Expand</button>
+                        <button class="btn-icon" onclick="window.location.href='/project/{{ project.id }}'">Open</button>
+                        <button class="btn-delete-project" onclick="deleteProject({{ project.id }})">Delete Project</button>
+                    </div>
+                </div>
+                <div class="project-meta">
+                    <div class="meta-item"><span>👤</span><span>Owner: {{ project.owner.username }}</span></div>
+                    <div class="meta-item"><span>📅</span><span>Created: {{ project.created_at|date:"M d, Y" }}</span></div>
+                    <div class="meta-item"><span>👥</span><span>{{ project.contributors.count }} collaborators</span></div>
+                </div>
+                <div class="project-details" id="project-{{ project.id }}">
+                    <div class="detail-section">
+                        <div class="detail-label">Owner</div>
+                        <div class="detail-value">{{ project.owner.username }} ({{ project.owner.email }})</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label">Created</div>
+                        <div class="detail-value">{{ project.created_at|date:"F d, Y \a\t h:i A" }}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label">Pending Changes</div>
+                        {% if project.pendings.all %}
+                        <div class="pending-list">
+                            {% for pending in project.pendings.all %}
+                            <div class="pending-item">
+                                <div class="pending-info">{{ pending.username }} submitted changes to {{ project.project_name }}</div>
+                                <div class="pending-actions">
+                                    <button class="accept-btn" onclick="acceptPending({{ pending.id }})">Accept</button>
+                                    <button class="decline-btn" onclick="declinePending({{ pending.id }})">Decline</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="detail-value" style="color: #666;">No pending changes</div>
+                        {% endif %}
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label">Collaborators</div>
+                        {% if project.contributors.all %}
+                        <div class="users-list">
+                            {% for contributor in project.contributors.all %}
+                            <div class="user-item">
+                                <div class="user-info">
+                                    <span class="user-name">{{ contributor.username }}</span>
+                                    <span class="role-badge">{{ contributor.role }}</span>
+                                </div>
+                                <div class="user-controls">
+                                    <select class="role-select" id="role-{{ contributor.id }}">
+                                        <option value="VIEWER" {% if contributor.role == 'VIEWER' %}selected{% endif %}>Viewer</option>
+                                        <option value="EDITOR" {% if contributor.role == 'EDITOR' %}selected{% endif %}>Editor</option>
+                                    </select>
+                                    <button class="save-btn" onclick="saveRole({{ project.id }}, {{ contributor.id }})">Save</button>
+                                    <button class="delete-btn" onclick="deleteUser({{ project.id }}, {{ contributor.id }})">Delete</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="detail-value" style="color: #666;">No collaborators added</div>
+                        {% endif %}
+                        <div class="add-people-section">
+                            <input type="text" class="add-people-input" id="add-people-{{ project.id }}" placeholder="Enter usernames (separated by spaces)">
+                            <button class="add-people-btn" onclick="addPeople({{ project.id }})">Add People</button>
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label">Backups</div>
+                        <div class="detail-value">{% if project.backups_enabled %}✓ Enabled{% else %}✗ Disabled{% endif %}</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-label">Backup History</div>
+                        {% if project.backups.all %}
+                        <div class="pending-list">
+                            {% for backup in project.backups.all %}
+                            <div class="pending-item">
+                                <div class="pending-info">Backup from {{ backup.created_at|date:"M d, Y h:i A" }}</div>
+                                <div class="pending-actions">
+                                    <button class="accept-btn" onclick="revertBackup({{ project.id }}, {{ backup.id }})">Revert</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="detail-value" style="color: #666;">No backups yet</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📁</div>
+            <h2 class="empty-title">No projects yet</h2>
+            <p class="empty-text">Create your first project to get started</p>
+            <button class="create-btn" onclick="window.location.href='/setup'">+ Create Project</button>
+        </div>
+        {% endif %}
+    </div>
+    <script>
+        function getAuthToken() { return localStorage.getItem('auth_token'); }
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        function handleAuthError(response) {
+            if (response.status === 401) {
+                localStorage.removeItem('auth_token');
+                window.location.href = '/login/';
+                return true;
+            }
+            return false;
+        }
+        function handleLogout() { localStorage.removeItem('auth_token'); window.location.href = '/logout'; }
+        function toggleDetails(id) { document.getElementById(id).classList.toggle('expanded'); }
+
+        async function deleteProject(projectId) {
+            if (!confirm('Are you sure you want to delete this entire project? This cannot be undone.')) return;
+            try {
+                const response = await fetch('/deleteproject/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ project_id: projectId })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert('Failed to delete project: ' + (data.error || 'Unknown error'));
+            } catch (error) { alert('Failed to delete project'); }
+        }
+
+        async function acceptPending(pendingId) {
+            try {
+                const response = await fetch('/handlepending/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ pending_id: pendingId, action: 'accept' })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert('Failed to accept changes: ' + (data.error || 'Unknown error'));
+            } catch (error) { alert('Failed to accept changes'); }
+        }
+
+        async function declinePending(pendingId) {
+            try {
+                const response = await fetch('/handlepending/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ pending_id: pendingId, action: 'reject' })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert('Failed to decline changes: ' + (data.error || 'Unknown error'));
+            } catch (error) { alert('Failed to decline changes'); }
+        }
+
+        async function saveRole(projectId, contributorId) {
+            const newRole = document.getElementById(`role-${contributorId}`).value;
+            try {
+                const response = await fetch('/changeroles/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert('Failed to update role: ' + (data.error || 'Unknown error'));
+            } catch (error) { alert('Failed to update role'); }
+        }
+
+        async function deleteUser(projectId, contributorId) {
+            if (!confirm('Are you sure you want to remove this collaborator?')) return;
+            try {
+                const response = await fetch('/deleteuser/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ project_id: projectId, contributor_id: contributorId })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert('Failed to delete user: ' + (data.error || 'Unknown error'));
+            } catch (error) { alert('Failed to delete user'); }
+        }
+
+        async function addPeople(projectId) {
+            const usernames = document.getElementById(`add-people-${projectId}`).value.trim();
+            if (!usernames) { alert('Please enter at least one username'); return; }
+            try {
+                const response = await fetch('/addpeople/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ project_id: projectId, usernames: usernames })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert(data.error || 'Failed to add people');
+            } catch (error) { alert('Failed to add people'); }
+        }
+
+        async function revertBackup(projectId, backupId) {
+            if (!confirm('Revert to this backup?')) return;
+            try {
+                const response = await fetch('/revert/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ project_id: projectId, backup_id: backupId })
+                });
+                if (handleAuthError(response)) return;
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert('Failed to revert: ' + (data.error || 'Unknown error'));
+            } catch (error) { alert('Failed to revert'); }
+        }
+    </script>
+</body>
+</html>

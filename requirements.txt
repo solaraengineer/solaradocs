@@ -1,0 +1,17 @@
+Django==4.2.27
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+django-ratelimit==4.1.0
+django-prometheus==2.3.1
+psycopg2-binary==2.9.10
+redis==7.1.0
+channels==4.3.2
+channels-redis==4.3.0
+gunicorn==23.0.0
+uvicorn==0.38.0
+pymemcache==4.0.0
+python-dotenv==1.1.1
+cryptography==46.0.1
+PyJWT==2.10.1
+whitenoise==6.11.0

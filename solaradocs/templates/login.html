@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Solara Docs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left-side {
+            flex: 1;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem;
+            border-right: 1px solid #222;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 3rem;
+        }
+
+        .marketing-content h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .marketing-content p {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .features-list {
+            margin-top: 3rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+        }
+
+        .feature-text {
+            color: #aaa;
+        }
+
+        .right-side {
+            flex: 1;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .form-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="email"] {
+            width: 100%;
+            padding: 1rem;
+            background: #111;
+            border: 1px solid #222;
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #fff;
+        }
+
+        input::placeholder {
+            color: #555;
+        }
+
+        .error-message {
+            color: #ff4444;
+            font-size: 0.9rem;
+            margin-top: -0.5rem;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: #fff;
+            color: #000;
+            border: none;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .form-footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .form-footer a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 968px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .left-side {
+                display: none;
+            }
+
+            .right-side {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-side">
+            <div class="logo">Solara Docs</div>
+            <div class="marketing-content">
+                <h1>Welcome back</h1>
+                <p>Sign in to continue collaborating with your team on Solara Docs.</p>
+
+                <div class="features-list">
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span class="feature-text">Lightning-fast performance</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🔒</span>
+                        <span class="feature-text">Enterprise-grade security</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">👥</span>
+                        <span class="feature-text">Team collaboration tools</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💾</span>
+                        <span class="feature-text">Automatic backups</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-side">
+            <div class="form-container">
+                <h2 class="form-title">Sign in to your account</h2>
+                <form id="loginForm">
+                    {% csrf_token %}
+
+                    <input
+                        type="text"
+                        name="username"
+                        id="username"
+                        placeholder="Username"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        name="password"
+                        id="password"
+                        placeholder="Password"
+                        required
+                    >
+
+                    <div class="error-message" id="errorMessage"></div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">SIGN IN</button>
+                </form>
+
+                <div class="form-footer">
+                    Don't have an account? <a href="/register">Create one</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const errorMessage = document.getElementById('errorMessage');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'SIGNING IN...';
+            errorMessage.classList.remove('visible');
+
+            const formData = new FormData();
+            formData.append('username', document.getElementById('username').value);
+            formData.append('password', document.getElementById('password').value);
+
+            try {
+                const response = await fetch('/login/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    window.location.href = data.redirect || '/dashboard/';
+                } else {
+                    errorMessage.textContent = data.error || 'Login failed';
+                    errorMessage.classList.add('visible');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'SIGN IN';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessage.textContent = 'Server error. Please try again.';
+                errorMessage.classList.add('visible');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'SIGN IN';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Project - Solara Docs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; height: 100vh; overflow: hidden; }
+        .container { display: flex; height: 100vh; }
+        .left-side { flex: 1; background: #000; display: flex; flex-direction: column; justify-content: center; padding: 4rem; border-right: 1px solid #222; }
+        .logo { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 3rem; }
+        .preview-content h1 { font-size: 3.5rem; font-weight: 800; color: #fff; margin-bottom: 2rem; line-height: 1.2; }
+        .preview-content p { font-size: 1.2rem; color: #888; margin-bottom: 3rem; line-height: 1.6; }
+        .preview-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 3rem; }
+        .stat-item { padding: 2rem; background: #0a0a0a; border: 1px solid #222; }
+        .stat-number { font-size: 2.5rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .stat-label { font-size: 0.9rem; color: #666; }
+        .preview-features { margin-top: 2rem; }
+        .feature-item { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; color: #888; }
+        .feature-icon { font-size: 1.2rem; }
+        .right-side { flex: 1; background: #0a0a0a; display: flex; flex-direction: column; justify-content: center; padding: 4rem; overflow-y: auto; }
+        .form-container { width: 100%; max-width: 500px; }
+        .form-header { margin-bottom: 3rem; }
+        .form-title { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .form-subtitle { color: #888; }
+        .form-group { margin-bottom: 2rem; }
+        .form-label { display: block; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.75rem; }
+        .form-label-optional { color: #666; font-weight: 400; }
+        .form-input { width: 100%; padding: 1rem; background: #111; border: 1px solid #222; color: #fff; font-size: 1rem; transition: border-color 0.3s; }
+        .form-input:focus { outline: none; border-color: #fff; }
+        .form-input::placeholder { color: #555; }
+        .form-description { margin-top: 0.5rem; font-size: 0.85rem; color: #666; }
+        .users-input-container { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; background: #111; border: 1px solid #222; min-height: 50px; transition: border-color 0.3s; }
+        .users-input-container:focus-within { border-color: #fff; }
+        .user-tag { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #222; border: 1px solid #333; font-size: 0.9rem; }
+        .user-tag-remove { cursor: pointer; color: #888; font-weight: 700; }
+        .user-tag-remove:hover { color: #fff; }
+        .users-input { flex: 1; min-width: 150px; background: transparent; border: none; color: #fff; font-size: 1rem; padding: 0.5rem; }
+        .users-input:focus { outline: none; }
+        .users-input::placeholder { color: #555; }
+        .checkbox-group { display: flex; align-items: center; gap: 1rem; padding: 1.5rem; background: #111; border: 1px solid #222; cursor: pointer; transition: all 0.3s; }
+        .checkbox-group:hover { border-color: #fff; }
+        .checkbox-input { width: 20px; height: 20px; cursor: pointer; accent-color: #fff; }
+        .checkbox-label { flex: 1; cursor: pointer; }
+        .checkbox-title { font-weight: 600; color: #fff; margin-bottom: 0.25rem; }
+        .checkbox-description { font-size: 0.85rem; color: #666; }
+        .button-group { display: flex; gap: 1rem; margin-top: 3rem; }
+        .btn { flex: 1; padding: 1rem; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: #fff; color: #000; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
+        .btn-secondary { background: transparent; color: #fff; border: 1px solid #333; }
+        .btn-secondary:hover { border-color: #fff; }
+        @media (max-width: 968px) { .container { flex-direction: column; } .left-side { display: none; } .right-side { padding: 2rem; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-side">
+            <div class="logo">Solara Docs</div>
+            <div class="preview-content">
+                <h1>Start building<br>together</h1>
+                <p>Create a project and invite your team to collaborate in real-time with automatic backups and version control.</p>
+                <div class="preview-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">5-10</div>
+                        <div class="stat-label">Team members per project</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">∞</div>
+                        <div class="stat-label">Automatic backups</div>
+                    </div>
+                </div>
+                <div class="preview-features">
+                    <div class="feature-item"><span class="feature-icon">✓</span><span>Real-time collaboration</span></div>
+                    <div class="feature-item"><span class="feature-icon">✓</span><span>Automatic version backups</span></div>
+                    <div class="feature-item"><span class="feature-icon">✓</span><span>Role-based permissions</span></div>
+                    <div class="feature-item"><span class="feature-icon">✓</span><span>Instant deployment</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="right-side">
+            <div class="form-container">
+                <div class="form-header">
+                    <h2 class="form-title">Create Project</h2>
+                    <p class="form-subtitle">Set up your collaborative workspace</p>
+                </div>
+                <form id="setupForm">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label class="form-label">Project Name</label>
+                        <input type="text" name="project_name" id="projectName" class="form-input" placeholder="My Awesome Project" required>
+                        <p class="form-description">Choose a descriptive name for your project</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Add Users <span class="form-label-optional">(optional)</span></label>
+                        <div class="users-input-container" id="usersContainer">
+                            <input type="text" class="users-input" id="userInput" placeholder="Enter username and press Enter...">
+                        </div>
+                        <p class="form-description">Add up to 5-10 team members. Press Enter to add.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-group">
+                            <input type="checkbox" name="backups" id="backupsCheckbox" class="checkbox-input" checked>
+                            <div class="checkbox-label">
+                                <div class="checkbox-title">Enable Backups</div>
+                                <div class="checkbox-description">Automatically save versions of your project for rollback</div>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        const userInput = document.getElementById('userInput');
+        const usersContainer = document.getElementById('usersContainer');
+        let users = [];
+
+        function getAuthToken() { return localStorage.getItem('auth_token'); }
+
+        function handleAuthError(response) {
+            if (response.status === 401) {
+                localStorage.removeItem('auth_token');
+                window.location.href = '/login/';
+                return true;
+            }
+            return false;
+        }
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const username = userInput.value.trim();
+                if (username && !users.includes(username) && users.length < 10) {
+                    users.push(username);
+                    addUserTag(username);
+                    userInput.value = '';
+                }
+            }
+        });
+
+        function addUserTag(username) {
+            const tag = document.createElement('div');
+            tag.className = 'user-tag';
+            tag.innerHTML = `<span>${username}</span><span class="user-tag-remove" onclick="removeUser('${username}')">×</span>`;
+            usersContainer.insertBefore(tag, userInput);
+        }
+
+        function removeUser(username) {
+            users = users.filter(u => u !== username);
+            const tags = usersContainer.querySelectorAll('.user-tag');
+            tags.forEach(tag => tag.remove());
+            users.forEach(user => addUserTag(user));
+        }
+
+        document.getElementById('setupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('project_name', document.getElementById('projectName').value);
+            formData.append('people', users.join(' '));
+            if (document.getElementById('backupsCheckbox').checked) formData.append('backups', 'on');
+
+            try {
+                const response = await fetch('/setup/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + getAuthToken(),
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: formData
+                });
+                if (handleAuthError(response)) return;
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    const data = await response.json();
+                    if (!data.success) alert(data.error || 'Failed to create project');
+                }
+            } catch (error) {
+                alert('Failed to create project');
+            }
+        });
+    </script>
+</body>
+</html>
