@@ -109,7 +109,7 @@
                         </label>
                     </div>
                     <div class="button-group">
-                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/dashboard/'">Cancel</button>
                         <button type="submit" class="btn btn-primary">Create Project</button>
                     </div>
                 </form>
@@ -117,15 +117,27 @@
         </div>
     </div>
     <script>
+        // Check if user is logged in on page load
+        (function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login/';
+                return;
+            }
+        })();
+
         const userInput = document.getElementById('userInput');
         const usersContainer = document.getElementById('usersContainer');
         let users = [];
 
-        function getAuthToken() { return localStorage.getItem('auth_token'); }
+        function getAuthToken() {
+            return localStorage.getItem('token');
+        }
 
         function handleAuthError(response) {
-            if (response.status === 401) {
-                localStorage.removeItem('auth_token');
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('token');
+                alert('Session expired. Please login again.');
                 window.location.href = '/login/';
                 return true;
             }
@@ -160,29 +172,58 @@
 
         document.getElementById('setupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const token = getAuthToken();
+            if (!token) {
+                alert('You must be logged in to create a project');
+                window.location.href = '/login/';
+                return;
+            }
+
             const formData = new FormData();
             formData.append('project_name', document.getElementById('projectName').value);
             formData.append('people', users.join(' '));
-            if (document.getElementById('backupsCheckbox').checked) formData.append('backups', 'on');
+            if (document.getElementById('backupsCheckbox').checked) {
+                formData.append('backups', 'on');
+            }
 
             try {
+                console.log('Sending request with token:', token.substring(0, 20) + '...');
+
                 const response = await fetch('/setup/', {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer ' + getAuthToken(),
+                        'Authorization': 'Bearer ' + token,
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
-                    body: formData
+                    body: formData,
+                    credentials: 'include'
                 });
+
+                console.log('Response status:', response.status);
+
                 if (handleAuthError(response)) return;
+
                 if (response.redirected) {
                     window.location.href = response.url;
-                } else {
+                    return;
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-                    if (!data.success) alert(data.error || 'Failed to create project');
+                    if (data.success) {
+                        window.location.href = '/dashboard/';
+                    } else {
+                        alert(data.error || 'Failed to create project');
+                    }
+                } else {
+                    // If response is HTML (redirect), navigate to dashboard
+                    window.location.href = '/dashboard/';
                 }
             } catch (error) {
-                alert('Failed to create project');
+                console.error('Error creating project:', error);
+                alert('Failed to create project. Please try again.');
             }
         });
     </script>

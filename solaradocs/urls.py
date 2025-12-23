@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
@@ -12,6 +12,7 @@ urlpatterns = [
     path('collaborations/', views.collaborations, name='collaborations'),
     path('deleteproject/', views.delete_project, name='delete_project'),
     path('handlepending/', views.handle_pending, name='handle_pending'),
+    path('', include('django_prometheus.urls')),
     path('docs/', views.docs, name='docs'),
     path('project/<int:project_id>/', views.project_detail, name='project_detail'),
     path('addpeople/', views.add_people, name='add_people'),

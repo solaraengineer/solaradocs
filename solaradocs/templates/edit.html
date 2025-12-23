@@ -52,17 +52,12 @@
         const currentUser = "{{ request.user.username }}";
         const editorToken = "{{ editor_token }}";
 
-        let socket = null;
-        let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-        const usersOnline = new Map();
-        const typingUsers = new Map();
-
-        function getAuthToken() { return localStorage.getItem('auth_token'); }
+        function getAuthToken() { return localStorage.getItem('token');
+        }
 
         function handleAuthError(response) {
             if (response.status === 401) {
-                localStorage.removeItem('auth_token');
+                localStorage.removeItem('token');
                 window.location.href = '/login/';
                 return true;
             }
@@ -120,82 +115,6 @@
                 container.appendChild(badge);
             });
         }
-
-        function connectWebSocket() {
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws/doc/${projectId}/`);
-
-            socket.onopen = () => {
-                document.getElementById('status').textContent = 'Connected';
-                document.getElementById('status').className = 'status connected';
-                reconnectAttempts = 0;
-                usersOnline.set(currentUser, true);
-                updateUsersUI();
-            };
-
-            socket.onclose = () => {
-                document.getElementById('status').textContent = 'Disconnected';
-                document.getElementById('status').className = 'status disconnected';
-
-                if (reconnectAttempts < maxReconnectAttempts) {
-                    reconnectAttempts++;
-                    setTimeout(connectWebSocket, 2000 * reconnectAttempts);
-                }
-            };
-
-            socket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-
-            socket.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-
-                switch (data.type) {
-                    case 'delta':
-                        quill.updateContents(data.delta, 'api');
-                        break;
-
-                    case 'user_joined':
-                        usersOnline.set(data.username, true);
-                        updateUsersUI();
-                        break;
-
-                    case 'user_left':
-                        usersOnline.delete(data.username);
-                        typingUsers.delete(data.username);
-                        updateUsersUI();
-                        break;
-
-                    case 'typing':
-                        typingUsers.set(data.username, Date.now());
-                        updateUsersUI();
-                        setTimeout(() => {
-                            if (Date.now() - typingUsers.get(data.username) >= 1000) {
-                                typingUsers.delete(data.username);
-                                updateUsersUI();
-                            }
-                        }, 1500);
-                        break;
-
-                    case 'cursor':
-                        break;
-                }
-            };
-        }
-
-        quill.on('text-change', (delta, oldDelta, source) => {
-            if (source === 'user' && socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'delta',
-                    delta: delta
-                }));
-
-                socket.send(JSON.stringify({
-                    type: 'typing'
-                }));
-            }
-        });
-
         document.getElementById('saveBtn').addEventListener('click', async () => {
             const content = quill.root.innerHTML;
 
@@ -206,7 +125,6 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + getAuthToken(),
                         'X-Editor-Token': editorToken,
-                        'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify({
                         project_id: projectId,
@@ -227,8 +145,6 @@
                 alert('Save failed');
             }
         });
-
-        connectWebSocket();
     </script>
 </body>
 </html>

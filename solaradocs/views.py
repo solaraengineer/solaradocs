@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.cache import cache_page
 from django.db import transaction
@@ -17,10 +18,6 @@ from .models import Project, Contributor, Pending, User, Backup
 
 JWT_SECRET = settings.JWT_SECRET
 JWT_EXPIRY_HOURS = 1
-
-
-def home(request):
-    return render(request, 'index.html')
 
 
 def generate_auth_token(user_id):
@@ -44,7 +41,13 @@ def verify_auth_token(token):
 def require_auth_token(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            if not request.user.is_authenticated:
+                return redirect('login')
+            return view_func(request, *args, **kwargs)
+
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        print(f"TOKEN OF:: {token}")
 
         if not token:
             return JsonResponse({'success': False, 'error': 'Auth token required'}, status=401)
@@ -53,8 +56,11 @@ def require_auth_token(view_func):
         if not payload:
             return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=401)
 
-        if not request.user.is_authenticated or payload['user_id'] != request.user.id:
-            return JsonResponse({'success': False, 'error': 'Token user mismatch'}, status=403)
+        # Actually set request.user from the JWT payload
+        try:
+            request.user = User.objects.get(id=payload['user_id'])
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=401)
 
         return view_func(request, *args, **kwargs)
 
@@ -74,6 +80,7 @@ def generate_editor_token(user_id, project_id):
 def verify_editor_token(token, project_id):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS512'])
+        print(f"VERFIER OF EDITOR TOKEN: {payload}")
         if payload.get('project_id') != project_id:
             return None
         return payload
@@ -147,13 +154,11 @@ def setup(request):
             Contributor.objects.bulk_create(
                 [Contributor(project=project, username=p, role='VIEWER') for p in people]
             )
-
     return redirect('dashboard')
-
 
 @require_POST
 @require_auth_token
-@ratelimit(key='ip', rate='5/', block=True)
+@ratelimit(key='ip', rate='5/m', block=True)
 def change_roles(request):
     try:
         data = json.loads(request.body)
@@ -179,7 +184,7 @@ def change_roles(request):
 
     return JsonResponse({'success': True})
 
-@ratelimit(key='ip', rate='5//', block=True)
+@ratelimit(key='ip', rate='5/m', block=True)
 @require_POST
 @require_auth_token
 def add_people(request):
@@ -225,7 +230,8 @@ def about(request):
 def docs(request):
     return render(request, 'docs.html')
 
-@ratelimit(key='ip', rate='5/', block=True)
+
+@ratelimit(key='ip', rate='5/m', block=True)
 def login(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -250,13 +256,15 @@ def login(request):
             return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=401)
 
         auth_login(request, user)
-        token = generate_auth_token(user.id)
+        user_id = request.user.id
+        token = generate_auth_token(user_id)
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': f'Server error {e}'}, status=500)
 
-@ratelimit(key='ip', rate='5/', block=True)
+
+@ratelimit(key='ip', rate='5/m', block=True)
 def register(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -299,7 +307,7 @@ def logout_view(request):
 
 @require_POST
 @require_auth_token
-@ratelimit(key='ip', rate='5/', block=True)
+@ratelimit(key='ip', rate='5/m', block=True)
 def deleteuser(request):
     try:
         data = json.loads(request.body)
@@ -322,7 +330,9 @@ def deleteuser(request):
 @require_POST
 @require_auth_token
 @require_editor_token
-@ratelimit(key='ip', rate='5/', block=True)
+@csrf_exempt
+@transaction.atomic
+@ratelimit(key='ip', rate='5/m', block=True)
 def save_docs(request):
     try:
         data = json.loads(request.body)
@@ -410,6 +420,7 @@ def project_detail(request, project_id):
 
 @require_POST
 @require_auth_token
+@ensure_csrf_cookie
 def delete_project(request):
     try:
         data = json.loads(request.body)
@@ -501,6 +512,11 @@ def collaborations(request):
     return render(request, 'collaborations.html', {'collaborated_projects': collaborated_projects})
 
 
+@csrf_exempt
 def logout(request):
     auth_logout(request)
     return redirect('login')
+
+
+def home(request):
+    return render(request, 'index.html')

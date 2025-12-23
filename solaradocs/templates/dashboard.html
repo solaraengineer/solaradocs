@@ -189,7 +189,16 @@
         {% endif %}
     </div>
     <script>
-        function getAuthToken() { return localStorage.getItem('auth_token'); }
+        // DEBUG - ADD THIS AT THE VERY TOP
+console.log('=== CSRF DEBUG ===');
+console.log('All cookies:', document.cookie);
+console.log('csrftoken cookie:', getCookie('csrftoken'));
+console.log('csrf length:', getCookie('csrftoken')?.length);
+console.log('==================');
+        function getAuthToken() {
+            return localStorage.getItem('token');
+        }
+
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -204,37 +213,60 @@
             }
             return cookieValue;
         }
+
         function handleAuthError(response) {
             if (response.status === 401) {
-                localStorage.removeItem('auth_token');
+                localStorage.removeItem('token');
                 window.location.href = '/login/';
                 return true;
             }
             return false;
         }
-        function handleLogout() { localStorage.removeItem('auth_token'); window.location.href = '/logout'; }
-        function toggleDetails(id) { document.getElementById(id).classList.toggle('expanded'); }
+
+        function handleLogout() {
+            localStorage.removeItem('token');
+            window.location.href = '/logout';
+        }
+
+        function toggleDetails(id) {
+            document.getElementById(id).classList.toggle('expanded');
+        }
 
         async function deleteProject(projectId) {
             if (!confirm('Are you sure you want to delete this entire project? This cannot be undone.')) return;
             try {
+                const token = getAuthToken();
+                const csrf = getCookie('csrftoken');
+
                 const response = await fetch('/deleteproject/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-CSRFToken': csrf
+                    },
                     body: JSON.stringify({ project_id: projectId })
                 });
+
                 if (handleAuthError(response)) return;
                 const data = await response.json();
                 if (data.success) location.reload();
                 else alert('Failed to delete project: ' + (data.error || 'Unknown error'));
-            } catch (error) { alert('Failed to delete project'); }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to delete project');
+            }
         }
 
         async function acceptPending(pendingId) {
             try {
                 const response = await fetch('/handlepending/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     body: JSON.stringify({ pending_id: pendingId, action: 'accept' })
                 });
                 if (handleAuthError(response)) return;
@@ -248,7 +280,11 @@
             try {
                 const response = await fetch('/handlepending/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     body: JSON.stringify({ pending_id: pendingId, action: 'reject' })
                 });
                 if (handleAuthError(response)) return;
@@ -263,7 +299,11 @@
             try {
                 const response = await fetch('/changeroles/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole })
                 });
                 if (handleAuthError(response)) return;
@@ -278,7 +318,11 @@
             try {
                 const response = await fetch('/deleteuser/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     body: JSON.stringify({ project_id: projectId, contributor_id: contributorId })
                 });
                 if (handleAuthError(response)) return;
@@ -294,7 +338,11 @@
             try {
                 const response = await fetch('/addpeople/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     body: JSON.stringify({ project_id: projectId, usernames: usernames })
                 });
                 if (handleAuthError(response)) return;
@@ -309,7 +357,11 @@
             try {
                 const response = await fetch('/revert/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getAuthToken(), 'X-CSRFToken': getCookie('csrftoken') },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     body: JSON.stringify({ project_id: projectId, backup_id: backupId })
                 });
                 if (handleAuthError(response)) return;

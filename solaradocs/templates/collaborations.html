@@ -85,8 +85,8 @@
         {% endif %}
     </div>
     <script>
-        function getAuthToken() { return localStorage.getItem('auth_token'); }
-        function handleLogout() { localStorage.removeItem('auth_token'); window.location.href = '/logout'; }
+        function getAuthToken() { return localStorage.getItem('token'); }
+        function handleLogout() { localStorage.removeItem('token'); window.location.href = '/logout'; }
         function toggleContent(id) { document.getElementById(id).classList.toggle('visible'); }
         function navigateToProject(projectId) { window.location.href = '/project/' + projectId; }
     </script>
