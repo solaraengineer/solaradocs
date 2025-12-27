@@ -16,8 +16,11 @@ urlpatterns = [
     path('docs/', views.docs, name='docs'),
     path('project/<int:project_id>/', views.project_detail, name='project_detail'),
     path('addpeople/', views.add_people, name='add_people'),
-    path('deleteuser/ ', views.deleteuser, name='deleteuser'),
+    path('deleteuser/', views.deleteuser, name='deleteuser'),
     path('save-doc/', views.save_docs, name='save_docs'),
     path('revert/', views.revert, name='revert'),
     path('logout/', views.logout, name='logout'),
-    ]
+    path('create-checkout-session/', views.create_checkout_session, name='create-checkout-session'),
+    path('success/', views.success, name='success'),
+    path('buy/', views.buy, name='buy'),
+]

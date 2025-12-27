@@ -7,13 +7,18 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 JWT_SECRET = os.getenv('JWT_SECRET_KEY')
 
 AUTH_USER_MODEL = 'solaradocs.User'
+
+
+STRIPE_WEBHOOK_SECRET = 'whsec_ee6193f925683fee033ad06001875a1da4cde0115fd4ac97a1df59f83b2eb385'
+STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 

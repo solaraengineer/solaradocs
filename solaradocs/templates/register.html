@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Solara Docs</title>
+    <title>Register - Solara Docs</title>
     <style>
         * {
             margin: 0;
@@ -197,25 +197,25 @@
         <div class="left-side">
             <div class="logo">Solara Docs</div>
             <div class="marketing-content">
-                <h1>Welcome back</h1>
-                <p>Sign in to continue collaborating with your team on Solara Docs.</p>
+                <h1>Start collaborating today</h1>
+                <p>Join Solara Docs and experience simple, secure documentation.</p>
 
                 <div class="features-list">
                     <div class="feature-item">
                         <span class="feature-icon">⚡</span>
-                        <span class="feature-text">Lightning-fast performance</span>
+                        <span class="feature-text">Get started in seconds</span>
                     </div>
                     <div class="feature-item">
                         <span class="feature-icon">🔒</span>
-                        <span class="feature-text">Enterprise-grade security</span>
+                        <span class="feature-text">Bank-grade security</span>
                     </div>
                     <div class="feature-item">
                         <span class="feature-icon">👥</span>
-                        <span class="feature-text">Team collaboration tools</span>
+                        <span class="feature-text">Unlimited collaborators</span>
                     </div>
                     <div class="feature-item">
                         <span class="feature-icon">💾</span>
-                        <span class="feature-text">Automatic backups</span>
+                        <span class="feature-text">Automatic backups included</span>
                     </div>
                 </div>
             </div>
@@ -223,8 +223,8 @@
 
         <div class="right-side">
             <div class="form-container">
-                <h2 class="form-title">Sign in to your account</h2>
-                <form id="loginForm">
+                <h2 class="form-title">Create your account</h2>
+                <form id="registerForm">
                     {% csrf_token %}
 
                     <input
@@ -236,6 +236,14 @@
                     >
 
                     <input
+                        type="email"
+                        name="email"
+                        id="email"
+                        placeholder="Email"
+                        required
+                    >
+
+                    <input
                         type="password"
                         name="password"
                         id="password"
@@ -243,35 +251,54 @@
                         required
                     >
 
+                    <input
+                        type="password"
+                        name="password_confirm"
+                        id="password_confirm"
+                        placeholder="Confirm Password"
+                        required
+                    >
+
                     <div class="error-message" id="errorMessage"></div>
 
-                    <button type="submit" class="submit-btn" id="submitBtn">SIGN IN</button>
+                    <button type="submit" class="submit-btn" id="submitBtn">CREATE ACCOUNT</button>
                 </form>
 
                 <div class="form-footer">
-                    Don't have an account? <a href="/register">Create one</a>
+                    Already have an account? <a href="/login">Sign in</a>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const submitBtn = document.getElementById('submitBtn');
             const errorMessage = document.getElementById('errorMessage');
 
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password_confirm').value;
+
+            if (password !== passwordConfirm) {
+                errorMessage.textContent = 'Passwords do not match';
+                errorMessage.classList.add('visible');
+                return;
+            }
+
             submitBtn.disabled = true;
-            submitBtn.textContent = 'SIGNING IN...';
+            submitBtn.textContent = 'CREATING ACCOUNT...';
             errorMessage.classList.remove('visible');
 
             const formData = new FormData();
             formData.append('username', document.getElementById('username').value);
-            formData.append('password', document.getElementById('password').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('password', password);
+            formData.append('password_confirm', passwordConfirm);
 
             try {
-                const response = await fetch('/login/', {
+                const response = await fetch('/register/', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
@@ -282,20 +309,20 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('token', data.token);
                     window.location.href = data.redirect || '/dashboard/';
                 } else {
-                    errorMessage.textContent = data.error || 'Login failed';
+                    errorMessage.textContent = data.error || 'Registration failed';
                     errorMessage.classList.add('visible');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'SIGN IN';
+                    submitBtn.textContent = 'CREATE ACCOUNT';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 errorMessage.textContent = 'Server error. Please try again.';
                 errorMessage.classList.add('visible');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'SIGN IN';
+                submitBtn.textContent = 'CREATE ACCOUNT';
             }
         });
     </script>

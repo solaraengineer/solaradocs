@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - Solara Docs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; min-height: 100vh; padding: 4rem 2rem; }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header { text-align: center; margin-bottom: 4rem; }
+        .header h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; }
+        .header p { font-size: 1.25rem; color: #888; max-width: 600px; margin: 0 auto; }
+
+        .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 4rem; }
+
+        .plan { background: #0a0a0a; border: 1px solid #222; padding: 2.5rem; transition: all 0.3s; position: relative; }
+        .plan:hover { border-color: #fff; transform: translateY(-4px); }
+        .plan.recommended { border-color: #fff; border-width: 2px; }
+
+        .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 0.4rem 1.2rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .plan h4 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .plan-desc { font-size: 0.9rem; color: #666; margin-bottom: 1.5rem; }
+
+        .price { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 2rem; }
+        .price-dyn { font-size: 3rem; font-weight: 800; }
+        .price span { font-size: 1rem; color: #666; }
+
+        .plan ul { list-style: none; margin-bottom: 2rem; }
+        .plan li { padding: 0.75rem 0; color: #ccc; font-size: 0.9rem; display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid #151515; }
+        .plan li:last-child { border-bottom: none; }
+        .plan li::before { content: '✓'; color: #000; background: #fff; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0; }
+
+        .plan button, .plan form button { width: 100%; padding: 1rem; background: #fff; color: #000; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; margin-bottom: 0.75rem; }
+        .plan button:hover, .plan form button:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
+
+        .plan .secondary-btn { background: transparent; color: #fff; border: 1px solid #333; }
+        .plan .secondary-btn:hover { border-color: #fff; box-shadow: none; }
+
+        @media (max-width: 900px) { .plans { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; } }
+        @media (max-width: 768px) { .header h1 { font-size: 2rem; } body { padding: 2rem 1rem; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Simple Pricing</h1>
+            <p>No bullshit. Pick a plan, start editing in under 2 minutes.</p>
+        </div>
+
+        <div class="plans">
+            <!-- STUDENT PLAN -->
+            <div class="plan">
+                <h4>Student</h4>
+                <p class="plan-desc">Perfect for individual use and personal projects.</p>
+                <div class="price">
+                    <h2 class="price-dyn">$5</h2>
+                    <span>/ month</span>
+                </div>
+                <ul>
+                    <li><span>Up to 3 projects</span></li>
+                    <li><span>Basic collaboration</span></li>
+                    <li><span>Version backups</span></li>
+                    <li><span>Community support</span></li>
+                </ul>
+                <form action="{% url 'create-checkout-session' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_name" value="student">
+                    <input type="hidden" name="amount" value="500">
+                    <input type="hidden" name="tier" value="student">
+                    <button type="submit">Get Started</button>
+                </form>
+            </div>
+
+            <!-- SMALL TEAM PLAN -->
+            <div class="plan recommended">
+                <span class="badge">Most Popular</span>
+                <h4>Team / Startup</h4>
+                <p class="plan-desc">For small teams that need to collaborate fast.</p>
+                <div class="price">
+                    <h2 class="price-dyn">$15</h2>
+                    <span>/month</span>
+                </div>
+                <ul>
+                    <li><span>Up to 10 projects</span></li>
+                    <li><span>Unlimited collaborators</span></li>
+                    <li><span>Role-based permissions</span></li>
+                    <li><span>Priority support</span></li>
+                    <li><span>Pending approvals workflow</span></li>
+                </ul>
+                <form action="{% url 'create-checkout-session' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_name" value="small team">
+                    <input type="hidden" name="amount" value="1500">
+                    <input type="hidden" name="tier" value="team">
+                    <button type="submit">Get Started</button>
+                </form>
+            </div>
+
+            <!-- LARGE TEAM PLAN -->
+            <div class="plan">
+                <h4>Large Teams</h4>
+                <p class="plan-desc">For organizations that need scale and control.</p>
+                <div class="price">
+                    <h2 class="price-dyn">$35</h2>
+                    <span>/ month</span>
+                </div>
+                <ul>
+                    <li><span>Unlimited projects</span></li>
+                    <li><span>Unlimited collaborators</span></li>
+                    <li><span>Advanced permissions</span></li>
+                    <li><span>Backup history & restore</span></li>
+                    <li><span>Dedicated support</span></li>
+                    <li><span>Custom integrations</span></li>
+                </ul>
+                <form action="{% url 'create-checkout-session' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_name" value="large multi-team">
+                    <input type="hidden" name="amount" value="3500">
+                    <input type="hidden" name="tier" value="enterprise">
+                    <button type="submit">Get Started</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

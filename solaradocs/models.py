@@ -3,9 +3,11 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from datetime import datetime
 
+from django.db.models.fields import CharField
+
 
 class User(AbstractUser):
-    pass
+    Tier = CharField('Tier', max_length=10, default='Free')
 
 class Project(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_projects')

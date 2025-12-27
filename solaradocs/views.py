@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import JsonResponse
@@ -7,6 +8,7 @@ from django.views.decorators.cache import cache_page
 from django.db import transaction
 from django.db.models import Q
 from django.conf import settings
+import stripe
 import json
 import jwt
 from datetime import datetime, timedelta
@@ -18,6 +20,9 @@ from .models import Project, Contributor, Pending, User, Backup
 
 JWT_SECRET = settings.JWT_SECRET
 JWT_EXPIRY_HOURS = 1
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.public_key = settings.STRIPE_PUBLIC_KEY
 
 
 def generate_auth_token(user_id):
@@ -47,7 +52,6 @@ def require_auth_token(view_func):
             return view_func(request, *args, **kwargs)
 
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
-        print(f"TOKEN OF:: {token}")
 
         if not token:
             return JsonResponse({'success': False, 'error': 'Auth token required'}, status=401)
@@ -56,7 +60,6 @@ def require_auth_token(view_func):
         if not payload:
             return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=401)
 
-        # Actually set request.user from the JWT payload
         try:
             request.user = User.objects.get(id=payload['user_id'])
         except User.DoesNotExist:
@@ -80,7 +83,6 @@ def generate_editor_token(user_id, project_id):
 def verify_editor_token(token, project_id):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS512'])
-        print(f"VERFIER OF EDITOR TOKEN: {payload}")
         if payload.get('project_id') != project_id:
             return None
         return payload
@@ -156,6 +158,7 @@ def setup(request):
             )
     return redirect('dashboard')
 
+
 @require_POST
 @require_auth_token
 @ratelimit(key='ip', rate='5/m', block=True)
@@ -183,6 +186,7 @@ def change_roles(request):
         return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
 
     return JsonResponse({'success': True})
+
 
 @ratelimit(key='ip', rate='5/m', block=True)
 @require_POST
@@ -292,7 +296,8 @@ def register(request):
 
         user = User.objects.create_user(username=username, password=password, email=email)
         auth_login(request, user)
-        token = generate_auth_token(user.id)
+        user_id = request.user.id
+        token = generate_auth_token(user_id)
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception:
@@ -375,7 +380,7 @@ def save_docs(request):
     with transaction.atomic():
         if project.backups_enabled and project.content != content:
             Backup.objects.create(
-                owner_id=request.user.id,
+                owner_id=project.owner_id,
                 project_id=project_id,
                 content=project.content
             )
@@ -520,3 +525,76 @@ def logout(request):
 
 def home(request):
     return render(request, 'index.html')
+
+
+@login_required
+def create_checkout_session(request):
+    if request.method == 'POST':
+        try:
+            tier = request.POST.get('tier')
+
+            prices = {
+                'student': {'amount': 500, 'name': 'Student', 'display_price': '5.00'},
+                'team': {'amount': 1500, 'name': 'Team/startup', 'display_price': '15.00'},
+                'enterprise': {'amount': 3500, 'name': 'Large teams', 'display_price': '35.00'},
+            }
+
+            selected_tier = prices.get(tier, prices['student'])
+
+            request.session['plan_name'] = selected_tier['name']
+            request.session['amount'] = selected_tier['display_price']
+            request.session['tier'] = tier
+
+            session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': selected_tier['name'],
+                        },
+                        'unit_amount': selected_tier['amount'],
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                customer_email=request.user.email,
+                metadata={
+                    'plan_tier': tier,
+                    'user_id': str(request.user.id),
+                },
+                success_url="http://127.0.0.1:8000/success?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url="http://127.0.0.1:8000/sub",
+            )
+
+            return redirect(session.url)
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': 'Try again later'}, status=400)
+
+
+@login_required
+def success(request):
+    session_id = request.GET.get('session_id')
+
+    if session_id:
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+            tier = session.metadata.get('plan_tier')
+
+            if tier and session.payment_status == 'paid':
+                request.user.Tier = tier
+                request.user.save()
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': 'Try again later'}, status=400)
+
+
+    return render(request, 'success.html', {
+        'plan_name': request.session.get('plan_name', 'Student'),
+        'amount': request.session.get('amount', '3.00'),
+        'user': request.user
+    })
+
+
+def buy(request):
+    return render(request, 'buy.html')
