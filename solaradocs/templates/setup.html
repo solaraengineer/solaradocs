@@ -4,120 +4,770 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Project - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; height: 100vh; overflow: hidden; }
-        .container { display: flex; height: 100vh; }
-        .left-side { flex: 1; background: #000; display: flex; flex-direction: column; justify-content: center; padding: 4rem; border-right: 1px solid #222; }
-        .logo { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 3rem; }
-        .preview-content h1 { font-size: 3.5rem; font-weight: 800; color: #fff; margin-bottom: 2rem; line-height: 1.2; }
-        .preview-content p { font-size: 1.2rem; color: #888; margin-bottom: 3rem; line-height: 1.6; }
-        .preview-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 3rem; }
-        .stat-item { padding: 2rem; background: #0a0a0a; border: 1px solid #222; }
-        .stat-number { font-size: 2.5rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
-        .stat-label { font-size: 0.9rem; color: #666; }
-        .preview-features { margin-top: 2rem; }
-        .feature-item { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; color: #888; }
-        .feature-icon { font-size: 1.2rem; }
-        .right-side { flex: 1; background: #0a0a0a; display: flex; flex-direction: column; justify-content: center; padding: 4rem; overflow-y: auto; }
-        .form-container { width: 100%; max-width: 500px; }
-        .form-header { margin-bottom: 3rem; }
-        .form-title { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
-        .form-subtitle { color: #888; }
-        .form-group { margin-bottom: 2rem; }
-        .form-label { display: block; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.75rem; }
-        .form-label-optional { color: #666; font-weight: 400; }
-        .form-input { width: 100%; padding: 1rem; background: #111; border: 1px solid #222; color: #fff; font-size: 1rem; transition: border-color 0.3s; }
-        .form-input:focus { outline: none; border-color: #fff; }
-        .form-input::placeholder { color: #555; }
-        .form-description { margin-top: 0.5rem; font-size: 0.85rem; color: #666; }
-        .users-input-container { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; background: #111; border: 1px solid #222; min-height: 50px; transition: border-color 0.3s; }
-        .users-input-container:focus-within { border-color: #fff; }
-        .user-tag { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #222; border: 1px solid #333; font-size: 0.9rem; }
-        .user-tag-remove { cursor: pointer; color: #888; font-weight: 700; }
-        .user-tag-remove:hover { color: #fff; }
-        .users-input { flex: 1; min-width: 150px; background: transparent; border: none; color: #fff; font-size: 1rem; padding: 0.5rem; }
-        .users-input:focus { outline: none; }
-        .users-input::placeholder { color: #555; }
-        .checkbox-group { display: flex; align-items: center; gap: 1rem; padding: 1.5rem; background: #111; border: 1px solid #222; cursor: pointer; transition: all 0.3s; }
-        .checkbox-group:hover { border-color: #fff; }
-        .checkbox-input { width: 20px; height: 20px; cursor: pointer; accent-color: #fff; }
-        .checkbox-label { flex: 1; cursor: pointer; }
-        .checkbox-title { font-weight: 600; color: #fff; margin-bottom: 0.25rem; }
-        .checkbox-description { font-size: 0.85rem; color: #666; }
-        .button-group { display: flex; gap: 1rem; margin-top: 3rem; }
-        .btn { flex: 1; padding: 1rem; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
-        .btn-primary { background: #fff; color: #000; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
-        .btn-secondary { background: transparent; color: #fff; border: 1px solid #333; }
-        .btn-secondary:hover { border-color: #fff; }
-        @media (max-width: 968px) { .container { flex-direction: column; } .left-side { display: none; } .right-side { padding: 2rem; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #09090b;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-2: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(100, 181, 246, 0.5);
+            --text: #fafafa;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent: #64b5f6;
+            --accent-2: #4dd0e1;
+            --accent-dim: rgba(100, 181, 246, 0.1);
+            --success: #4ade80;
+            --error: #f87171;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* 3D Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Ambient Glow */
+        .ambient {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(150px);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.07;
+        }
+
+        .ambient-1 {
+            background: var(--accent);
+            top: -300px;
+            left: -200px;
+        }
+
+        .ambient-2 {
+            background: var(--accent-2);
+            bottom: -300px;
+            right: -200px;
+        }
+
+        /* Layout */
+        .container {
+            position: relative;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        /* Left Side - Branding */
+        .brand-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem;
+            position: relative;
+        }
+
+        .logo {
+            position: absolute;
+            top: 2.5rem;
+            left: 4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--bg);
+        }
+
+        .brand-content {
+            max-width: 480px;
+        }
+
+        .brand-content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-content > p {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            margin-bottom: 3rem;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Features */
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .feature-check {
+            width: 20px;
+            height: 20px;
+            background: var(--accent-dim);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .feature-check svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .feature-text {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        /* Right Side - Form */
+        .form-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-label-optional {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Users Input */
+        .users-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            min-height: 50px;
+            transition: all 0.2s ease;
+        }
+
+        .users-container:focus-within {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .user-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.625rem;
+            background: var(--accent-dim);
+            border: 1px solid rgba(100, 181, 246, 0.2);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        .user-tag-remove {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-tag-remove:hover {
+            opacity: 1;
+        }
+
+        .user-tag-remove svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .users-input {
+            flex: 1;
+            min-width: 150px;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+            padding: 0.375rem;
+        }
+
+        .users-input:focus {
+            outline: none;
+        }
+
+        .users-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Checkbox */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.875rem;
+            padding: 1.25rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-wrapper:hover {
+            border-color: var(--text-muted);
+        }
+
+        .checkbox-wrapper:has(input:checked) {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .checkbox-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-wrapper:has(input:checked) .checkbox-box {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .checkbox-box svg {
+            width: 12px;
+            height: 12px;
+            color: var(--bg);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .checkbox-wrapper:has(input:checked) .checkbox-box svg {
+            opacity: 1;
+        }
+
+        .checkbox-input {
+            display: none;
+        }
+
+        .checkbox-content {
+            flex: 1;
+        }
+
+        .checkbox-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .checkbox-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.875rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-2);
+            border-color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(100, 181, 246, 0.25);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Back link */
+        .back-link {
+            position: absolute;
+            top: 2.5rem;
+            left: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        .back-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-side {
+                display: none;
+            }
+
+            .form-side {
+                border-left: none;
+            }
+
+            .back-link {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-side {
+                padding: 2rem 1.5rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="ambient ambient-1"></div>
+    <div class="ambient ambient-2"></div>
+
+    <div id="canvas-container">
+        <canvas id="three-canvas"></canvas>
+    </div>
+
     <div class="container">
-        <div class="left-side">
-            <div class="logo">Solara Docs</div>
-            <div class="preview-content">
-                <h1>Start building<br>together</h1>
+        <!-- Left Side - Branding -->
+        <div class="brand-side">
+            <a href="/dashboard" class="logo">
+                <div class="logo-icon">S</div>
+                <span>Solara Docs</span>
+            </a>
+
+            <div class="brand-content">
+                <h1>Start building together</h1>
                 <p>Create a project and invite your team to collaborate in real-time with automatic backups and version control.</p>
-                <div class="preview-stats">
-                    <div class="stat-item">
+
+                <div class="stats-row">
+                    <div class="stat-card">
                         <div class="stat-number">5-10</div>
                         <div class="stat-label">Team members per project</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-card">
                         <div class="stat-number">∞</div>
                         <div class="stat-label">Automatic backups</div>
                     </div>
                 </div>
-                <div class="preview-features">
-                    <div class="feature-item"><span class="feature-icon">✓</span><span>Real-time collaboration</span></div>
-                    <div class="feature-item"><span class="feature-icon">✓</span><span>Automatic version backups</span></div>
-                    <div class="feature-item"><span class="feature-icon">✓</span><span>Role-based permissions</span></div>
-                    <div class="feature-item"><span class="feature-icon">✓</span><span>Instant deployment</span></div>
+
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Real-time collaboration</span>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Automatic version backups</span>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Role-based permissions</span>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Instant publishing</span>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="right-side">
+
+        <!-- Right Side - Form -->
+        <div class="form-side">
             <div class="form-container">
+                <a href="/dashboard" class="back-link" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    Back to dashboard
+                </a>
+
                 <div class="form-header">
-                    <h2 class="form-title">Create Project</h2>
-                    <p class="form-subtitle">Set up your collaborative workspace</p>
+                    <h2>Create Project</h2>
+                    <p>Set up your collaborative workspace</p>
                 </div>
+
                 <form id="setupForm">
                     {% csrf_token %}
+
                     <div class="form-group">
-                        <label class="form-label">Project Name</label>
-                        <input type="text" name="project_name" id="projectName" class="form-input" placeholder="My Awesome Project" required>
-                        <p class="form-description">Choose a descriptive name for your project</p>
+                        <label class="form-label" for="projectName">Project Name</label>
+                        <input
+                            type="text"
+                            class="form-input"
+                            id="projectName"
+                            name="project_name"
+                            placeholder="My Awesome Project"
+                            required
+                        >
+                        <p class="form-hint">Choose a descriptive name for your project</p>
                     </div>
+
                     <div class="form-group">
-                        <label class="form-label">Add Users <span class="form-label-optional">(optional)</span></label>
-                        <div class="users-input-container" id="usersContainer">
-                            <input type="text" class="users-input" id="userInput" placeholder="Enter username and press Enter...">
+                        <label class="form-label">
+                            Add Team Members
+                            <span class="form-label-optional">(optional)</span>
+                        </label>
+                        <div class="users-container" id="usersContainer">
+                            <input
+                                type="text"
+                                class="users-input"
+                                id="userInput"
+                                placeholder="Enter username and press Enter..."
+                            >
                         </div>
-                        <p class="form-description">Add up to 5-10 team members. Press Enter to add.</p>
+                        <p class="form-hint">Add up to 10 team members. Press Enter to add.</p>
                     </div>
+
                     <div class="form-group">
-                        <label class="checkbox-group">
-                            <input type="checkbox" name="backups" id="backupsCheckbox" class="checkbox-input" checked>
-                            <div class="checkbox-label">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" class="checkbox-input" id="backupsCheckbox" name="backups" checked>
+                            <div class="checkbox-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="checkbox-content">
                                 <div class="checkbox-title">Enable Backups</div>
-                                <div class="checkbox-description">Automatically save versions of your project for rollback</div>
+                                <div class="checkbox-desc">Automatically save versions of your project for rollback</div>
                             </div>
                         </label>
                     </div>
+
                     <div class="button-group">
-                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/dashboard/'">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create Project</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/dashboard/'">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            Create Project
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
     <script>
-        // Check if user is logged in on page load
+        // Three.js Background
+        const canvas = document.getElementById('three-canvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Dodecahedron
+        const dodecaGeometry = new THREE.DodecahedronGeometry(2.5, 0);
+        const dodecaMaterial = new THREE.MeshBasicMaterial({
+            color: 0x64b5f6,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.08
+        });
+        const dodeca = new THREE.Mesh(dodecaGeometry, dodecaMaterial);
+        dodeca.position.set(-7, 2, -10);
+        scene.add(dodeca);
+
+        // Octahedron
+        const octGeometry = new THREE.OctahedronGeometry(2, 0);
+        const octMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4dd0e1,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.06
+        });
+        const oct = new THREE.Mesh(octGeometry, octMaterial);
+        oct.position.set(6, -2, -8);
+        scene.add(oct);
+
+        // Particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 200;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 40;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.03,
+            color: 0x64b5f6,
+            transparent: true,
+            opacity: 0.4
+        });
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        camera.position.z = 10;
+
+        // Mouse
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // Animate
+        function animate() {
+            requestAnimationFrame(animate);
+
+            dodeca.rotation.x += 0.003;
+            dodeca.rotation.y += 0.004;
+            dodeca.position.y = 2 + mouseY * 0.5;
+
+            oct.rotation.x -= 0.004;
+            oct.rotation.y -= 0.003;
+            oct.position.y = -2 + mouseY * 0.3;
+
+            particles.rotation.y += 0.0002;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Check auth
         (function() {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -126,6 +776,7 @@
             }
         })();
 
+        // Users input
         const userInput = document.getElementById('userInput');
         const usersContainer = document.getElementById('usersContainer');
         let users = [];
@@ -159,7 +810,15 @@
         function addUserTag(username) {
             const tag = document.createElement('div');
             tag.className = 'user-tag';
-            tag.innerHTML = `<span>${username}</span><span class="user-tag-remove" onclick="removeUser('${username}')">×</span>`;
+            tag.innerHTML = `
+                <span>${username}</span>
+                <span class="user-tag-remove" onclick="removeUser('${username}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </span>
+            `;
             usersContainer.insertBefore(tag, userInput);
         }
 
@@ -170,6 +829,7 @@
             users.forEach(user => addUserTag(user));
         }
 
+        // Form submission
         document.getElementById('setupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -180,6 +840,10 @@
                 return;
             }
 
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
             const formData = new FormData();
             formData.append('project_name', document.getElementById('projectName').value);
             formData.append('people', users.join(' '));
@@ -188,8 +852,6 @@
             }
 
             try {
-                console.log('Sending request with token:', token.substring(0, 20) + '...');
-
                 const response = await fetch('/setup/', {
                     method: 'POST',
                     headers: {
@@ -199,8 +861,6 @@
                     body: formData,
                     credentials: 'include'
                 });
-
-                console.log('Response status:', response.status);
 
                 if (handleAuthError(response)) return;
 
@@ -213,18 +873,34 @@
                 if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
                     if (data.success) {
-                        window.location.href = '/dashboard/';
+                        submitBtn.textContent = 'Success!';
+                        setTimeout(() => {
+                            window.location.href = '/dashboard/';
+                        }, 500);
                     } else {
                         alert(data.error || 'Failed to create project');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Create Project';
                     }
                 } else {
-                    // If response is HTML (redirect), navigate to dashboard
                     window.location.href = '/dashboard/';
                 }
             } catch (error) {
                 console.error('Error creating project:', error);
                 alert('Failed to create project. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Project';
             }
+        });
+
+        // Show back link on mobile
+        if (window.innerWidth <= 1024) {
+            document.querySelector('.back-link').style.display = 'flex';
+        }
+
+        window.addEventListener('resize', () => {
+            const backLink = document.querySelector('.back-link');
+            backLink.style.display = window.innerWidth <= 1024 ? 'flex' : 'none';
         });
     </script>
 </body>

@@ -532,8 +532,9 @@ def create_checkout_session(request):
     if request.method == 'POST':
         try:
             tier = request.POST.get('tier')
+            prices = request.POST.get('price')
 
-            prices = {
+            price = {
                 'student': {'amount': 500, 'name': 'Student', 'display_price': '5.00'},
                 'team': {'amount': 1500, 'name': 'Team/startup', 'display_price': '15.00'},
                 'enterprise': {'amount': 3500, 'name': 'Large teams', 'display_price': '35.00'},

@@ -16,7 +16,6 @@ jobs:
       run: |
         echo "Checking secrets..."
         echo "SERVER_1_IP: ${{ secrets.SERVER_IP_1 }}"
-        echo "SERVER_2_IP: ${{ secrets.SERVER_IP_2 }}"
         echo "SSH key length: ${#SSH_PRIVATE_KEY_BASE64}"
       env:
         SSH_PRIVATE_KEY_BASE64: ${{ secrets.BANK_BASE64 }}
@@ -61,44 +60,3 @@ jobs:
         ENDSSH
         
         echo "✅ Server 1 deployed"
-
-    - name: Deploy to Server 2
-      env:
-        SSH_PRIVATE_KEY_BASE64: ${{ secrets.BANK_BASE64 }}
-        SERVER_IP: ${{ secrets.SERVER_IP_2 }}
-      run: |
-        echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > bank
-        chmod 600 bank
-        
-        echo "Deploying to Server 2 ($SERVER_IP)..."
-        
-        # Wait for server to be ready
-        for i in {1..10}; do
-          if ssh -i bank -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
-            break
-          fi
-          echo "Waiting for server... ($i/10)"
-          sleep 10
-        done
-        
-        rsync -avz --delete \
-          -e "ssh -i bank -o StrictHostKeyChecking=no" \
-          --exclude '.git' \
-          --exclude '.github' \
-          --exclude 'terraform' \
-          --exclude '*.pyc' \
-          --exclude '__pycache__' \
-          --exclude '.env' \
-          --exclude 'staticfiles' \
-          --exclude 'media' \
-          --exclude 'venv' \
-          . ubuntu@$SERVER_IP:/home/ubuntu/banking/
-        
-        ssh -i bank -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'ENDSSH'
-        cd /home/ubuntu/banking
-        docker-compose down || true
-        docker-compose up -d --build
-        docker ps
-        ENDSSH
-        
-        echo "✅ Server 2 deployed"

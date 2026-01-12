@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -11,284 +13,937 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #000;
-            color: #fff;
-            height: 100vh;
+        :root {
+            --bg: #09090b;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-2: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(100, 181, 246, 0.5);
+            --text: #fafafa;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent: #64b5f6;
+            --accent-dim: rgba(100, 181, 246, 0.1);
+            --accent-2: #4dd0e1;
+            --error: #f87171;
+            --success: #4ade80;
+        }
+
+        html, body {
+            height: 100%;
             overflow: hidden;
         }
 
-        .container {
-            display: flex;
-            height: 100vh;
-        }
-
-        .left-side {
-            flex: 1;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 4rem;
-            border-right: 1px solid #222;
-        }
-
-        .logo {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 3rem;
-        }
-
-        .marketing-content h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
-
-        .marketing-content p {
-            font-size: 1.2rem;
-            color: #888;
-            margin-bottom: 2rem;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             line-height: 1.6;
         }
 
-        .features-list {
-            margin-top: 3rem;
+        /* 3D Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
         }
 
-        .feature-item {
+        /* Ambient Glow */
+        .ambient {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(150px);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.07;
+        }
+
+        .ambient-1 {
+            background: var(--accent);
+            top: -300px;
+            right: -200px;
+        }
+
+        .ambient-2 {
+            background: var(--accent-2);
+            bottom: -300px;
+            left: -200px;
+        }
+
+        /* Layout */
+        .container {
+            position: relative;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        /* Left Side - Branding */
+        .brand-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem;
+            position: relative;
+        }
+
+        .logo {
+            position: absolute;
+            top: 2.5rem;
+            left: 4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--bg);
+        }
+
+        .brand-content {
+            max-width: 480px;
+        }
+
+        .brand-content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-content p {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            margin-bottom: 3rem;
+        }
+
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .feature {
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-bottom: 1.5rem;
         }
 
         .feature-icon {
-            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
         }
 
         .feature-text {
-            color: #aaa;
+            color: var(--text-dim);
+            font-size: 0.95rem;
         }
 
-        .right-side {
-            flex: 1;
-            background: #0a0a0a;
+        /* Right Side - Form */
+        .form-side {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             padding: 4rem;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            position: relative;
+            overflow-y: auto;
         }
 
         .form-container {
             width: 100%;
-            max-width: 400px;
+            max-width: 380px;
         }
 
-        .form-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #fff;
+        .form-header {
             margin-bottom: 2rem;
         }
 
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+        .form-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
         }
 
-        input[type="text"],
-        input[type="password"],
-        input[type="email"] {
-            width: 100%;
-            padding: 1rem;
-            background: #111;
-            border: 1px solid #222;
-            color: #fff;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus,
-        input[type="email"]:focus {
-            outline: none;
-            border-color: #fff;
-        }
-
-        input::placeholder {
-            color: #555;
-        }
-
-        .error-message {
-            color: #ff4444;
+        .form-header p {
+            color: var(--text-muted);
             font-size: 0.9rem;
-            margin-top: -0.5rem;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            padding-right: 2.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-input.error {
+            border-color: var(--error);
+        }
+
+        .form-input.success {
+            border-color: var(--success);
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--accent);
+        }
+
+        .input-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Password toggle */
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--text);
+        }
+
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Password strength */
+        .password-strength {
+            margin-top: 0.5rem;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 0.35rem;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .strength-fill.weak { width: 33%; background: var(--error); }
+        .strength-fill.medium { width: 66%; background: #fbbf24; }
+        .strength-fill.strong { width: 100%; background: var(--success); }
+
+        .strength-text {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .strength-text.weak { color: var(--error); }
+        .strength-text.medium { color: #fbbf24; }
+        .strength-text.strong { color: var(--success); }
+
+        /* Error */
+        .error-message {
             display: none;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            border-radius: 8px;
+            color: var(--error);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
         }
 
         .error-message.visible {
-            display: block;
+            display: flex;
         }
 
+        .error-message svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Submit Button */
         .submit-btn {
             width: 100%;
-            padding: 1rem;
-            background: #fff;
-            color: #000;
+            padding: 0.875rem 1.5rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
             border: none;
-            font-size: 1rem;
-            font-weight: 700;
+            border-radius: 10px;
+            color: var(--bg);
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
         }
 
         .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(100, 181, 246, 0.25);
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
         }
 
         .submit-btn:disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
 
-        .form-footer {
-            margin-top: 2rem;
-            text-align: center;
-            color: #888;
+        .submit-btn:disabled:hover {
+            box-shadow: none;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .divider span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Social Login */
+        .social-btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
             font-size: 0.9rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: all 0.2s ease;
+            margin-bottom: 0.75rem;
+        }
+
+        .social-btn:hover {
+            background: var(--surface-2);
+            border-color: var(--text-muted);
+        }
+
+        .social-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Footer */
+        .form-footer {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
         }
 
         .form-footer a {
-            color: #fff;
+            color: var(--accent);
             text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.2s ease;
         }
 
         .form-footer a:hover {
+            opacity: 0.8;
+        }
+
+        /* Terms */
+        .terms {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .terms a {
+            color: var(--text-dim);
             text-decoration: underline;
         }
 
-        @media (max-width: 968px) {
+        /* Back link */
+        .back-link {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        .back-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
             .container {
-                flex-direction: column;
+                grid-template-columns: 1fr;
             }
 
-            .left-side {
+            .brand-side {
                 display: none;
             }
 
-            .right-side {
-                flex: 1;
+            .form-side {
+                border-left: none;
+            }
+
+            .logo {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 2rem;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-side {
+                padding: 2rem 1.5rem;
+            }
+
+            .form-header h2 {
+                font-size: 1.25rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="left-side">
-            <div class="logo">Solara Docs</div>
-            <div class="marketing-content">
-                <h1>Start collaborating today</h1>
-                <p>Join Solara Docs and experience simple, secure documentation.</p>
+    <div class="ambient ambient-1"></div>
+    <div class="ambient ambient-2"></div>
 
-                <div class="features-list">
-                    <div class="feature-item">
-                        <span class="feature-icon">⚡</span>
-                        <span class="feature-text">Get started in seconds</span>
+    <div id="canvas-container">
+        <canvas id="three-canvas"></canvas>
+    </div>
+
+    <div class="container">
+        <!-- Left Side - Branding -->
+        <div class="brand-side">
+            <div class="logo">
+                <div class="logo-icon">S</div>
+                <span>Solara Docs</span>
+            </div>
+
+            <div class="brand-content">
+                <h1>Start building your workspace</h1>
+                <p>Join thousands of teams using Solara Docs to create, collaborate, and ship documentation faster.</p>
+
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-icon">🚀</div>
+                        <span class="feature-text">Get started in under 30 seconds</span>
                     </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">🔒</span>
-                        <span class="feature-text">Bank-grade security</span>
+                    <div class="feature">
+                        <div class="feature-icon">🔒</div>
+                        <span class="feature-text">End-to-end encryption</span>
                     </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">👥</span>
-                        <span class="feature-text">Unlimited collaborators</span>
+                    <div class="feature">
+                        <div class="feature-icon">👥</div>
+                        <span class="feature-text">Unlimited team members</span>
                     </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">💾</span>
-                        <span class="feature-text">Automatic backups included</span>
+                    <div class="feature">
+                        <div class="feature-icon">✨</div>
+                        <span class="feature-text">Free forever plan available</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="right-side">
+        <!-- Right Side - Form -->
+        <div class="form-side">
             <div class="form-container">
-                <h2 class="form-title">Create your account</h2>
+                <div class="logo" style="display: none;">
+                    <div class="logo-icon">S</div>
+                    <span>Solara Docs</span>
+                </div>
+
+                <div class="form-header">
+                    <h2>Create your account</h2>
+                    <p>Start your journey with Solara Docs</p>
+                </div>
+
                 <form id="registerForm">
                     {% csrf_token %}
 
-                    <input
-                        type="text"
-                        name="username"
-                        id="username"
-                        placeholder="Username"
-                        required
-                    >
+                    <div class="error-message" id="errorMessage">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span id="errorText">Something went wrong</span>
+                    </div>
 
-                    <input
-                        type="email"
-                        name="email"
-                        id="email"
-                        placeholder="Email"
-                        required
-                    >
+                    <div class="form-group">
+                        <label class="form-label" for="username">Username</label>
+                        <div class="input-wrapper">
+                            <input
+                                type="text"
+                                class="form-input"
+                                id="username"
+                                name="username"
+                                placeholder="Choose a username"
+                                autocomplete="username"
+                                required
+                            >
+                            <span class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
 
-                    <input
-                        type="password"
-                        name="password"
-                        id="password"
-                        placeholder="Password"
-                        required
-                    >
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email</label>
+                        <div class="input-wrapper">
+                            <input
+                                type="email"
+                                class="form-input"
+                                id="email"
+                                name="email"
+                                placeholder="Enter your email"
+                                autocomplete="email"
+                                required
+                            >
+                            <span class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                    <polyline points="22,6 12,13 2,6"/>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
 
-                    <input
-                        type="password"
-                        name="password_confirm"
-                        id="password_confirm"
-                        placeholder="Confirm Password"
-                        required
-                    >
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <div class="input-wrapper">
+                            <input
+                                type="password"
+                                class="form-input"
+                                id="password"
+                                name="password"
+                                placeholder="Create a password"
+                                autocomplete="new-password"
+                                required
+                            >
+                            <button type="button" class="password-toggle" id="togglePassword">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIcon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="password-strength" id="passwordStrength" style="display: none;">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <span class="strength-text" id="strengthText">Password strength</span>
+                        </div>
+                    </div>
 
-                    <div class="error-message" id="errorMessage"></div>
+                    <div class="form-group">
+                        <label class="form-label" for="password_confirm">Confirm Password</label>
+                        <div class="input-wrapper">
+                            <input
+                                type="password"
+                                class="form-input"
+                                id="password_confirm"
+                                name="password_confirm"
+                                placeholder="Confirm your password"
+                                autocomplete="new-password"
+                                required
+                            >
+                            <button type="button" class="password-toggle" id="toggleConfirm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIconConfirm">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
 
-                    <button type="submit" class="submit-btn" id="submitBtn">CREATE ACCOUNT</button>
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        Create Account
+                    </button>
                 </form>
+
+                <div class="divider">
+                    <span>or continue with</span>
+                </div>
+
+                <button class="social-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+
+                <button class="social-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    Continue with GitHub
+                </button>
 
                 <div class="form-footer">
                     Already have an account? <a href="/login">Sign in</a>
                 </div>
+
+                <div class="terms">
+                    By creating an account, you agree to our<br>
+                    <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>
+                </div>
             </div>
+
+            <a href="/" class="back-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back to home
+            </a>
         </div>
     </div>
 
     <script>
+        // Three.js Background
+        const canvas = document.getElementById('three-canvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Torus Knot
+        const knotGeometry = new THREE.TorusKnotGeometry(2.5, 0.6, 100, 16);
+        const knotMaterial = new THREE.MeshBasicMaterial({
+            color: 0x64b5f6,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.08
+        });
+        const knot = new THREE.Mesh(knotGeometry, knotMaterial);
+        knot.position.set(-7, 0, -10);
+        scene.add(knot);
+
+        // Octahedron
+        const octGeometry = new THREE.OctahedronGeometry(2, 0);
+        const octMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4dd0e1,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.06
+        });
+        const oct = new THREE.Mesh(octGeometry, octMaterial);
+        oct.position.set(6, -2, -8);
+        scene.add(oct);
+
+        // Particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 200;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 40;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.03,
+            color: 0x64b5f6,
+            transparent: true,
+            opacity: 0.4
+        });
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        camera.position.z = 10;
+
+        // Mouse
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // Animate
+        function animate() {
+            requestAnimationFrame(animate);
+
+            knot.rotation.x += 0.003;
+            knot.rotation.y += 0.004;
+            knot.position.y = mouseY * 0.5;
+
+            oct.rotation.x -= 0.004;
+            oct.rotation.y -= 0.003;
+            oct.position.y = -2 + mouseY * 0.3;
+
+            particles.rotation.y += 0.0002;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Password toggle
+        function setupPasswordToggle(toggleId, inputId, iconId) {
+            const toggle = document.getElementById(toggleId);
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+
+            toggle.addEventListener('click', () => {
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+
+                if (type === 'text') {
+                    icon.innerHTML = `
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                    `;
+                } else {
+                    icon.innerHTML = `
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    `;
+                }
+            });
+        }
+
+        setupPasswordToggle('togglePassword', 'password', 'eyeIcon');
+        setupPasswordToggle('toggleConfirm', 'password_confirm', 'eyeIconConfirm');
+
+        // Password strength
+        const passwordInput = document.getElementById('password');
+        const strengthContainer = document.getElementById('passwordStrength');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+
+        passwordInput.addEventListener('input', () => {
+            const password = passwordInput.value;
+
+            if (password.length === 0) {
+                strengthContainer.style.display = 'none';
+                return;
+            }
+
+            strengthContainer.style.display = 'block';
+
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+            strengthFill.className = 'strength-fill';
+            strengthText.className = 'strength-text';
+
+            if (strength <= 1) {
+                strengthFill.classList.add('weak');
+                strengthText.classList.add('weak');
+                strengthText.textContent = 'Weak password';
+            } else if (strength <= 2) {
+                strengthFill.classList.add('medium');
+                strengthText.classList.add('medium');
+                strengthText.textContent = 'Medium strength';
+            } else {
+                strengthFill.classList.add('strong');
+                strengthText.classList.add('strong');
+                strengthText.textContent = 'Strong password';
+            }
+        });
+
+        // Password match
+        const confirmInput = document.getElementById('password_confirm');
+
+        confirmInput.addEventListener('input', () => {
+            if (confirmInput.value.length > 0) {
+                if (confirmInput.value === passwordInput.value) {
+                    confirmInput.classList.remove('error');
+                    confirmInput.classList.add('success');
+                } else {
+                    confirmInput.classList.remove('success');
+                    confirmInput.classList.add('error');
+                }
+            } else {
+                confirmInput.classList.remove('error', 'success');
+            }
+        });
+
+        // Form submission
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const submitBtn = document.getElementById('submitBtn');
             const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
 
             const password = document.getElementById('password').value;
             const passwordConfirm = document.getElementById('password_confirm').value;
 
             if (password !== passwordConfirm) {
-                errorMessage.textContent = 'Passwords do not match';
+                errorText.textContent = 'Passwords do not match';
                 errorMessage.classList.add('visible');
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'CREATING ACCOUNT...';
+            submitBtn.textContent = 'Creating account...';
             errorMessage.classList.remove('visible');
 
             const formData = new FormData();
@@ -310,20 +965,33 @@
 
                 if (data.success) {
                     localStorage.setItem('token', data.token);
-                    window.location.href = data.redirect || '/dashboard/';
+                    submitBtn.textContent = 'Success!';
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/dashboard/';
+                    }, 500);
                 } else {
-                    errorMessage.textContent = data.error || 'Registration failed';
+                    errorText.textContent = data.error || 'Registration failed. Please try again.';
                     errorMessage.classList.add('visible');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'CREATE ACCOUNT';
+                    submitBtn.textContent = 'Create Account';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                errorMessage.textContent = 'Server error. Please try again.';
+                errorText.textContent = 'Connection error. Please try again.';
                 errorMessage.classList.add('visible');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'CREATE ACCOUNT';
+                submitBtn.textContent = 'Create Account';
             }
+        });
+
+        // Show logo on mobile
+        if (window.innerWidth <= 1024) {
+            document.querySelector('.form-container .logo').style.display = 'flex';
+        }
+
+        window.addEventListener('resize', () => {
+            const logo = document.querySelector('.form-container .logo');
+            logo.style.display = window.innerWidth <= 1024 ? 'flex' : 'none';
         });
     </script>
 </body>

@@ -4,7 +4,9 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful - CourseHub</title>
+    <title>Payment Successful - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,187 +14,79 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-            background: #F9FAFB;
+        :root {
+            --bg: #09090b;
+            --bg-2: #0f0f11;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-2: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #fafafa;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent: #64b5f6;
+            --accent-2: #4dd0e1;
+            --accent-dim: rgba(100, 181, 246, 0.1);
+            --success: #4ade80;
+            --success-dim: rgba(74, 222, 128, 0.1);
+        }
+
+        html, body {
             min-height: 100vh;
-            color: #1d1d1f;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 2rem;
         }
 
-        .success-container {
-            max-width: 600px;
-            width: 100%;
-            background: white;
-            border: 1px solid #E5E7EB;
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .success-container::before {
-            content: '';
-            position: absolute;
+        /* 3D Canvas */
+        #canvas-container {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 6px;
-            background: #10B981;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
         }
 
-        .checkmark-wrapper {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 2rem;
+        /* Ambient */
+        .ambient {
+            position: fixed;
+            width: 600px;
+            height: 600px;
             border-radius: 50%;
-            background: #F0FDF4;
-            border: 3px solid #10B981;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: scaleIn 0.5s ease;
+            filter: blur(150px);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.08;
         }
 
-        .checkmark {
-            font-size: 3rem;
-            color: #10B981;
-            animation: checkmarkPop 0.6s ease 0.3s both;
+        .ambient-1 {
+            background: var(--success);
+            top: -300px;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
-        @keyframes scaleIn {
-            from {
-                transform: scale(0);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        @keyframes checkmarkPop {
-            0% {
-                transform: scale(0);
-            }
-            50% {
-                transform: scale(1.2);
-            }
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: #1d1d1f;
-            letter-spacing: -1px;
-            animation: fadeInUp 0.6s ease 0.4s both;
-        }
-
-        .success-message {
-            font-size: 1.2rem;
-            color: #6e6e73;
-            margin-bottom: 2.5rem;
-            animation: fadeInUp 0.6s ease 0.5s both;
-        }
-
-        .upgrade-badge {
-            display: inline-block;
-            background: #0066FF;
-            color: white;
-            padding: 0.8rem 2rem;
-            border-radius: 25px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 2rem;
-            animation: fadeInUp 0.6s ease 0.6s both;
-        }
-
-        .user-details {
-            background: #F9FAFB;
-            border: 1px solid #E5E7EB;
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            animation: fadeInUp 0.6s ease 0.7s both;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #E5E7EB;
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            color: #6e6e73;
-            font-size: 0.95rem;
-            font-weight: 500;
-        }
-
-        .detail-value {
-            color: #1d1d1f;
-            font-weight: 600;
-            font-size: 1rem;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            animation: fadeInUp 0.6s ease 0.8s both;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 1rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-            text-decoration: none;
-            display: inline-block;
-            border: none;
-        }
-
-        .btn-primary {
-            background: #0066FF;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #0055DD;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 102, 255, 0.3);
-        }
-
-        .btn-secondary {
-            background: white;
-            border: 2px solid #E5E7EB;
-            color: #1d1d1f;
-        }
-
-        .btn-secondary:hover {
-            background: #F9FAFB;
-            border-color: #0066FF;
-            transform: translateY(-2px);
+        /* Success Container */
+        .success-container {
+            position: relative;
+            z-index: 10;
+            max-width: 500px;
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 3rem;
+            text-align: center;
+            animation: fadeInUp 0.6s ease;
         }
 
         @keyframes fadeInUp {
@@ -206,42 +100,207 @@
             }
         }
 
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2rem;
-            }
+        /* Checkmark */
+        .checkmark-wrapper {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 2rem;
+            border-radius: 50%;
+            background: var(--success-dim);
+            border: 3px solid var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: scaleIn 0.5s ease;
+        }
 
-            .success-message {
-                font-size: 1rem;
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
             }
-
-            .action-buttons {
-                flex-direction: column;
+            to {
+                transform: scale(1);
+                opacity: 1;
             }
+        }
 
+        .checkmark {
+            color: var(--success);
+            animation: checkPop 0.6s ease 0.3s both;
+        }
+
+        .checkmark svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        @keyframes checkPop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Text */
+        .success-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            animation: fadeInUp 0.6s ease 0.2s both;
+        }
+
+        .success-message {
+            font-size: 1rem;
+            color: var(--text-dim);
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.6s ease 0.3s both;
+        }
+
+        /* Plan Badge */
+        .plan-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: var(--bg);
+            padding: 0.625rem 1.5rem;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.6s ease 0.4s both;
+        }
+
+        /* Details */
+        .details-card {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.6s ease 0.5s both;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .detail-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* Button */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: var(--bg);
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease 0.6s both;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(100, 181, 246, 0.3);
+        }
+
+        .btn-primary svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Confetti */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            opacity: 0;
+            animation: confettiFall 3s ease forwards;
+            z-index: 5;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                opacity: 1;
+                transform: translateY(-100px) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(720deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
             .success-container {
                 padding: 2rem;
+            }
+
+            .success-title {
+                font-size: 1.5rem;
+            }
+
+            .checkmark-wrapper {
+                width: 80px;
+                height: 80px;
+            }
+
+            .checkmark svg {
+                width: 36px;
+                height: 36px;
             }
         }
     </style>
 </head>
 <body>
+    <div class="ambient ambient-1"></div>
+
+    <div id="canvas-container">
+        <canvas id="three-canvas"></canvas>
+    </div>
+
     <div class="success-container">
         <div class="checkmark-wrapper">
-            <div class="checkmark">✓</div>
+            <div class="checkmark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
         </div>
 
-        <h1>Payment Successful!</h1>
+        <h1 class="success-title">Payment Successful!</h1>
+        <p class="success-message">You have successfully upgraded your account</p>
 
-        <p class="success-message">
-            You have successfully upgraded your account
-        </p>
+        <div class="plan-badge">{{ plan_name|default:"Student" }} Plan</div>
 
-        <div class="upgrade-badge">
-            {{ plan_name|default:"Beginner" }} Plan
-        </div>
-
-        <div class="user-details">
+        <div class="details-card">
             <div class="detail-row">
                 <span class="detail-label">Username</span>
                 <span class="detail-value">{{ user.username }}</span>
@@ -256,13 +315,99 @@
             </div>
             <div class="detail-row">
                 <span class="detail-label">Amount Paid</span>
-                <span class="detail-value">${{ amount|default:"49.00" }}</span>
+                <span class="detail-value">${{ amount|default:"5.00" }}</span>
             </div>
         </div>
 
-        <div class="action-buttons">
-            <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
-        </div>
+        <a href="/dashboard" class="btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Go to Dashboard
+        </a>
     </div>
+
+    <script>
+        // Three.js Background
+        const canvas = document.getElementById('three-canvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Ring
+        const ringGeometry = new THREE.TorusGeometry(5, 0.1, 16, 100);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4ade80,
+            transparent: true,
+            opacity: 0.1
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.position.set(0, 0, -15);
+        scene.add(ring);
+
+        // Particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 100;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 30;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.02,
+            color: 0x4ade80,
+            transparent: true,
+            opacity: 0.4
+        });
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        camera.position.z = 10;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ring.rotation.x += 0.002;
+            ring.rotation.y += 0.003;
+            ring.scale.setScalar(1 + Math.sin(Date.now() * 0.001) * 0.05);
+            particles.rotation.y += 0.0003;
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Confetti
+        function createConfetti() {
+            const colors = ['#64b5f6', '#4dd0e1', '#4ade80', '#a78bfa', '#fbbf24'];
+
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                document.body.appendChild(confetti);
+
+                setTimeout(() => confetti.remove(), 5000);
+            }
+        }
+
+        // Trigger confetti on load
+        setTimeout(createConfetti, 500);
+    </script>
 </body>
 </html>

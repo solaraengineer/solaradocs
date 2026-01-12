@@ -2,49 +2,1122 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SolaraDocs Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.project_name }} - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <style>
-        body { background-color: #0a0a0a; color: #ffffff; font-family: Inter, sans-serif; padding: 20px; margin: 0; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; }
-        .users-online { display: flex; gap: 10px; align-items: center; }
-        .user-badge { padding: 5px 12px; background: #222; border: 1px solid #333; border-radius: 20px; font-size: 13px; }
-        .user-badge.typing { border-color: #00ff88; }
-        .typing-indicator { color: #00ff88; font-size: 12px; margin-left: 10px; }
-        #editor-container { background-color: #111; border: 1px solid #333; border-radius: 10px; min-height: 500px; }
-        .ql-toolbar { background: #1a1a1a; border: none; border-bottom: 1px solid #333; border-radius: 10px 10px 0 0; }
-        .ql-toolbar button { color: #fff; }
-        .ql-toolbar button:hover { color: #00ff88; }
-        .ql-toolbar button.ql-active { color: #00ff88; }
-        .ql-toolbar .ql-stroke { stroke: #fff; }
-        .ql-toolbar button:hover .ql-stroke { stroke: #00ff88; }
-        .ql-toolbar button.ql-active .ql-stroke { stroke: #00ff88; }
-        .ql-toolbar .ql-fill { fill: #fff; }
-        .ql-toolbar button:hover .ql-fill { fill: #00ff88; }
-        .ql-toolbar button.ql-active .ql-fill { fill: #00ff88; }
-        .ql-container { border: none; font-size: 16px; }
-        .ql-editor { min-height: 450px; color: #fff; }
-        .ql-editor.ql-blank::before { color: #666; }
-        .save-btn { margin-top: 15px; background: white; color: #000; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
-        .save-btn:hover { opacity: 0.9; }
-        .status { margin-top: 10px; color: #666; font-size: 13px; }
-        .status.connected { color: #00ff88; }
-        .status.disconnected { color: #ff4444; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #09090b;
+            --bg-2: #0f0f11;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-2: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #fafafa;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent: #64b5f6;
+            --accent-2: #4dd0e1;
+            --accent-dim: rgba(100, 181, 246, 0.1);
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --error: #f87171;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-2);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--surface-2);
+            color: var(--text);
+            border-color: var(--text-muted);
+        }
+
+        .back-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .project-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .project-name {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .project-status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.connecting {
+            background: var(--warning);
+            animation: pulse 1s ease infinite;
+        }
+
+        .status-dot.disconnected {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .top-bar-center {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .users-online {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--bg);
+            border: 2px solid var(--bg-2);
+            margin-left: -8px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .user-avatar:first-child {
+            margin-left: 0;
+        }
+
+        .user-avatar:hover {
+            transform: translateY(-2px);
+            z-index: 10;
+        }
+
+        .user-avatar.typing::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            border: 2px solid var(--bg-2);
+        }
+
+        .user-avatar.you {
+            background: var(--surface-2);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-dim);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-2);
+            border-color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 15px rgba(100, 181, 246, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-2);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .sidebar-search {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .sidebar-search svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
+        }
+
+        .sidebar-search input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 0.85rem;
+            width: 100%;
+        }
+
+        .sidebar-search input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .sidebar-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.625rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .doc-item:hover {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .doc-item.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .doc-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .doc-item-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .new-doc-btn {
+            width: 100%;
+            padding: 0.625rem;
+            background: var(--surface);
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .new-doc-btn:hover {
+            background: var(--surface-2);
+            border-color: var(--text-muted);
+            color: var(--text);
+        }
+
+        .new-doc-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Editor Area */
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-2);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 0.125rem;
+            padding-right: 0.75rem;
+            margin-right: 0.75rem;
+            border-right: 1px solid var(--border);
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+            margin-right: 0;
+            padding-right: 0;
+        }
+
+        .toolbar-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .toolbar-btn.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .toolbar-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .toolbar-select {
+            padding: 0.375rem 0.625rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.8rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .toolbar-select option {
+            background: var(--bg);
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 0.5rem;
+        }
+
+        /* Editor Container */
+        .editor-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .editor-wrapper {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Quill Overrides */
+        .ql-toolbar.ql-snow {
+            display: none;
+        }
+
+        .ql-container.ql-snow {
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+        }
+
+        .ql-editor {
+            min-height: 500px;
+            padding: 2rem;
+            color: var(--text);
+            line-height: 1.8;
+        }
+
+        .ql-editor.ql-blank::before {
+            color: var(--text-muted);
+            font-style: normal;
+        }
+
+        .ql-editor h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .ql-editor h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .ql-editor h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .ql-editor p {
+            margin-bottom: 1rem;
+        }
+
+        .ql-editor a {
+            color: var(--accent);
+        }
+
+        .ql-editor blockquote {
+            border-left: 3px solid var(--accent);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-dim);
+        }
+
+        .ql-editor pre {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .ql-editor code {
+            background: var(--surface-2);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875em;
+            color: var(--accent);
+        }
+
+        .ql-editor ul, .ql-editor ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .ql-editor li {
+            margin-bottom: 0.375rem;
+        }
+
+        .ql-editor img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        /* Checklist */
+        .ql-editor ul[data-checked="true"] li::before,
+        .ql-editor ul[data-checked="false"] li::before {
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .ql-editor ul[data-checked="true"] li::before {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Right Panel */
+        .right-panel {
+            width: 280px;
+            background: var(--bg-2);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-tab {
+            flex: 1;
+            padding: 0.875rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .panel-tab:hover {
+            color: var(--text-dim);
+        }
+
+        .panel-tab.active {
+            color: var(--accent);
+        }
+
+        .panel-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .panel-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+        }
+
+        .info-value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Version History */
+        .version-item {
+            padding: 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .version-item:hover {
+            border-color: var(--text-muted);
+        }
+
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .version-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .version-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .version-author {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        /* Word Count */
+        .word-count {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--surface);
+            border-radius: 8px;
+        }
+
+        .count-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .count-number {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .count-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 0.875rem 1.5rem;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--error);
+        }
+
+        .toast-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .toast.success .toast-icon {
+            color: var(--success);
+        }
+
+        .toast.error .toast-icon {
+            color: var(--error);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .right-panel {
+                display: none;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .top-bar {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            .top-bar-center {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+            }
+
+            .toolbar {
+                padding: 0.5rem 1rem;
+            }
+
+            .editor-container {
+                padding: 1rem;
+            }
+
+            .ql-editor {
+                padding: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📝 {{ project.project_name }}</h1>
-        <div class="users-online" id="usersOnline"></div>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <a href="/dashboard" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <div class="project-info">
+                <div class="project-name">
+                    📝 {{ project.project_name }}
+                </div>
+                <div class="project-status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="top-bar-center">
+            <div class="users-online" id="usersOnline">
+                <div class="user-avatar you" title="You">{{ request.user.username|slice:":1"|upper }}</div>
+            </div>
+        </div>
+
+        <div class="top-bar-right">
+            <button class="btn btn-ghost" id="exportBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+            </button>
+            <button class="btn btn-primary" id="saveBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Save
+            </button>
+        </div>
     </div>
 
-    <div id="editor-container">
-        <div id="editor"></div>
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Documents</div>
+                <div class="sidebar-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" placeholder="Search docs...">
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <div class="doc-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span class="doc-item-name">{{ project.project_name }}</span>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <button class="new-doc-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Document
+                </button>
+            </div>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="editor-area">
+            <!-- Custom Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <select class="toolbar-select" id="headingSelect">
+                        <option value="">Normal</option>
+                        <option value="1">Heading 1</option>
+                        <option value="2">Heading 2</option>
+                        <option value="3">Heading 3</option>
+                    </select>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="boldBtn" title="Bold (Ctrl+B)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="italicBtn" title="Italic (Ctrl+I)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="19" y1="4" x2="10" y2="4"/>
+                            <line x1="14" y1="20" x2="5" y2="20"/>
+                            <line x1="15" y1="4" x2="9" y2="20"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="underlineBtn" title="Underline (Ctrl+U)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
+                            <line x1="4" y1="21" x2="20" y2="21"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="strikeBtn" title="Strikethrough">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <path d="M16 6a4 4 0 0 0-4-4 4 4 0 0 0-4 4"/>
+                            <path d="M8 18a4 4 0 0 0 4 4 4 4 0 0 0 4-4"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="bulletListBtn" title="Bullet List">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <circle cx="4" cy="6" r="1" fill="currentColor"/>
+                            <circle cx="4" cy="12" r="1" fill="currentColor"/>
+                            <circle cx="4" cy="18" r="1" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="orderedListBtn" title="Numbered List">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="10" y1="6" x2="21" y2="6"/>
+                            <line x1="10" y1="12" x2="21" y2="12"/>
+                            <line x1="10" y1="18" x2="21" y2="18"/>
+                            <text x="3" y="8" font-size="8" fill="currentColor">1</text>
+                            <text x="3" y="14" font-size="8" fill="currentColor">2</text>
+                            <text x="3" y="20" font-size="8" fill="currentColor">3</text>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="checklistBtn" title="Checklist">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="5" width="6" height="6" rx="1"/>
+                            <path d="M5 8l1.5 1.5L9 6"/>
+                            <line x1="12" y1="8" x2="21" y2="8"/>
+                            <rect x="3" y="13" width="6" height="6" rx="1"/>
+                            <line x1="12" y1="16" x2="21" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="quoteBtn" title="Quote">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/>
+                            <path d="M19 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="codeBtn" title="Code">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="codeBlockBtn" title="Code Block">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <polyline points="8 10 6 12 8 14"/>
+                            <polyline points="16 10 18 12 16 14"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="linkBtn" title="Insert Link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="imageBtn" title="Insert Image">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v6h6"/>
+                            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 7v6h-6"/>
+                            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="clearBtn" title="Clear Formatting">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 7h16"/>
+                            <path d="M10 4v3"/>
+                            <path d="M14 4v3"/>
+                            <path d="M8 20l4-9 4 9"/>
+                            <path d="M3 3l18 18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor -->
+            <div class="editor-container">
+                <div class="editor-wrapper">
+                    <div id="editor"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="panel-tabs">
+                <button class="panel-tab active" data-tab="info">Info</button>
+                <button class="panel-tab" data-tab="history">History</button>
+            </div>
+            <div class="panel-content">
+                <div class="panel-section">
+                    <div class="panel-section-title">Word Count</div>
+                    <div class="word-count">
+                        <div class="count-item">
+                            <div class="count-number" id="wordCount">0</div>
+                            <div class="count-label">Words</div>
+                        </div>
+                        <div class="count-item">
+                            <div class="count-number" id="charCount">0</div>
+                            <div class="count-label">Characters</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-section-title">Document Info</div>
+                    <div class="info-row">
+                        <span class="info-label">Created</span>
+                        <span class="info-value">Today</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modified</span>
+                        <span class="info-value" id="lastModified">Just now</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Owner</span>
+                        <span class="info-value">{{ request.user.username }}</span>
+                    </div>
+                </div>
+
+                <div class="panel-section" id="historySection" style="display: none;">
+                    <div class="panel-section-title">Recent Versions</div>
+                    <div class="version-item">
+                        <div class="version-header">
+                            <span class="version-title">Current</span>
+                            <span class="version-time">Just now</span>
+                        </div>
+                        <div class="version-author">by {{ request.user.username }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <button class="save-btn" id="saveBtn">Save</button>
-    <div class="status" id="status">Connecting...</div>
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span id="toastMessage">Saved successfully</span>
+    </div>
 
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     <script>
@@ -52,7 +1125,8 @@
         const currentUser = "{{ request.user.username }}";
         const editorToken = "{{ editor_token }}";
 
-        function getAuthToken() { return localStorage.getItem('token');
+        function getAuthToken() {
+            return localStorage.getItem('token');
         }
 
         function handleAuthError(response) {
@@ -64,59 +1138,183 @@
             return false;
         }
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
+        // Initialize Quill
         const quill = new Quill('#editor', {
             theme: 'snow',
-            placeholder: 'Start writing...',
+            placeholder: 'Start writing your documentation...',
             modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['blockquote', 'code-block'],
-                    ['link'],
-                    ['clean']
-                ]
+                toolbar: false,
+                history: {
+                    delay: 1000,
+                    maxStack: 100,
+                    userOnly: true
+                }
             }
         });
 
+        // Load initial content
         const initialContent = `{{ project.content|escapejs }}`;
         if (initialContent) {
             quill.root.innerHTML = initialContent;
         }
 
-        function updateUsersUI() {
-            const container = document.getElementById('usersOnline');
-            container.innerHTML = '';
+        // Custom toolbar buttons
+        document.getElementById('boldBtn').onclick = () => {
+            quill.format('bold', !quill.getFormat().bold);
+            updateToolbarState();
+        };
 
-            usersOnline.forEach((_, username) => {
-                const badge = document.createElement('span');
-                badge.className = 'user-badge';
-                if (typingUsers.has(username)) {
-                    badge.classList.add('typing');
-                    badge.innerHTML = `${username} <span class="typing-indicator">typing...</span>`;
-                } else {
-                    badge.textContent = username;
-                }
-                container.appendChild(badge);
-            });
+        document.getElementById('italicBtn').onclick = () => {
+            quill.format('italic', !quill.getFormat().italic);
+            updateToolbarState();
+        };
+
+        document.getElementById('underlineBtn').onclick = () => {
+            quill.format('underline', !quill.getFormat().underline);
+            updateToolbarState();
+        };
+
+        document.getElementById('strikeBtn').onclick = () => {
+            quill.format('strike', !quill.getFormat().strike);
+            updateToolbarState();
+        };
+
+        document.getElementById('bulletListBtn').onclick = () => {
+            const format = quill.getFormat();
+            quill.format('list', format.list === 'bullet' ? false : 'bullet');
+            updateToolbarState();
+        };
+
+        document.getElementById('orderedListBtn').onclick = () => {
+            const format = quill.getFormat();
+            quill.format('list', format.list === 'ordered' ? false : 'ordered');
+            updateToolbarState();
+        };
+
+        document.getElementById('quoteBtn').onclick = () => {
+            quill.format('blockquote', !quill.getFormat().blockquote);
+            updateToolbarState();
+        };
+
+        document.getElementById('codeBtn').onclick = () => {
+            quill.format('code', !quill.getFormat().code);
+            updateToolbarState();
+        };
+
+        document.getElementById('codeBlockBtn').onclick = () => {
+            quill.format('code-block', !quill.getFormat()['code-block']);
+            updateToolbarState();
+        };
+
+        document.getElementById('linkBtn').onclick = () => {
+            const url = prompt('Enter URL:');
+            if (url) {
+                quill.format('link', url);
+            }
+        };
+
+        document.getElementById('imageBtn').onclick = () => {
+            const url = prompt('Enter image URL:');
+            if (url) {
+                const range = quill.getSelection(true);
+                quill.insertEmbed(range.index, 'image', url);
+            }
+        };
+
+        document.getElementById('undoBtn').onclick = () => quill.history.undo();
+        document.getElementById('redoBtn').onclick = () => quill.history.redo();
+
+        document.getElementById('clearBtn').onclick = () => {
+            const range = quill.getSelection();
+            if (range) {
+                quill.removeFormat(range.index, range.length);
+            }
+        };
+
+        document.getElementById('headingSelect').onchange = (e) => {
+            const value = e.target.value;
+            quill.format('header', value ? parseInt(value) : false);
+        };
+
+        // Update toolbar state
+        function updateToolbarState() {
+            const format = quill.getFormat();
+
+            document.getElementById('boldBtn').classList.toggle('active', format.bold);
+            document.getElementById('italicBtn').classList.toggle('active', format.italic);
+            document.getElementById('underlineBtn').classList.toggle('active', format.underline);
+            document.getElementById('strikeBtn').classList.toggle('active', format.strike);
+            document.getElementById('bulletListBtn').classList.toggle('active', format.list === 'bullet');
+            document.getElementById('orderedListBtn').classList.toggle('active', format.list === 'ordered');
+            document.getElementById('quoteBtn').classList.toggle('active', format.blockquote);
+            document.getElementById('codeBtn').classList.toggle('active', format.code);
+            document.getElementById('codeBlockBtn').classList.toggle('active', format['code-block']);
+
+            document.getElementById('headingSelect').value = format.header || '';
         }
+
+        quill.on('selection-change', updateToolbarState);
+        quill.on('text-change', () => {
+            updateToolbarState();
+            updateWordCount();
+        });
+
+        // Word count
+        function updateWordCount() {
+            const text = quill.getText().trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            const chars = text.length;
+
+            document.getElementById('wordCount').textContent = words;
+            document.getElementById('charCount').textContent = chars;
+        }
+
+        updateWordCount();
+
+        // Panel tabs
+        document.querySelectorAll('.panel-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const tabName = tab.dataset.tab;
+                document.querySelectorAll('.panel-section').forEach(section => {
+                    section.style.display = 'block';
+                });
+
+                if (tabName === 'history') {
+                    document.getElementById('historySection').style.display = 'block';
+                } else {
+                    document.getElementById('historySection').style.display = 'none';
+                }
+            });
+        });
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Save
         document.getElementById('saveBtn').addEventListener('click', async () => {
+            const saveBtn = document.getElementById('saveBtn');
             const content = quill.root.innerHTML;
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Saving...
+            `;
 
             try {
                 const response = await fetch('/save-doc/', {
@@ -137,14 +1335,86 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    alert(data.pending ? 'Changes submitted for review' : 'Saved!');
+                    showToast(data.pending ? 'Changes submitted for review' : 'Saved successfully');
+                    document.getElementById('lastModified').textContent = 'Just now';
                 } else {
-                    alert('Save failed: ' + (data.error || 'Unknown error'));
+                    showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
-                alert('Save failed');
+                showToast('Save failed', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save
+                `;
             }
         });
+
+        // Export
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const content = quill.root.innerHTML;
+            const blob = new Blob([`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>{{ project.project_name }}</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+                        h1 { font-size: 2rem; margin-bottom: 1rem; }
+                        h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+                        h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+                        blockquote { border-left: 3px solid #ccc; padding-left: 1rem; margin: 1rem 0; color: #666; }
+                        pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+                        code { background: #f5f5f5; padding: 0.125rem 0.25rem; border-radius: 2px; }
+                    </style>
+                </head>
+                <body>${content}</body>
+                </html>
+            `], { type: 'text/html' });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ project.project_name }}.html';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast('Exported successfully');
+        });
+
+        // Connection status
+        function updateStatus(status) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+
+            dot.className = 'status-dot ' + status;
+            text.textContent = status === 'connecting' ? 'Connecting...' :
+                              status === 'disconnected' ? 'Disconnected' : 'Connected';
+        }
+
+        // Simulate connection
+        setTimeout(() => updateStatus(''), 1000);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 's') {
+                    e.preventDefault();
+                    document.getElementById('saveBtn').click();
+                }
+            }
+        });
+
+        // Add spin animation
+        const style = document.createElement('style');
+        style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>

@@ -4,191 +4,1114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; min-height: 100vh; }
-        .navbar { background: #0a0a0a; border-bottom: 1px solid #222; padding: 1.5rem 3rem; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.5rem; font-weight: 700; color: #fff; }
-        .nav-user { display: flex; align-items: center; gap: 2rem; }
-        .username { color: #888; }
-        .logout-btn { padding: 0.75rem 1.5rem; background: transparent; color: #fff; border: 1px solid #333; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .logout-btn:hover { border-color: #fff; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
-        .header-title { font-size: 2.5rem; font-weight: 800; }
-        .create-btn { padding: 1rem 2rem; background: #fff; color: #000; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
-        .create-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
-        .projects-grid { display: grid; gap: 1.5rem; }
-        .project-card { background: #0a0a0a; border: 1px solid #222; padding: 2rem; transition: all 0.3s; }
-        .project-card:hover { border-color: #fff; }
-        .project-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-        .project-name { font-size: 1.5rem; font-weight: 700; color: #fff; }
-        .project-actions { display: flex; gap: 1rem; }
-        .btn-icon { padding: 0.5rem 1rem; background: transparent; color: #888; border: 1px solid #222; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
-        .btn-icon:hover { color: #fff; border-color: #fff; }
-        .btn-delete-project { padding: 0.5rem 1rem; background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
-        .btn-delete-project:hover { background: #ff4444; color: #000; }
-        .project-meta { display: flex; gap: 2rem; margin-top: 1rem; color: #666; font-size: 0.9rem; }
-        .meta-item { display: flex; align-items: center; gap: 0.5rem; }
-        .project-details { display: none; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #222; }
-        .project-details.expanded { display: block; }
-        .detail-section { margin-bottom: 1.5rem; }
-        .detail-label { font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.75rem; }
-        .detail-value { color: #fff; font-size: 1rem; }
-        .users-list { display: flex; flex-direction: column; gap: 1rem; }
-        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #111; border: 1px solid #222; }
-        .user-info { display: flex; align-items: center; gap: 1rem; }
-        .user-name { font-size: 0.95rem; color: #fff; }
-        .user-controls { display: flex; align-items: center; gap: 1rem; }
-        .role-select { padding: 0.5rem 1rem; background: #0a0a0a; border: 1px solid #333; color: #fff; font-size: 0.9rem; cursor: pointer; }
-        .role-select:focus { outline: none; border-color: #fff; }
-        .save-btn { padding: 0.5rem 1rem; background: #fff; color: #000; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .save-btn:hover { opacity: 0.8; }
-        .delete-btn { padding: 0.5rem 1rem; background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .delete-btn:hover { background: #ff4444; color: #000; }
-        .role-badge { padding: 0.25rem 0.75rem; background: #222; border: 1px solid #333; font-size: 0.8rem; color: #888; text-transform: uppercase; }
-        .add-people-section { margin-top: 1rem; padding: 1rem; background: #0a0a0a; border: 1px solid #222; }
-        .add-people-input { width: 100%; padding: 0.75rem; background: #111; border: 1px solid #222; color: #fff; font-size: 0.9rem; margin-bottom: 1rem; }
-        .add-people-input:focus { outline: none; border-color: #fff; }
-        .add-people-input::placeholder { color: #555; }
-        .add-people-btn { padding: 0.75rem 1.5rem; background: #fff; color: #000; border: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .add-people-btn:hover { opacity: 0.8; }
-        .pending-list { display: flex; flex-direction: column; gap: 1rem; }
-        .pending-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #111; border: 1px solid #444; }
-        .pending-info { color: #fff; font-size: 0.95rem; }
-        .pending-actions { display: flex; gap: 0.5rem; }
-        .accept-btn { padding: 0.5rem 1rem; background: #00ff88; color: #000; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .accept-btn:hover { opacity: 0.8; }
-        .decline-btn { padding: 0.5rem 1rem; background: transparent; color: #ff4444; border: 1px solid #ff4444; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .decline-btn:hover { background: #ff4444; color: #000; }
-        .empty-state { text-align: center; padding: 4rem 2rem; }
-        .empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
-        .empty-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .empty-text { color: #666; margin-bottom: 2rem; }
-        @media (max-width: 768px) { .navbar { padding: 1rem 1.5rem; } .header { flex-direction: column; gap: 1.5rem; align-items: flex-start; } .project-header { flex-direction: column; gap: 1rem; } .project-meta { flex-direction: column; gap: 0.5rem; } .user-item { flex-direction: column; gap: 1rem; align-items: flex-start; } .user-controls { width: 100%; justify-content: space-between; } .pending-item { flex-direction: column; gap: 1rem; align-items: flex-start; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #09090b;
+            --bg-2: #0f0f11;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-2: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #fafafa;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent: #64b5f6;
+            --accent-2: #4dd0e1;
+            --accent-dim: rgba(100, 181, 246, 0.1);
+            --success: #4ade80;
+            --success-dim: rgba(74, 222, 128, 0.1);
+            --warning: #fbbf24;
+            --warning-dim: rgba(251, 191, 36, 0.1);
+            --error: #f87171;
+            --error-dim: rgba(248, 113, 113, 0.1);
+        }
+
+        html, body {
+            min-height: 100vh;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* 3D Canvas */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Ambient */
+        .ambient {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(150px);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.05;
+        }
+
+        .ambient-1 {
+            background: var(--accent);
+            top: -300px;
+            right: -200px;
+        }
+
+        .ambient-2 {
+            background: var(--accent-2);
+            bottom: -300px;
+            left: -200px;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .nav-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--bg);
+        }
+
+        .nav-brand span {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--bg);
+        }
+
+        .user-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-dim);
+        }
+
+        .btn-ghost:hover {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-2);
+            border-color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 20px rgba(100, 181, 246, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--error-dim);
+            color: var(--error);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: var(--error);
+            color: var(--bg);
+        }
+
+        .btn-success {
+            background: var(--success-dim);
+            color: var(--success);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .btn-success:hover {
+            background: var(--success);
+            color: var(--bg);
+        }
+
+        /* Main Container */
+        .main-container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Projects Grid */
+        .projects-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .project-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .project-card:hover {
+            border-color: var(--text-muted);
+        }
+
+        .project-main {
+            padding: 1.5rem;
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .project-info {
+            flex: 1;
+        }
+
+        .project-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .project-name-icon {
+            font-size: 1.1rem;
+        }
+
+        .project-owner {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .project-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .project-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .meta-item svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+        }
+
+        /* Expandable Details */
+        .project-details {
+            display: none;
+            border-top: 1px solid var(--border);
+            background: var(--bg-2);
+        }
+
+        .project-details.expanded {
+            display: block;
+        }
+
+        .details-content {
+            padding: 1.5rem;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .detail-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .detail-section.full-width {
+            grid-column: span 2;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .section-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-radius: 4px;
+        }
+
+        /* Users List */
+        .users-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            gap: 1rem;
+        }
+
+        .user-item-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .user-item-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .user-item-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .role-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--surface-2);
+            border-radius: 4px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .user-item-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .role-select {
+            padding: 0.375rem 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .role-select:focus {
+            border-color: var(--accent);
+        }
+
+        /* Pending List */
+        .pending-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--warning-dim);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+
+        .pending-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .pending-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--warning);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--bg);
+        }
+
+        .pending-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .pending-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Backup List */
+        .backup-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+
+        .backup-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .backup-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+        }
+
+        .backup-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Add People */
+        .add-people-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .add-people-input {
+            flex: 1;
+            padding: 0.625rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .add-people-input:focus {
+            border-color: var(--accent);
+        }
+
+        .add-people-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--surface);
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--surface-2);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+        }
+
+        .empty-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Detail Value */
+        .detail-value {
+            font-size: 0.9rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detail-value.muted {
+            color: var(--text-muted);
+        }
+
+        .status-enabled {
+            color: var(--success);
+        }
+
+        .status-disabled {
+            color: var(--error);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 0.875rem 1.5rem;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--error);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-section.full-width {
+                grid-column: span 1;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 1rem;
+            }
+
+            .main-container {
+                padding: 1rem;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .project-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .project-actions {
+                width: 100%;
+            }
+
+            .project-actions .btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .project-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .user-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .user-item-controls {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .pending-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .add-people-form {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="ambient ambient-1"></div>
+    <div class="ambient ambient-2"></div>
+
+    <div id="canvas-container">
+        <canvas id="three-canvas"></canvas>
+    </div>
+
+    <!-- Navbar -->
     <nav class="navbar">
-        <div class="logo">Solara Docs</div>
-        <div class="nav-user">
-            <span class="username">{{ request.user.username }}</span>
-            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        <a href="/dashboard" class="nav-brand">
+            <div class="nav-logo">S</div>
+            <span>Solara Docs</span>
+        </a>
+        <div class="nav-right">
+            <div class="nav-user">
+                <div class="user-avatar">{{ request.user.username|slice:":1"|upper }}</div>
+                <span class="user-name">{{ request.user.username }}</span>
+            </div>
+            <button class="btn btn-ghost" onclick="handleLogout()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Logout
+            </button>
         </div>
     </nav>
-    <div class="container">
-        <div class="header">
-            <h1 class="header-title">My Projects</h1>
-            <button class="create-btn" onclick="window.location.href='/setup'">+ New Project</button>
+
+    <!-- Main -->
+    <main class="main-container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">My Projects</h1>
+                <p class="page-subtitle">Manage your documentation workspaces</p>
+            </div>
+            <a href="/setup" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Project
+            </a>
         </div>
+
         {% if projects %}
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Total Projects</div>
+                <div class="stat-value">{{ projects|length }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Collaborators</div>
+                <div class="stat-value" id="totalCollaborators">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pending Changes</div>
+                <div class="stat-value" id="totalPending">0</div>
+            </div>
+        </div>
+
+        <!-- Projects -->
         <div class="projects-grid">
             {% for project in projects %}
             <div class="project-card">
-                <div class="project-header">
-                    <h2 class="project-name">{{ project.project_name }}</h2>
-                    <div class="project-actions">
-                        <button class="btn-icon" onclick="toggleDetails('project-{{ project.id }}')">Expand</button>
-                        <button class="btn-icon" onclick="window.location.href='/project/{{ project.id }}'">Open</button>
-                        <button class="btn-delete-project" onclick="deleteProject({{ project.id }})">Delete Project</button>
+                <div class="project-main">
+                    <div class="project-header">
+                        <div class="project-info">
+                            <h2 class="project-name">
+                                <span class="project-name-icon">📝</span>
+                                {{ project.project_name }}
+                            </h2>
+                            <p class="project-owner">Owned by {{ project.owner.username }}</p>
+                        </div>
+                        <div class="project-actions">
+                            <button class="btn btn-secondary" onclick="toggleDetails('project-{{ project.id }}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                                Details
+                            </button>
+                            <a href="/project/{{ project.id }}" class="btn btn-primary">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <line x1="10" y1="14" x2="21" y2="3"/>
+                                </svg>
+                                Open
+                            </a>
+                            <button class="btn btn-danger" onclick="deleteProject({{ project.id }})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="project-meta">
+                        <div class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            {{ project.created_at|date:"M d, Y" }}
+                        </div>
+                        <div class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            {{ project.contributors.count }} collaborator{{ project.contributors.count|pluralize }}
+                        </div>
+                        <div class="meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            {% if project.backups_enabled %}Backups enabled{% else %}Backups disabled{% endif %}
+                        </div>
                     </div>
                 </div>
-                <div class="project-meta">
-                    <div class="meta-item"><span>👤</span><span>Owner: {{ project.owner.username }}</span></div>
-                    <div class="meta-item"><span>📅</span><span>Created: {{ project.created_at|date:"M d, Y" }}</span></div>
-                    <div class="meta-item"><span>👥</span><span>{{ project.contributors.count }} collaborators</span></div>
-                </div>
+
+                <!-- Expandable Details -->
                 <div class="project-details" id="project-{{ project.id }}">
-                    <div class="detail-section">
-                        <div class="detail-label">Owner</div>
-                        <div class="detail-value">{{ project.owner.username }} ({{ project.owner.email }})</div>
-                    </div>
-                    <div class="detail-section">
-                        <div class="detail-label">Created</div>
-                        <div class="detail-value">{{ project.created_at|date:"F d, Y \a\t h:i A" }}</div>
-                    </div>
-                    <div class="detail-section">
-                        <div class="detail-label">Pending Changes</div>
-                        {% if project.pendings.all %}
-                        <div class="pending-list">
-                            {% for pending in project.pendings.all %}
-                            <div class="pending-item">
-                                <div class="pending-info">{{ pending.username }} submitted changes to {{ project.project_name }}</div>
-                                <div class="pending-actions">
-                                    <button class="accept-btn" onclick="acceptPending({{ pending.id }})">Accept</button>
-                                    <button class="decline-btn" onclick="declinePending({{ pending.id }})">Decline</button>
+                    <div class="details-content">
+                        <div class="details-grid">
+                            <!-- Pending Changes -->
+                            <div class="detail-section">
+                                <div class="section-header">
+                                    <span class="section-title">Pending Changes</span>
+                                    {% if project.pendings.all %}
+                                    <span class="section-badge">{{ project.pendings.count }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if project.pendings.all %}
+                                    {% for pending in project.pendings.all %}
+                                    <div class="pending-item">
+                                        <div class="pending-info">
+                                            <div class="pending-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10"/>
+                                                    <polyline points="12 6 12 12 16 14"/>
+                                                </svg>
+                                            </div>
+                                            <span>{{ pending.username }} submitted changes</span>
+                                        </div>
+                                        <div class="pending-actions">
+                                            <button class="btn btn-success" onclick="acceptPending({{ pending.id }})">Accept</button>
+                                            <button class="btn btn-danger" onclick="declinePending({{ pending.id }})">Decline</button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="detail-value muted">No pending changes</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Backups -->
+                            <div class="detail-section">
+                                <div class="section-header">
+                                    <span class="section-title">Backup History</span>
+                                </div>
+                                {% if project.backups.all %}
+                                    {% for backup in project.backups.all %}
+                                    <div class="backup-item">
+                                        <div class="backup-info">
+                                            <div class="backup-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <polyline points="23 4 23 10 17 10"/>
+                                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                                </svg>
+                                            </div>
+                                            <span>{{ backup.created_at|date:"M d, Y h:i A" }}</span>
+                                        </div>
+                                        <button class="btn btn-secondary" onclick="revertBackup({{ project.id }}, {{ backup.id }})">Revert</button>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="detail-value muted">No backups yet</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Collaborators -->
+                            <div class="detail-section full-width">
+                                <div class="section-header">
+                                    <span class="section-title">Collaborators</span>
+                                </div>
+                                {% if project.contributors.all %}
+                                <div class="users-list">
+                                    {% for contributor in project.contributors.all %}
+                                    <div class="user-item">
+                                        <div class="user-item-info">
+                                            <div class="user-item-avatar">{{ contributor.username|slice:":1"|upper }}</div>
+                                            <span class="user-item-name">{{ contributor.username }}</span>
+                                            <span class="role-badge">{{ contributor.role }}</span>
+                                        </div>
+                                        <div class="user-item-controls">
+                                            <select class="role-select" id="role-{{ contributor.id }}">
+                                                <option value="VIEWER" {% if contributor.role == 'VIEWER' %}selected{% endif %}>Viewer</option>
+                                                <option value="EDITOR" {% if contributor.role == 'EDITOR' %}selected{% endif %}>Editor</option>
+                                            </select>
+                                            <button class="btn btn-secondary" onclick="saveRole({{ project.id }}, {{ contributor.id }})">Save</button>
+                                            <button class="btn btn-danger" onclick="deleteUser({{ project.id }}, {{ contributor.id }})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                    <p class="detail-value muted">No collaborators yet</p>
+                                {% endif %}
+
+                                <div class="add-people-form">
+                                    <input type="text" class="add-people-input" id="add-people-{{ project.id }}" placeholder="Enter usernames (separated by spaces)">
+                                    <button class="btn btn-primary" onclick="addPeople({{ project.id }})">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="8.5" cy="7" r="4"/>
+                                            <line x1="20" y1="8" x2="20" y2="14"/>
+                                            <line x1="23" y1="11" x2="17" y2="11"/>
+                                        </svg>
+                                        Add People
+                                    </button>
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
-                        {% else %}
-                        <div class="detail-value" style="color: #666;">No pending changes</div>
-                        {% endif %}
-                    </div>
-                    <div class="detail-section">
-                        <div class="detail-label">Collaborators</div>
-                        {% if project.contributors.all %}
-                        <div class="users-list">
-                            {% for contributor in project.contributors.all %}
-                            <div class="user-item">
-                                <div class="user-info">
-                                    <span class="user-name">{{ contributor.username }}</span>
-                                    <span class="role-badge">{{ contributor.role }}</span>
-                                </div>
-                                <div class="user-controls">
-                                    <select class="role-select" id="role-{{ contributor.id }}">
-                                        <option value="VIEWER" {% if contributor.role == 'VIEWER' %}selected{% endif %}>Viewer</option>
-                                        <option value="EDITOR" {% if contributor.role == 'EDITOR' %}selected{% endif %}>Editor</option>
-                                    </select>
-                                    <button class="save-btn" onclick="saveRole({{ project.id }}, {{ contributor.id }})">Save</button>
-                                    <button class="delete-btn" onclick="deleteUser({{ project.id }}, {{ contributor.id }})">Delete</button>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="detail-value" style="color: #666;">No collaborators added</div>
-                        {% endif %}
-                        <div class="add-people-section">
-                            <input type="text" class="add-people-input" id="add-people-{{ project.id }}" placeholder="Enter usernames (separated by spaces)">
-                            <button class="add-people-btn" onclick="addPeople({{ project.id }})">Add People</button>
-                        </div>
-                    </div>
-                    <div class="detail-section">
-                        <div class="detail-label">Backups</div>
-                        <div class="detail-value">{% if project.backups_enabled %}✓ Enabled{% else %}✗ Disabled{% endif %}</div>
-                    </div>
-                    <div class="detail-section">
-                        <div class="detail-label">Backup History</div>
-                        {% if project.backups.all %}
-                        <div class="pending-list">
-                            {% for backup in project.backups.all %}
-                            <div class="pending-item">
-                                <div class="pending-info">Backup from {{ backup.created_at|date:"M d, Y h:i A" }}</div>
-                                <div class="pending-actions">
-                                    <button class="accept-btn" onclick="revertBackup({{ project.id }}, {{ backup.id }})">Revert</button>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="detail-value" style="color: #666;">No backups yet</div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
+        <!-- Empty State -->
         <div class="empty-state">
             <div class="empty-icon">📁</div>
             <h2 class="empty-title">No projects yet</h2>
-            <p class="empty-text">Create your first project to get started</p>
-            <button class="create-btn" onclick="window.location.href='/setup'">+ Create Project</button>
+            <p class="empty-text">Create your first project to get started with Solara Docs</p>
+            <a href="/setup" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Create Project
+            </a>
         </div>
         {% endif %}
+    </main>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastMessage">Action completed</span>
     </div>
+
     <script>
+        // Three.js Background
+        const canvas = document.getElementById('three-canvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Torus
+        const torusGeometry = new THREE.TorusGeometry(3, 1, 32, 100);
+        const torusMaterial = new THREE.MeshBasicMaterial({
+            color: 0x64b5f6,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.05
+        });
+        const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+        torus.position.set(10, 5, -15);
+        scene.add(torus);
+
+        // Icosahedron
+        const icoGeometry = new THREE.IcosahedronGeometry(2, 1);
+        const icoMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4dd0e1,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.04
+        });
+        const ico = new THREE.Mesh(icoGeometry, icoMaterial);
+        ico.position.set(-8, -3, -12);
+        scene.add(ico);
+
+        // Particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 150;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 40;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.02,
+            color: 0x64b5f6,
+            transparent: true,
+            opacity: 0.3
+        });
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        camera.position.z = 10;
+
+        // Animate
+        function animate() {
+            requestAnimationFrame(animate);
+
+            torus.rotation.x += 0.002;
+            torus.rotation.y += 0.003;
+
+            ico.rotation.x -= 0.003;
+            ico.rotation.y -= 0.002;
+
+            particles.rotation.y += 0.0002;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Calculate stats
+        document.addEventListener('DOMContentLoaded', () => {
+            let totalCollaborators = 0;
+            let totalPending = 0;
+
+            document.querySelectorAll('.users-list').forEach(list => {
+                totalCollaborators += list.querySelectorAll('.user-item').length;
+            });
+
+            document.querySelectorAll('.pending-item').forEach(() => {
+                totalPending++;
+            });
+
+            document.getElementById('totalCollaborators').textContent = totalCollaborators;
+            document.getElementById('totalPending').textContent = totalPending;
+        });
+
+        // Utils
         function getAuthToken() {
             return localStorage.getItem('token');
         }
@@ -217,38 +1140,55 @@
             return false;
         }
 
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
         function handleLogout() {
             localStorage.removeItem('token');
             window.location.href = '/logout';
         }
 
         function toggleDetails(id) {
-            document.getElementById(id).classList.toggle('expanded');
+            const details = document.getElementById(id);
+            const btn = event.currentTarget;
+            const svg = btn.querySelector('svg');
+
+            details.classList.toggle('expanded');
+            svg.style.transform = details.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0)';
         }
 
         async function deleteProject(projectId) {
-            if (!confirm('Are you sure you want to delete this entire project? This cannot be undone.')) return;
+            if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
             try {
-                const token = getAuthToken();
-                const csrf = getCookie('csrftoken');
-
                 const response = await fetch('/deleteproject/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        'X-CSRFToken': csrf
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify({ project_id: projectId })
                 });
 
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert('Failed to delete project: ' + (data.error || 'Unknown error'));
+                if (data.success) {
+                    showToast('Project deleted');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('Failed to delete project', 'error');
+                }
             } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to delete project');
+                showToast('Failed to delete project', 'error');
             }
         }
 
@@ -265,9 +1205,15 @@
                 });
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert('Failed to accept changes: ' + (data.error || 'Unknown error'));
-            } catch (error) { alert('Failed to accept changes'); }
+                if (data.success) {
+                    showToast('Changes accepted');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('Failed to accept changes', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to accept changes', 'error');
+            }
         }
 
         async function declinePending(pendingId) {
@@ -283,9 +1229,15 @@
                 });
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert('Failed to decline changes: ' + (data.error || 'Unknown error'));
-            } catch (error) { alert('Failed to decline changes'); }
+                if (data.success) {
+                    showToast('Changes declined');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('Failed to decline changes', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to decline changes', 'error');
+            }
         }
 
         async function saveRole(projectId, contributorId) {
@@ -302,13 +1254,19 @@
                 });
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert('Failed to update role: ' + (data.error || 'Unknown error'));
-            } catch (error) { alert('Failed to update role'); }
+                if (data.success) {
+                    showToast('Role updated');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('Failed to update role', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to update role', 'error');
+            }
         }
 
         async function deleteUser(projectId, contributorId) {
-            if (!confirm('Are you sure you want to remove this collaborator?')) return;
+            if (!confirm('Remove this collaborator?')) return;
             try {
                 const response = await fetch('/deleteuser/', {
                     method: 'POST',
@@ -321,14 +1279,23 @@
                 });
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert('Failed to delete user: ' + (data.error || 'Unknown error'));
-            } catch (error) { alert('Failed to delete user'); }
+                if (data.success) {
+                    showToast('Collaborator removed');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('Failed to remove collaborator', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to remove collaborator', 'error');
+            }
         }
 
         async function addPeople(projectId) {
             const usernames = document.getElementById(`add-people-${projectId}`).value.trim();
-            if (!usernames) { alert('Please enter at least one username'); return; }
+            if (!usernames) {
+                showToast('Please enter at least one username', 'error');
+                return;
+            }
             try {
                 const response = await fetch('/addpeople/', {
                     method: 'POST',
@@ -341,9 +1308,15 @@
                 });
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert(data.error || 'Failed to add people');
-            } catch (error) { alert('Failed to add people'); }
+                if (data.success) {
+                    showToast('People added');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.error || 'Failed to add people', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to add people', 'error');
+            }
         }
 
         async function revertBackup(projectId, backupId) {
@@ -360,9 +1333,15 @@
                 });
                 if (handleAuthError(response)) return;
                 const data = await response.json();
-                if (data.success) location.reload();
-                else alert('Failed to revert: ' + (data.error || 'Unknown error'));
-            } catch (error) { alert('Failed to revert'); }
+                if (data.success) {
+                    showToast('Backup restored');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('Failed to revert', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to revert', 'error');
+            }
         }
     </script>
 </body>
