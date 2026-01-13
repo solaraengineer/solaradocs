@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.cache import cache_page
@@ -24,6 +24,22 @@ JWT_EXPIRY_HOURS = 1
 stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.public_key = settings.STRIPE_PUBLIC_KEY
 
+TIER_LIMITS = {
+    'Free': {'max_projects': 1, 'max_collaborators': 2, 'backups_enabled': False},
+    'student': {'max_projects': 3, 'max_collaborators': 5, 'backups_enabled': True},
+    'team': {'max_projects': 10, 'max_collaborators': None, 'backups_enabled': True},
+    'enterprise': {'max_projects': None, 'max_collaborators': None, 'backups_enabled': True},
+}
+
+
+
+@require_GET
+def get_oauth_token(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+
+    token = generate_auth_token(request.user.id)
+    return JsonResponse({'success': True, 'token': token})
 
 def generate_auth_token(user_id):
     payload = {
@@ -130,7 +146,9 @@ def dashboard(request):
 @require_auth_token
 def setup(request):
     if request.method == 'GET':
-        return render(request, 'setup.html')
+        user_tier = request.user.Tier
+        tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['Free'])
+        return render(request, 'setup.html', {'tier': user_tier, 'tier_config': tier_config})
 
     project_name = request.POST.get('project_name', '').strip()
     raw_people = request.POST.get('people', '')
@@ -139,24 +157,39 @@ def setup(request):
     if not project_name:
         return JsonResponse({'success': False, 'error': 'Project name is required'})
 
-    if len(project_name) > 255:
+    if len(project_name) > 100:
         return JsonResponse({'success': False, 'error': 'Project name too long'})
 
+    user_tier = request.user.Tier
+    tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['Free'])
+
+    current_project_count = Project.objects.filter(owner=request.user).count()
+    max_projects = tier_config.get('max_projects')
+    if max_projects is not None and current_project_count >= max_projects:
+        return JsonResponse({'success': False, 'error': 'Project limit reached for your tier'})
+
     people = list({p.strip() for p in raw_people.split() if p.strip()})
+
+    max_collaborators = tier_config.get('max_collaborators')
+    if max_collaborators is not None and len(people) > max_collaborators:
+        return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'})
+
+    backups_allowed = tier_config.get('backups_enabled', False)
+    backups_enabled = bool(backups) and backups_allowed
 
     with transaction.atomic():
         project = Project.objects.create(
             owner=request.user,
             project_name=project_name,
             people=','.join(people),
-            backups_enabled=bool(backups)
+            backups_enabled=backups_enabled
         )
 
         if people:
             Contributor.objects.bulk_create(
                 [Contributor(project=project, username=p, role='VIEWER') for p in people]
             )
-    return redirect('dashboard')
+    return JsonResponse({'success': True, 'redirect': '/dashboard/'})
 
 
 @require_POST
@@ -203,12 +236,22 @@ def add_people(request):
     if not project_id:
         return JsonResponse({'success': False, 'error': 'Project ID required'})
 
-    if not Project.objects.filter(id=project_id, owner_id=request.user.id).exists():
+    try:
+        project = Project.objects.get(id=project_id, owner_id=request.user.id)
+    except Project.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
     people = list({p.strip() for p in usernames.split() if p.strip()})
     if not people:
         return JsonResponse({'success': False, 'error': 'No usernames provided'})
+
+    user_tier = request.user.Tier
+    tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['Free'])
+    max_collaborators = tier_config.get('max_collaborators')
+
+    current_count = Contributor.objects.filter(project_id=project_id).count()
+    if max_collaborators is not None and (current_count + len(people)) > max_collaborators:
+        return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'})
 
     existing = set(
         Contributor.objects.filter(project_id=project_id, username__in=people).values_list('username', flat=True)
@@ -264,8 +307,8 @@ def login(request):
         token = generate_auth_token(user_id)
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': f'Server error {e}'}, status=500)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
 
 
 @ratelimit(key='ip', rate='5/m', block=True)
@@ -336,7 +379,6 @@ def deleteuser(request):
 @require_auth_token
 @require_editor_token
 @csrf_exempt
-@transaction.atomic
 @ratelimit(key='ip', rate='5/m', block=True)
 def save_docs(request):
     try:
@@ -351,41 +393,53 @@ def save_docs(request):
         return JsonResponse({'success': False, 'error': 'Missing required fields'})
 
     try:
-        project = Project.objects.select_for_update().get(id=project_id)
+        with transaction.atomic():
+            project = Project.objects.select_for_update().get(id=project_id)
+            is_owner = project.owner_id == request.user.id
+
+            if not is_owner:
+                contributor = Contributor.objects.filter(
+                    project_id=project_id,
+                    username=request.user.username
+                ).values('role').first()
+
+                if not contributor:
+                    return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
+
+                if contributor['role'] == 'VIEWER':
+                    return JsonResponse({'success': False, 'error': 'Viewers cannot edit'}, status=403)
+
+                if contributor['role'] == 'EDITOR':
+                    Pending.objects.create(
+                        submitted_content=content,
+                        project_id=project_id,
+                        username=request.user.username
+                    )
+                    return JsonResponse({'success': True, 'pending': True})
+
+            if project.content == content:
+                return JsonResponse({'success': True})
+
+            owner_tier = project.owner.Tier
+            tier_config = TIER_LIMITS.get(owner_tier, TIER_LIMITS['Free'])
+
+            if project.backups_enabled and tier_config.get('backups_enabled', False):
+                backup_count = Backup.objects.filter(project=project).count()
+                max_backups = 50
+                if backup_count >= max_backups:
+                    Backup.objects.filter(project=project).order_by('created_at').first().delete()
+
+                Backup.objects.create(
+                    owner_id=project.owner_id,
+                    project_id=project_id,
+                    content=project.content
+                )
+
+            project.content = content
+            project.save(update_fields=['content'])
+
     except Project.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
-
-    is_owner = project.owner_id == request.user.id
-
-    if not is_owner:
-        contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).values('role').first()
-
-        if not contributor:
-            return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
-
-        if contributor['role'] == 'VIEWER':
-            return JsonResponse({'success': False, 'error': 'Viewers cannot edit'}, status=403)
-
-        if contributor['role'] == 'EDITOR':
-            Pending.objects.create(
-                submitted_content=content,
-                project_id=project_id,
-                username=request.user.username
-            )
-            return JsonResponse({'success': True, 'pending': True})
-
-    with transaction.atomic():
-        if project.backups_enabled and project.content != content:
-            Backup.objects.create(
-                owner_id=project.owner_id,
-                project_id=project_id,
-                content=project.content
-            )
-        project.content = content
-        project.save(update_fields=['content'])
 
     return JsonResponse({'success': True})
 
@@ -528,73 +582,89 @@ def home(request):
 
 
 @login_required
+@require_POST
 def create_checkout_session(request):
-    if request.method == 'POST':
-        try:
-            tier = request.POST.get('tier')
-            prices = request.POST.get('price')
+    tier = request.POST.get('tier')
 
-            price = {
-                'student': {'amount': 500, 'name': 'Student', 'display_price': '5.00'},
-                'team': {'amount': 1500, 'name': 'Team/startup', 'display_price': '15.00'},
-                'enterprise': {'amount': 3500, 'name': 'Large teams', 'display_price': '35.00'},
-            }
+    prices = {
+        'student': {'amount': 500, 'name': 'Student', 'display_price': '5.00'},
+        'team': {'amount': 1500, 'name': 'Team/startup', 'display_price': '15.00'},
+        'enterprise': {'amount': 3500, 'name': 'Large teams', 'display_price': '35.00'},
+    }
 
-            selected_tier = prices.get(tier, prices['student'])
+    if tier not in prices:
+        return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
 
-            request.session['plan_name'] = selected_tier['name']
-            request.session['amount'] = selected_tier['display_price']
-            request.session['tier'] = tier
+    selected_tier = prices[tier]
 
-            session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=[{
-                    'price_data': {
-                        'currency': 'usd',
-                        'product_data': {
-                            'name': selected_tier['name'],
-                        },
-                        'unit_amount': selected_tier['amount'],
+    request.session['plan_name'] = selected_tier['name']
+    request.session['amount'] = selected_tier['display_price']
+    request.session['tier'] = tier
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': selected_tier['name'],
                     },
-                    'quantity': 1,
-                }],
-                mode='payment',
-                customer_email=request.user.email,
-                metadata={
-                    'plan_tier': tier,
-                    'user_id': str(request.user.id),
+                    'unit_amount': selected_tier['amount'],
                 },
-                success_url="http://127.0.0.1:8000/success?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url="http://127.0.0.1:8000/sub",
-            )
-
-            return redirect(session.url)
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': 'Try again later'}, status=400)
+                'quantity': 1,
+            }],
+            mode='payment',
+            customer_email=request.user.email,
+            metadata={
+                'plan_tier': tier,
+                'user_id': str(request.user.id),
+            },
+            success_url=request.build_absolute_uri('/success/') + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.build_absolute_uri('/buy/'),
+        )
+        return redirect(session.url)
+    except stripe.error.StripeError:
+        return JsonResponse({'success': False, 'error': 'Payment service unavailable'}, status=503)
 
 
 @login_required
 def success(request):
-    session_id = request.GET.get('session_id')
-
-    if session_id:
-        try:
-            session = stripe.checkout.Session.retrieve(session_id)
-            tier = session.metadata.get('plan_tier')
-
-            if tier and session.payment_status == 'paid':
-                request.user.Tier = tier
-                request.user.save()
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': 'Try again later'}, status=400)
-
-
     return render(request, 'success.html', {
         'plan_name': request.session.get('plan_name', 'Student'),
-        'amount': request.session.get('amount', '3.00'),
+        'amount': request.session.get('amount', '5.00'),
         'user': request.user
     })
+
+
+@csrf_exempt
+@require_POST
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.headers.get('Stripe-Signature', '')
+    webhook_secret = settings.STRIPE_WEBHOOK_SECRET
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Invalid payload'}, status=400)
+    except stripe.error.SignatureVerificationError:
+        return JsonResponse({'success': False, 'error': 'Invalid signature'}, status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        user_id = session.get('metadata', {}).get('user_id')
+        tier = session.get('metadata', {}).get('plan_tier')
+
+        if user_id and tier and session.get('payment_status') == 'paid':
+            try:
+                user = User.objects.get(id=int(user_id))
+                user.Tier = tier
+                user.save(update_fields=['Tier'])
+            except (User.DoesNotExist, ValueError):
+                pass
+
+    return JsonResponse({'success': True})
 
 
 def buy(request):

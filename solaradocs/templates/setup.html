@@ -767,12 +767,38 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // Tier configuration from server
+        const tierConfig = {
+            maxProjects: {{ tier_config.max_projects|default:"null" }},
+            maxCollaborators: {{ tier_config.max_collaborators|default:"null" }},
+            backupsEnabled: {{ tier_config.backups_enabled|yesno:"true,false" }}
+        };
+        const userTier = "{{ tier|default:'Free' }}";
+
         // Check auth
         (function() {
             const token = localStorage.getItem('token');
             if (!token) {
                 window.location.href = '/login/';
                 return;
+            }
+
+            // Show tier limits info
+            const limitsInfo = [];
+            if (tierConfig.maxProjects !== null) {
+                limitsInfo.push('Max ' + tierConfig.maxProjects + ' projects');
+            }
+            if (tierConfig.maxCollaborators !== null) {
+                limitsInfo.push('Max ' + tierConfig.maxCollaborators + ' collaborators');
+            }
+            if (!tierConfig.backupsEnabled) {
+                const backupCheckbox = document.getElementById('backupsCheckbox');
+                if (backupCheckbox) {
+                    backupCheckbox.checked = false;
+                    backupCheckbox.disabled = true;
+                    backupCheckbox.closest('.checkbox-wrapper').style.opacity = '0.5';
+                    backupCheckbox.closest('.checkbox-wrapper').style.cursor = 'not-allowed';
+                }
             }
         })();
 
@@ -835,7 +861,7 @@
 
             const token = getAuthToken();
             if (!token) {
-                alert('You must be logged in to create a project');
+                showError('You must be logged in to create a project');
                 window.location.href = '/login/';
                 return;
             }
@@ -864,34 +890,36 @@
 
                 if (handleAuthError(response)) return;
 
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return;
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const data = await response.json();
-                    if (data.success) {
-                        submitBtn.textContent = 'Success!';
-                        setTimeout(() => {
-                            window.location.href = '/dashboard/';
-                        }, 500);
-                    } else {
-                        alert(data.error || 'Failed to create project');
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Create Project';
-                    }
+                const data = await response.json();
+                if (data.success) {
+                    submitBtn.textContent = 'Success!';
+                    window.location.href = data.redirect || '/dashboard/';
                 } else {
-                    window.location.href = '/dashboard/';
+                    showError(data.error || 'Failed to create project');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Project';
                 }
             } catch (error) {
-                console.error('Error creating project:', error);
-                alert('Failed to create project. Please try again.');
+                showError('Failed to create project');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Create Project';
             }
         });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            } else {
+                const container = document.querySelector('.form-header');
+                const div = document.createElement('div');
+                div.id = 'errorMessage';
+                div.style.cssText = 'background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;';
+                div.textContent = message;
+                container.after(div);
+            }
+        }
 
         // Show back link on mobile
         if (window.innerWidth <= 1024) {

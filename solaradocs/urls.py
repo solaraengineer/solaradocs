@@ -1,12 +1,14 @@
 from django.urls import path, include
 from . import views
 
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('setup/', views.setup, name='setup'),
     path('login/', views.login, name='login'),
     path('register/', views.register, name='register'),
+    path('accounts/', include('allauth.urls')),
     path('changeroles/', views.change_roles, name='change_roles'),
     path('about/', views.about, name='about'),
     path('collaborations/', views.collaborations, name='collaborations'),
@@ -23,4 +25,7 @@ urlpatterns = [
     path('create-checkout-session/', views.create_checkout_session, name='create-checkout-session'),
     path('success/', views.success, name='success'),
     path('buy/', views.buy, name='buy'),
+    path('gen/token', views.get_oauth_token, name='generate_token'),
+    path('gen/editor/token', views.generate_editor_token, name='generate_token_editor'),
+    path('webhook/stripe/', views.stripe_webhook, name='stripe_webhook'),
 ]

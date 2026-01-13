@@ -1343,6 +1343,18 @@
                 showToast('Failed to revert', 'error');
             }
         }
+async function getOAuthToken() {
+    const res = await fetch('/gen/token', {
+        credentials: 'include'  // sends session cookie
+    });
+    const data = await res.json();
+    if (data.success) {
+        localStorage.setItem('token', data.token);
+    }
+}
+
+// call on page load
+getOAuthToken();
     </script>
 </body>
 </html>

@@ -37,3 +37,4 @@ stripe
 websockets==15.0.1
 y-py==0.6.2
 ypy==0.2
+django-allauth==65.13.1

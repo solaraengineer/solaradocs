@@ -1,19 +1,15 @@
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from datetime import datetime
-
-from django.db.models.fields import CharField
 
 
 class User(AbstractUser):
-    Tier = CharField('Tier', max_length=10, default='Free')
+    Tier = models.CharField('Tier', max_length=20, default='Free')
+
 
 class Project(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_projects')
     project_name = models.CharField(max_length=255)
     content = models.TextField(default='Welcome to solaradocs')
-    created_at = models.DateTimeField(auto_now_add=True, default=datetime.now)
     people = models.TextField(blank=True)
     backups_enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

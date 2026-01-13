@@ -16,7 +16,7 @@ JWT_SECRET = os.getenv('JWT_SECRET_KEY')
 AUTH_USER_MODEL = 'solaradocs.User'
 
 
-STRIPE_WEBHOOK_SECRET = 'whsec_ee6193f925683fee033ad06001875a1da4cde0115fd4ac97a1df59f83b2eb385'
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 
@@ -31,9 +31,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'solaradocs',
     'channels',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
@@ -45,6 +52,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'logic.urls'
@@ -112,7 +120,7 @@ SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAME_SITE = 'Lax'
 
 REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
@@ -132,3 +140,46 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': GOOGLE_OAUTH_CLIENT_ID,
+            'secret': GOOGLE_OAUTH_CLIENT_SECRET,
+            'key': ''
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'OAUTH_PKCE_ENABLED': True,
+    }
+}
+
+# Allauth settings
+ACCOUNT_LOGIN_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/login/'
+SOCIALACCOUNT_ADAPTER = 'solaradocs.adapters.CustomSocialAccountAdapter'
+
+# OAuth timeout settings (in seconds)
+OAUTH_REQUEST_TIMEOUT = int(os.getenv('OAUTH_REQUEST_TIMEOUT', '30'))
