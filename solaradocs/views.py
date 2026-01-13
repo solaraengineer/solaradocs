@@ -50,13 +50,13 @@ def generate_auth_token(user_id):
     return jwt.encode(payload, JWT_SECRET, algorithm='HS512')
 
 
-def verify_auth_token(token):
+def verify_auth_token(token, verify_expiration=True):
     try:
-        return jwt.decode(token, JWT_SECRET, algorithms=['HS512'])
+        return jwt.decode(token, JWT_SECRET, algorithms=['HS512'], options={'verify_exp': verify_expiration})
     except jwt.ExpiredSignatureError:
-        return None
+        return 'expired'
     except jwt.InvalidTokenError:
-        return None
+        return 'invalid'
 
 
 def require_auth_token(view_func):
@@ -73,9 +73,18 @@ def require_auth_token(view_func):
             return JsonResponse({'success': False, 'error': 'Auth token required'}, status=401)
 
         payload = verify_auth_token(token)
-        if not payload:
-            return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=401)
 
+        if payload is None:
+            return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
+
+        if payload == 'expired':
+            expired_payload = verify_auth_token(token, verify_expiration=False)
+            if expired_payload and expired_payload != 'expired':
+                token = generate_auth_token(expired_payload['user_id'])
+                return JsonResponse({'success': False, 'error': 'Token expired', 'new_token': token}, status=401)
+            return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
+        if payload == 'invalid':
+            return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
         try:
             request.user = User.objects.get(id=payload['user_id'])
         except User.DoesNotExist:
