@@ -775,12 +775,44 @@
         };
         const userTier = "{{ tier|default:'Free' }}";
 
-        // Check auth
-        (function() {
-            const token = localStorage.getItem('token');
+        // JWT Token Management with Auto-Refresh
+        const TokenManager = {
+            getToken() {
+                return localStorage.getItem('token');
+            },
+            setToken(token) {
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+            },
+            clearToken() {
+                localStorage.removeItem('token');
+            },
+            async refreshToken() {
+                try {
+                    const res = await fetch('/gen/token', { credentials: 'include' });
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        this.setToken(data.token);
+                        return data.token;
+                    }
+                } catch (e) {
+                    console.error('Token refresh failed:', e);
+                }
+                return null;
+            }
+        };
+
+        // Check auth and initialize token
+        (async function() {
+            let token = TokenManager.getToken();
             if (!token) {
-                window.location.href = '/login/';
-                return;
+                // Try to get token from session
+                token = await TokenManager.refreshToken();
+                if (!token) {
+                    window.location.href = '/login/';
+                    return;
+                }
             }
 
             // Show tier limits info
@@ -807,18 +839,40 @@
         const usersContainer = document.getElementById('usersContainer');
         let users = [];
 
-        function getAuthToken() {
-            return localStorage.getItem('token');
-        }
-
-        function handleAuthError(response) {
-            if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('token');
-                alert('Session expired. Please login again.');
-                window.location.href = '/login/';
-                return true;
+        // Authenticated fetch with auto token refresh
+        async function authFetch(url, options = {}) {
+            const token = TokenManager.getToken();
+            const headers = { ...(options.headers || {}) };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
             }
-            return false;
+
+            let response = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                const data = await response.json();
+                if (data.new_token) {
+                    TokenManager.setToken(data.new_token);
+                    headers['Authorization'] = `Bearer ${data.new_token}`;
+                    response = await fetch(url, { ...options, headers, credentials: 'include' });
+                } else {
+                    const newToken = await TokenManager.refreshToken();
+                    if (newToken) {
+                        headers['Authorization'] = `Bearer ${newToken}`;
+                        response = await fetch(url, { ...options, headers, credentials: 'include' });
+                    } else {
+                        TokenManager.clearToken();
+                        alert('Session expired. Please login again.');
+                        window.location.href = '/login/';
+                        return null;
+                    }
+                }
+            }
+            return response;
         }
 
         userInput.addEventListener('keypress', (e) => {
@@ -859,11 +913,15 @@
         document.getElementById('setupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const token = getAuthToken();
+            const token = TokenManager.getToken();
             if (!token) {
-                showError('You must be logged in to create a project');
-                window.location.href = '/login/';
-                return;
+                // Try to refresh token from session
+                const newToken = await TokenManager.refreshToken();
+                if (!newToken) {
+                    showError('You must be logged in to create a project');
+                    window.location.href = '/login/';
+                    return;
+                }
             }
 
             const submitBtn = document.getElementById('submitBtn');
@@ -878,17 +936,15 @@
             }
 
             try {
-                const response = await fetch('/setup/', {
+                const response = await authFetch('/setup/', {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer ' + token,
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
-                    body: formData,
-                    credentials: 'include'
+                    body: formData
                 });
 
-                if (handleAuthError(response)) return;
+                if (!response) return;
 
                 const data = await response.json();
                 if (data.success) {

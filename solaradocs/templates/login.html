@@ -755,6 +755,21 @@
             }
         });
 
+        // JWT Token Management
+        const TokenManager = {
+            getToken() {
+                return localStorage.getItem('token');
+            },
+            setToken(token) {
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+            },
+            clearToken() {
+                localStorage.removeItem('token');
+            }
+        };
+
         // Form submission
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -777,13 +792,14 @@
                     headers: {
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
-                    body: formData
+                    body: formData,
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.setItem('token', data.token);
+                    TokenManager.setToken(data.token);
                     submitBtn.textContent = 'Success!';
                     setTimeout(() => {
                         window.location.href = data.redirect || '/dashboard/';

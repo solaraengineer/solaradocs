@@ -85,10 +85,53 @@
         {% endif %}
     </div>
     <script>
-        function getAuthToken() { return localStorage.getItem('token'); }
-        function handleLogout() { localStorage.removeItem('token'); window.location.href = '/logout'; }
-        function toggleContent(id) { document.getElementById(id).classList.toggle('visible'); }
-        function navigateToProject(projectId) { window.location.href = '/project/' + projectId; }
+        // JWT Token Management with Auto-Refresh
+        const TokenManager = {
+            getToken() {
+                return localStorage.getItem('token');
+            },
+            setToken(token) {
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+            },
+            clearToken() {
+                localStorage.removeItem('token');
+            },
+            async refreshToken() {
+                try {
+                    const res = await fetch('/gen/token', { credentials: 'include' });
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        this.setToken(data.token);
+                        return data.token;
+                    }
+                } catch (e) {
+                    console.error('Token refresh failed:', e);
+                }
+                return null;
+            }
+        };
+
+        function handleLogout() {
+            TokenManager.clearToken();
+            window.location.href = '/logout';
+        }
+
+        function toggleContent(id) {
+            document.getElementById(id).classList.toggle('visible');
+        }
+
+        function navigateToProject(projectId) {
+            window.location.href = '/project/' + projectId;
+        }
+
+        // Initialize token on page load
+        (async function initToken() {
+            if (!TokenManager.getToken()) {
+                await TokenManager.refreshToken();
+            }
+        })();
     </script>
 </body>
 </html>

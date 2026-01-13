@@ -1111,10 +1111,33 @@
             document.getElementById('totalPending').textContent = totalPending;
         });
 
-        // Utils
-        function getAuthToken() {
-            return localStorage.getItem('token');
-        }
+        // JWT Token Management with Auto-Refresh
+        const TokenManager = {
+            getToken() {
+                return localStorage.getItem('token');
+            },
+            setToken(token) {
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+            },
+            clearToken() {
+                localStorage.removeItem('token');
+            },
+            async refreshToken() {
+                try {
+                    const res = await fetch('/gen/token', { credentials: 'include' });
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        this.setToken(data.token);
+                        return data.token;
+                    }
+                } catch (e) {
+                    console.error('Token refresh failed:', e);
+                }
+                return null;
+            }
+        };
 
         function getCookie(name) {
             let cookieValue = null;
@@ -1131,13 +1154,57 @@
             return cookieValue;
         }
 
-        function handleAuthError(response) {
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                window.location.href = '/login/';
-                return true;
+        // Authenticated fetch with auto token refresh
+        async function authFetch(url, options = {}) {
+            const token = TokenManager.getToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+                ...(options.headers || {})
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
             }
-            return false;
+
+            let response = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include'
+            });
+
+            // Handle token expiry with auto-refresh
+            if (response.status === 401) {
+                const data = await response.json();
+                if (data.new_token) {
+                    // Token expired but server provided a new one
+                    TokenManager.setToken(data.new_token);
+                    headers['Authorization'] = `Bearer ${data.new_token}`;
+                    // Retry the request with new token
+                    response = await fetch(url, {
+                        ...options,
+                        headers,
+                        credentials: 'include'
+                    });
+                } else {
+                    // Try to get a fresh token from session
+                    const newToken = await TokenManager.refreshToken();
+                    if (newToken) {
+                        headers['Authorization'] = `Bearer ${newToken}`;
+                        response = await fetch(url, {
+                            ...options,
+                            headers,
+                            credentials: 'include'
+                        });
+                    } else {
+                        // No valid session, redirect to login
+                        TokenManager.clearToken();
+                        window.location.href = '/login/';
+                        return null;
+                    }
+                }
+            }
+
+            return response;
         }
 
         function showToast(message, type = 'success') {
@@ -1153,7 +1220,7 @@
         }
 
         function handleLogout() {
-            localStorage.removeItem('token');
+            TokenManager.clearToken();
             window.location.href = '/logout';
         }
 
@@ -1169,23 +1236,17 @@
         async function deleteProject(projectId) {
             if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
             try {
-                const response = await fetch('/deleteproject/', {
+                const response = await authFetch('/deleteproject/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ project_id: projectId })
                 });
-
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('Project deleted');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showToast('Failed to delete project', 'error');
+                    showToast(data.error || 'Failed to delete project', 'error');
                 }
             } catch (error) {
                 showToast('Failed to delete project', 'error');
@@ -1194,22 +1255,17 @@
 
         async function acceptPending(pendingId) {
             try {
-                const response = await fetch('/handlepending/', {
+                const response = await authFetch('/handlepending/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ pending_id: pendingId, action: 'accept' })
                 });
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('Changes accepted');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showToast('Failed to accept changes', 'error');
+                    showToast(data.error || 'Failed to accept changes', 'error');
                 }
             } catch (error) {
                 showToast('Failed to accept changes', 'error');
@@ -1218,22 +1274,17 @@
 
         async function declinePending(pendingId) {
             try {
-                const response = await fetch('/handlepending/', {
+                const response = await authFetch('/handlepending/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ pending_id: pendingId, action: 'reject' })
                 });
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('Changes declined');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showToast('Failed to decline changes', 'error');
+                    showToast(data.error || 'Failed to decline changes', 'error');
                 }
             } catch (error) {
                 showToast('Failed to decline changes', 'error');
@@ -1243,22 +1294,17 @@
         async function saveRole(projectId, contributorId) {
             const newRole = document.getElementById(`role-${contributorId}`).value;
             try {
-                const response = await fetch('/changeroles/', {
+                const response = await authFetch('/changeroles/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole })
                 });
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('Role updated');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showToast('Failed to update role', 'error');
+                    showToast(data.error || 'Failed to update role', 'error');
                 }
             } catch (error) {
                 showToast('Failed to update role', 'error');
@@ -1268,22 +1314,17 @@
         async function deleteUser(projectId, contributorId) {
             if (!confirm('Remove this collaborator?')) return;
             try {
-                const response = await fetch('/deleteuser/', {
+                const response = await authFetch('/deleteuser/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ project_id: projectId, contributor_id: contributorId })
                 });
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('Collaborator removed');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showToast('Failed to remove collaborator', 'error');
+                    showToast(data.error || 'Failed to remove collaborator', 'error');
                 }
             } catch (error) {
                 showToast('Failed to remove collaborator', 'error');
@@ -1297,16 +1338,11 @@
                 return;
             }
             try {
-                const response = await fetch('/addpeople/', {
+                const response = await authFetch('/addpeople/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ project_id: projectId, usernames: usernames })
                 });
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('People added');
@@ -1322,39 +1358,29 @@
         async function revertBackup(projectId, backupId) {
             if (!confirm('Revert to this backup?')) return;
             try {
-                const response = await fetch('/revert/', {
+                const response = await authFetch('/revert/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
                     body: JSON.stringify({ project_id: projectId, backup_id: backupId })
                 });
-                if (handleAuthError(response)) return;
+                if (!response) return;
                 const data = await response.json();
                 if (data.success) {
                     showToast('Backup restored');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showToast('Failed to revert', 'error');
+                    showToast(data.error || 'Failed to revert', 'error');
                 }
             } catch (error) {
                 showToast('Failed to revert', 'error');
             }
         }
-async function getOAuthToken() {
-    const res = await fetch('/gen/token', {
-        credentials: 'include'  // sends session cookie
-    });
-    const data = await res.json();
-    if (data.success) {
-        localStorage.setItem('token', data.token);
-    }
-}
 
-// call on page load
-getOAuthToken();
+        // Initialize token on page load (for OAuth users without token)
+        (async function initToken() {
+            if (!TokenManager.getToken()) {
+                await TokenManager.refreshToken();
+            }
+        })();
     </script>
 </body>
 </html>
