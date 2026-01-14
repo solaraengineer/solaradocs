@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Project - Solara Docs</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,71 +13,37 @@
         }
 
         :root {
-            --bg: #09090b;
-            --surface: rgba(255, 255, 255, 0.03);
-            --surface-2: rgba(255, 255, 255, 0.06);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-focus: rgba(100, 181, 246, 0.5);
-            --text: #fafafa;
-            --text-dim: rgba(255, 255, 255, 0.6);
-            --text-muted: rgba(255, 255, 255, 0.4);
-            --accent: #64b5f6;
-            --accent-2: #4dd0e1;
-            --accent-dim: rgba(100, 181, 246, 0.1);
-            --success: #4ade80;
-            --error: #f87171;
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
         }
 
         html, body {
             height: 100%;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            background: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.6;
-        }
-
-        /* 3D Background */
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-        }
-
-        /* Ambient Glow */
-        .ambient {
-            position: fixed;
-            width: 600px;
-            height: 600px;
-            border-radius: 50%;
-            filter: blur(150px);
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.07;
-        }
-
-        .ambient-1 {
-            background: var(--accent);
-            top: -300px;
-            left: -200px;
-        }
-
-        .ambient-2 {
-            background: var(--accent-2);
-            bottom: -300px;
-            right: -200px;
         }
 
         /* Layout */
         .container {
-            position: relative;
-            z-index: 10;
             display: grid;
             grid-template-columns: 1fr 1fr;
             min-height: 100vh;
@@ -91,6 +56,7 @@
             justify-content: center;
             padding: 4rem;
             position: relative;
+            background: var(--bg-primary);
         }
 
         .logo {
@@ -103,19 +69,20 @@
             font-weight: 600;
             font-size: 1.1rem;
             text-decoration: none;
-            color: var(--text);
+            color: var(--text-primary);
         }
 
         .logo-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            background: var(--accent-orange);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
-            color: var(--bg);
+            color: var(--bg-primary);
         }
 
         .brand-content {
@@ -128,14 +95,12 @@
             letter-spacing: -0.03em;
             line-height: 1.15;
             margin-bottom: 1.5rem;
-            background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.7) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text-primary);
         }
 
         .brand-content > p {
             font-size: 1.1rem;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             margin-bottom: 3rem;
         }
 
@@ -148,24 +113,23 @@
         }
 
         .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
             border-radius: 12px;
             padding: 1.5rem;
         }
 
         .stat-number {
+            font-family: 'JetBrains Mono', monospace;
             font-size: 2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent-orange);
             margin-bottom: 0.25rem;
         }
 
         .stat-label {
             font-size: 0.85rem;
-            color: var(--text-muted);
+            color: var(--text-tertiary);
         }
 
         /* Features */
@@ -184,12 +148,12 @@
         .feature-check {
             width: 20px;
             height: 20px;
-            background: var(--accent-dim);
+            background: rgba(212, 165, 116, 0.15);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--accent);
+            color: var(--accent-orange);
             flex-shrink: 0;
         }
 
@@ -199,7 +163,7 @@
         }
 
         .feature-text {
-            color: var(--text-dim);
+            color: var(--text-secondary);
             font-size: 0.95rem;
         }
 
@@ -210,8 +174,8 @@
             justify-content: center;
             align-items: center;
             padding: 4rem;
-            background: var(--surface);
-            border-left: 1px solid var(--border);
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
             position: relative;
             overflow-y: auto;
         }
@@ -229,10 +193,11 @@
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
+            color: var(--text-primary);
         }
 
         .form-header p {
-            color: var(--text-muted);
+            color: var(--text-tertiary);
             font-size: 0.9rem;
         }
 
@@ -247,7 +212,7 @@
             gap: 0.5rem;
             font-size: 0.8rem;
             font-weight: 500;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             margin-bottom: 0.5rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -255,7 +220,7 @@
 
         .form-label-optional {
             font-size: 0.7rem;
-            color: var(--text-muted);
+            color: var(--text-tertiary);
             text-transform: none;
             letter-spacing: 0;
         }
@@ -263,10 +228,10 @@
         .form-input {
             width: 100%;
             padding: 0.875rem 1rem;
-            background: var(--bg);
-            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
             border-radius: 10px;
-            color: var(--text);
+            color: var(--text-primary);
             font-size: 0.95rem;
             font-family: inherit;
             transition: all 0.2s ease;
@@ -274,17 +239,17 @@
 
         .form-input:focus {
             outline: none;
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px var(--accent-dim);
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
         }
 
         .form-input::placeholder {
-            color: var(--text-muted);
+            color: var(--text-tertiary);
         }
 
         .form-hint {
             font-size: 0.75rem;
-            color: var(--text-muted);
+            color: var(--text-tertiary);
             margin-top: 0.5rem;
         }
 
@@ -294,16 +259,16 @@
             flex-wrap: wrap;
             gap: 0.5rem;
             padding: 0.75rem;
-            background: var(--bg);
-            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
             border-radius: 10px;
             min-height: 50px;
             transition: all 0.2s ease;
         }
 
         .users-container:focus-within {
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px var(--accent-dim);
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
         }
 
         .user-tag {
@@ -311,11 +276,11 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.375rem 0.625rem;
-            background: var(--accent-dim);
-            border: 1px solid rgba(100, 181, 246, 0.2);
+            background: rgba(212, 165, 116, 0.15);
+            border: 1px solid rgba(212, 165, 116, 0.25);
             border-radius: 6px;
             font-size: 0.85rem;
-            color: var(--accent);
+            color: var(--accent-orange);
         }
 
         .user-tag-remove {
@@ -341,7 +306,7 @@
             min-width: 150px;
             background: transparent;
             border: none;
-            color: var(--text);
+            color: var(--text-primary);
             font-size: 0.95rem;
             font-family: inherit;
             padding: 0.375rem;
@@ -352,7 +317,7 @@
         }
 
         .users-input::placeholder {
-            color: var(--text-muted);
+            color: var(--text-tertiary);
         }
 
         /* Checkbox */
@@ -361,20 +326,20 @@
             align-items: flex-start;
             gap: 0.875rem;
             padding: 1.25rem;
-            background: var(--bg);
-            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .checkbox-wrapper:hover {
-            border-color: var(--text-muted);
+            border-color: var(--border);
         }
 
         .checkbox-wrapper:has(input:checked) {
-            border-color: var(--accent);
-            background: var(--accent-dim);
+            border-color: var(--accent-orange);
+            background: rgba(212, 165, 116, 0.08);
         }
 
         .checkbox-box {
@@ -390,14 +355,14 @@
         }
 
         .checkbox-wrapper:has(input:checked) .checkbox-box {
-            background: var(--accent);
-            border-color: var(--accent);
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
         }
 
         .checkbox-box svg {
             width: 12px;
             height: 12px;
-            color: var(--bg);
+            color: var(--bg-primary);
             opacity: 0;
             transition: opacity 0.2s ease;
         }
@@ -418,11 +383,12 @@
             font-weight: 500;
             font-size: 0.95rem;
             margin-bottom: 0.15rem;
+            color: var(--text-primary);
         }
 
         .checkbox-desc {
             font-size: 0.8rem;
-            color: var(--text-muted);
+            color: var(--text-tertiary);
         }
 
         /* Buttons */
@@ -449,30 +415,31 @@
         }
 
         .btn-secondary {
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
         }
 
         .btn-secondary:hover {
-            background: var(--surface-2);
-            border-color: var(--text-muted);
+            background: var(--bg-elevated);
+            border-color: var(--border);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-            color: var(--bg);
+            background: var(--accent-orange);
+            color: var(--bg-primary);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(100, 181, 246, 0.25);
+            box-shadow: 0 10px 30px rgba(212, 165, 116, 0.25);
         }
 
         .btn-primary:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         /* Back link */
@@ -483,14 +450,14 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            color: var(--text-muted);
+            color: var(--text-tertiary);
             font-size: 0.85rem;
             text-decoration: none;
             transition: color 0.2s ease;
         }
 
         .back-link:hover {
-            color: var(--text);
+            color: var(--text-primary);
         }
 
         .back-link svg {
@@ -532,13 +499,6 @@
     </style>
 </head>
 <body>
-    <div class="ambient ambient-1"></div>
-    <div class="ambient ambient-2"></div>
-
-    <div id="canvas-container">
-        <canvas id="three-canvas"></canvas>
-    </div>
-
     <div class="container">
         <!-- Left Side - Branding -->
         <div class="brand-side">
@@ -557,7 +517,7 @@
                         <div class="stat-label">Team members per project</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">∞</div>
+                        <div class="stat-number">&#8734;</div>
                         <div class="stat-label">Automatic backups</div>
                     </div>
                 </div>
@@ -676,97 +636,6 @@
     </div>
 
     <script>
-        // Three.js Background
-        const canvas = document.getElementById('three-canvas');
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-        // Dodecahedron
-        const dodecaGeometry = new THREE.DodecahedronGeometry(2.5, 0);
-        const dodecaMaterial = new THREE.MeshBasicMaterial({
-            color: 0x64b5f6,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.08
-        });
-        const dodeca = new THREE.Mesh(dodecaGeometry, dodecaMaterial);
-        dodeca.position.set(-7, 2, -10);
-        scene.add(dodeca);
-
-        // Octahedron
-        const octGeometry = new THREE.OctahedronGeometry(2, 0);
-        const octMaterial = new THREE.MeshBasicMaterial({
-            color: 0x4dd0e1,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.06
-        });
-        const oct = new THREE.Mesh(octGeometry, octMaterial);
-        oct.position.set(6, -2, -8);
-        scene.add(oct);
-
-        // Particles
-        const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 200;
-        const posArray = new Float32Array(particlesCount * 3);
-
-        for(let i = 0; i < particlesCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 40;
-        }
-
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-
-        const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.03,
-            color: 0x64b5f6,
-            transparent: true,
-            opacity: 0.4
-        });
-
-        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-        scene.add(particles);
-
-        camera.position.z = 10;
-
-        // Mouse
-        let mouseX = 0;
-        let mouseY = 0;
-
-        document.addEventListener('mousemove', (e) => {
-            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-        });
-
-        // Animate
-        function animate() {
-            requestAnimationFrame(animate);
-
-            dodeca.rotation.x += 0.003;
-            dodeca.rotation.y += 0.004;
-            dodeca.position.y = 2 + mouseY * 0.5;
-
-            oct.rotation.x -= 0.004;
-            oct.rotation.y -= 0.003;
-            oct.position.y = -2 + mouseY * 0.3;
-
-            particles.rotation.y += 0.0002;
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        // Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
         // Tier configuration from server
         const tierConfig = {
             maxProjects: {{ tier_config.max_projects|default:"null" }},
@@ -971,7 +840,7 @@
                 const container = document.querySelector('.form-header');
                 const div = document.createElement('div');
                 div.id = 'errorMessage';
-                div.style.cssText = 'background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;';
+                div.style.cssText = 'background: rgba(212,106,106,0.1); border: 1px solid rgba(212,106,106,0.3); color: var(--accent-red); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;';
                 div.textContent = message;
                 container.after(div);
             }
