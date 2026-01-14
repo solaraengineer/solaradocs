@@ -23,7 +23,6 @@ STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
-    'uvicorn',
     'django_prometheus',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -33,7 +32,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'solaradocs',
-    'channels',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -119,28 +117,19 @@ SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAME_SITE = 'Lax'
 
 REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-
+REDIS_URL = os.getenv('REDIS_URL')
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+        'LOCATION': REDIS_URL,
     }
 }
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [(REDIS_HOST, int(REDIS_PORT))],
-        },
-    },
-}
-
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
