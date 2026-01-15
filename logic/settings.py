@@ -127,7 +127,7 @@ REDIS_URL = os.getenv('REDIS_URL')
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': REDIS_URL,
+        'LOCATION': 'redis://127.0.0.1:6379',
     }
 }
 

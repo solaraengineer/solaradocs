@@ -131,7 +131,7 @@
 
         /* Main */
         .main-container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 4rem 2rem;
         }
@@ -158,11 +158,11 @@
             margin: 0 auto;
         }
 
-        /* Plans Grid */
+        /* Plans Grid - 4 columns now */
         .plans-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
             margin-bottom: 4rem;
         }
 
@@ -170,7 +170,7 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-subtle);
             border-radius: 12px;
-            padding: 2rem;
+            padding: 1.75rem;
             position: relative;
             transition: all 0.2s ease;
         }
@@ -204,48 +204,49 @@
 
         .plan-name {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             font-weight: 600;
             margin-bottom: 0.35rem;
             color: var(--text-primary);
         }
 
         .plan-desc {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             color: var(--text-tertiary);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
+            min-height: 2.5rem;
         }
 
         .plan-price {
             display: flex;
             align-items: baseline;
             gap: 0.35rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.75rem;
         }
 
         .price-amount {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 2.75rem;
+            font-size: 2.25rem;
             font-weight: 700;
             color: var(--accent-orange);
         }
 
         .price-period {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-tertiary);
         }
 
         .plan-features {
             list-style: none;
-            margin-bottom: 2rem;
+            margin-bottom: 1.75rem;
         }
 
         .plan-features li {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.625rem 0;
-            font-size: 0.9rem;
+            gap: 0.6rem;
+            padding: 0.5rem 0;
+            font-size: 0.825rem;
             color: var(--text-secondary);
             border-bottom: 1px solid var(--border-subtle);
         }
@@ -254,9 +255,15 @@
             border-bottom: none;
         }
 
+        .plan-features li.disabled {
+            color: var(--text-tertiary);
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
         .feature-check {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             background: rgba(212, 165, 116, 0.15);
             border-radius: 50%;
             display: flex;
@@ -266,20 +273,45 @@
         }
 
         .feature-check svg {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             color: var(--accent-orange);
+        }
+
+        .feature-cross {
+            width: 18px;
+            height: 18px;
+            background: rgba(212, 106, 106, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .feature-cross svg {
+            width: 10px;
+            height: 10px;
+            color: var(--accent-red);
+        }
+
+        .feature-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent-orange);
+            font-size: 0.8rem;
         }
 
         .plan-cta {
             width: 100%;
         }
 
-        .plan-cta button {
+        .plan-cta button,
+        .plan-cta a {
             width: 100%;
-            padding: 0.875rem 1.5rem;
+            padding: 0.75rem 1.25rem;
             border-radius: 8px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             font-family: 'Inter', sans-serif;
             cursor: pointer;
@@ -287,20 +319,26 @@
             border: none;
             background: var(--accent-orange);
             color: var(--bg-primary);
+            text-decoration: none;
+            display: block;
+            text-align: center;
         }
 
-        .plan-cta button:hover {
+        .plan-cta button:hover,
+        .plan-cta a:hover {
             background: #e0b285;
             transform: translateY(-1px);
         }
 
-        .plan-card:not(.recommended) .plan-cta button {
+        .plan-card:not(.recommended) .plan-cta button,
+        .plan-card:not(.recommended) .plan-cta a {
             background: var(--bg-elevated);
             color: var(--text-primary);
             border: 1px solid var(--border);
         }
 
-        .plan-card:not(.recommended) .plan-cta button:hover {
+        .plan-card:not(.recommended) .plan-cta button:hover,
+        .plan-card:not(.recommended) .plan-cta a:hover {
             background: var(--border);
             border-color: var(--text-tertiary);
         }
@@ -372,7 +410,13 @@
         }
 
         /* Responsive */
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
+            .plans-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 700px) {
             .plans-grid {
                 grid-template-columns: 1fr;
                 max-width: 400px;
@@ -425,10 +469,75 @@
         </div>
 
         <div class="plans-grid">
+            <!-- Free Plan -->
+            <div class="plan-card">
+                <h3 class="plan-name">Free</h3>
+                <p class="plan-desc">Get started and try it out.</p>
+                <div class="plan-price">
+                    <span class="price-amount">$0</span>
+                    <span class="price-period">/ month</span>
+                </div>
+                <ul class="plan-features">
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">1</span> project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">2</span> documents / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">1</span> team / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">3</span> members / project
+                    </li>
+                    <li class="disabled">
+                        <span class="feature-cross">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </span>
+                        No backups
+                    </li>
+                    <li class="disabled">
+                        <span class="feature-cross">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </span>
+                        No audit logs
+                    </li>
+                </ul>
+                <div class="plan-cta">
+                    <a href="/register">Get Started</a>
+                </div>
+            </div>
+
             <!-- Student Plan -->
             <div class="plan-card">
                 <h3 class="plan-name">Student</h3>
-                <p class="plan-desc">Perfect for individual use and personal projects.</p>
+                <p class="plan-desc">Perfect for personal projects.</p>
                 <div class="plan-price">
                     <span class="price-amount">$5</span>
                     <span class="price-period">/ month</span>
@@ -440,7 +549,7 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Up to 3 projects
+                        <span class="feature-value">3</span> projects
                     </li>
                     <li>
                         <span class="feature-check">
@@ -448,7 +557,92 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Basic collaboration
+                        <span class="feature-value">5</span> documents / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">2</span> teams / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">6</span> members / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Version backups
+                    </li>
+                    <li class="disabled">
+                        <span class="feature-cross">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </span>
+                        No audit logs
+                    </li>
+                </ul>
+                <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_name" value="student">
+                    <input type="hidden" name="amount" value="500">
+                    <input type="hidden" name="tier" value="student">
+                    <button type="submit">Get Started</button>
+                </form>
+            </div>
+
+            <!-- Team Plan -->
+            <div class="plan-card recommended">
+                <span class="plan-badge">Most Popular</span>
+                <h3 class="plan-name">Team</h3>
+                <p class="plan-desc">For teams that need to ship fast.</p>
+                <div class="plan-price">
+                    <span class="price-amount">$15</span>
+                    <span class="price-period">/ month</span>
+                </div>
+                <ul class="plan-features">
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">5</span> projects
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">20</span> documents / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">5</span> teams / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="feature-value">20</span> members / project
                     </li>
                     <li>
                         <span class="feature-check">
@@ -464,82 +658,30 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Community support
+                        Audit logs
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Pending approvals
                     </li>
                 </ul>
                 <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
                     {% csrf_token %}
-                    <input type="hidden" name="plan_name" value="student">
-                    <input type="hidden" name="amount" value="500">
-                    <input type="hidden" name="tier" value="student">
-                    <button type="submit">Get Started</button>
-                </form>
-            </div>
-
-            <!-- Team Plan -->
-            <div class="plan-card recommended">
-                <span class="plan-badge">Most Popular</span>
-                <h3 class="plan-name">Team / Startup</h3>
-                <p class="plan-desc">For small teams that need to collaborate fast.</p>
-                <div class="plan-price">
-                    <span class="price-amount">$15</span>
-                    <span class="price-period">/ month</span>
-                </div>
-                <ul class="plan-features">
-                    <li>
-                        <span class="feature-check">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>
-                        Up to 10 projects
-                    </li>
-                    <li>
-                        <span class="feature-check">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>
-                        Unlimited collaborators
-                    </li>
-                    <li>
-                        <span class="feature-check">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>
-                        Role-based permissions
-                    </li>
-                    <li>
-                        <span class="feature-check">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>
-                        Priority support
-                    </li>
-                    <li>
-                        <span class="feature-check">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>
-                        Pending approvals workflow
-                    </li>
-                </ul>
-                <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
-                    {% csrf_token %}
-                    <input type="hidden" name="plan_name" value="small team">
+                    <input type="hidden" name="plan_name" value="team">
                     <input type="hidden" name="amount" value="1500">
                     <input type="hidden" name="tier" value="team">
                     <button type="submit">Get Started</button>
                 </form>
             </div>
 
-            <!-- Enterprise Plan -->
+            <!-- Large Teams Plan -->
             <div class="plan-card">
                 <h3 class="plan-name">Large Teams</h3>
-                <p class="plan-desc">For organizations that need scale and control.</p>
+                <p class="plan-desc">Unlimited everything. Scale it.</p>
                 <div class="plan-price">
                     <span class="price-amount">$35</span>
                     <span class="price-period">/ month</span>
@@ -551,7 +693,7 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Unlimited projects
+                        <span class="feature-value">∞</span> projects
                     </li>
                     <li>
                         <span class="feature-check">
@@ -559,7 +701,7 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Unlimited collaborators
+                        <span class="feature-value">∞</span> documents / project
                     </li>
                     <li>
                         <span class="feature-check">
@@ -567,7 +709,7 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Advanced permissions
+                        <span class="feature-value">∞</span> teams / project
                     </li>
                     <li>
                         <span class="feature-check">
@@ -575,7 +717,31 @@
                                 <polyline points="20 6 9 17 4 12"/>
                             </svg>
                         </span>
-                        Backup history & restore
+                        <span class="feature-value">∞</span> members / project
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Version backups
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Audit logs
+                    </li>
+                    <li>
+                        <span class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        Pending approvals
                     </li>
                     <li>
                         <span class="feature-check">
@@ -585,18 +751,10 @@
                         </span>
                         Dedicated support
                     </li>
-                    <li>
-                        <span class="feature-check">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>
-                        Custom integrations
-                    </li>
                 </ul>
                 <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
                     {% csrf_token %}
-                    <input type="hidden" name="plan_name" value="large multi-team">
+                    <input type="hidden" name="plan_name" value="enterprise">
                     <input type="hidden" name="amount" value="3500">
                     <input type="hidden" name="tier" value="enterprise">
                     <button type="submit">Get Started</button>
@@ -638,6 +796,17 @@
                 </button>
                 <div class="faq-answer">
                     Absolutely. You can change your plan at any time and we'll prorate the difference.
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    What happens if I hit a limit?
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    You'll get a friendly nudge to upgrade. We won't delete your data or lock you out - just restrict creating new stuff until you upgrade or remove some existing content.
                 </div>
             </div>
         </div>

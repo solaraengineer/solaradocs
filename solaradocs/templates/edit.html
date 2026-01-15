@@ -168,18 +168,6 @@
             z-index: 10;
         }
 
-        .user-avatar.typing::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            right: -2px;
-            width: 10px;
-            height: 10px;
-            background: var(--accent-green);
-            border-radius: 50%;
-            border: 2px solid var(--bg-secondary);
-        }
-
         .user-avatar.you {
             background: var(--bg-tertiary);
             border-color: var(--accent-orange);
@@ -356,6 +344,14 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .doc-item-team {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            background: var(--bg-elevated);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
         }
 
         .sidebar-footer {
@@ -602,24 +598,6 @@
             border-radius: 8px;
         }
 
-        /* Checklist */
-        .ql-editor ul[data-checked="true"] li::before,
-        .ql-editor ul[data-checked="false"] li::before {
-            content: '';
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--border);
-            border-radius: 4px;
-            margin-right: 0.5rem;
-            vertical-align: middle;
-        }
-
-        .ql-editor ul[data-checked="true"] li::before {
-            background: var(--accent-orange);
-            border-color: var(--accent-orange);
-        }
-
         /* Right Panel */
         .right-panel {
             width: 280px;
@@ -716,42 +694,43 @@
             font-weight: 500;
         }
 
-        /* Version History */
-        .version-item {
+        /* Audit History */
+        .audit-item {
             padding: 0.75rem;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
             border-radius: 8px;
             margin-bottom: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
         }
 
-        .version-item:hover {
-            border-color: var(--accent-orange);
-        }
-
-        .version-header {
+        .audit-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.25rem;
         }
 
-        .version-title {
+        .audit-user {
             font-size: 0.85rem;
             font-weight: 500;
             color: var(--text-primary);
         }
 
-        .version-time {
+        .audit-time {
             font-size: 0.7rem;
             color: var(--text-tertiary);
         }
 
-        .version-author {
+        .audit-action {
             font-size: 0.75rem;
             color: var(--text-secondary);
+        }
+
+        .audit-loading, .audit-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
         }
 
         /* Word Count */
@@ -778,6 +757,156 @@
         .count-label {
             font-size: 0.7rem;
             color: var(--text-tertiary);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 420px;
+            transform: translateY(-20px);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-close svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-select:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .form-select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .modal-footer .btn {
+            padding: 0.625rem 1.25rem;
         }
 
         /* Toast */
@@ -860,6 +989,10 @@
             .ql-editor {
                 padding: 1rem;
             }
+
+            .modal {
+                margin: 1rem;
+            }
         }
     </style>
 </head>
@@ -920,20 +1053,14 @@
                         <circle cx="11" cy="11" r="8"/>
                         <path d="M21 21l-4.35-4.35"/>
                     </svg>
-                    <input type="text" placeholder="Search docs...">
+                    <input type="text" placeholder="Search docs..." id="docSearch">
                 </div>
             </div>
-            <div class="sidebar-content">
-                <div class="doc-item active">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                    <span class="doc-item-name">{{ project.project_name }}</span>
-                </div>
+            <div class="sidebar-content" id="documentsList">
+                <!-- Documents loaded dynamically -->
             </div>
             <div class="sidebar-footer">
-                <button class="new-doc-btn">
+                <button class="new-doc-btn" id="newDocBtn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
@@ -1004,15 +1131,6 @@
                             <text x="3" y="8" font-size="8" fill="currentColor">1</text>
                             <text x="3" y="14" font-size="8" fill="currentColor">2</text>
                             <text x="3" y="20" font-size="8" fill="currentColor">3</text>
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" id="checklistBtn" title="Checklist">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="5" width="6" height="6" rx="1"/>
-                            <path d="M5 8l1.5 1.5L9 6"/>
-                            <line x1="12" y1="8" x2="21" y2="8"/>
-                            <rect x="3" y="13" width="6" height="6" rx="1"/>
-                            <line x1="12" y1="16" x2="21" y2="16"/>
                         </svg>
                     </button>
                 </div>
@@ -1096,49 +1214,82 @@
         <div class="right-panel">
             <div class="panel-tabs">
                 <button class="panel-tab active" data-tab="info">Info</button>
-                <button class="panel-tab" data-tab="history">History</button>
+                <button class="panel-tab" data-tab="history">Audit logs</button>
             </div>
             <div class="panel-content">
-                <div class="panel-section">
-                    <div class="panel-section-title">Word Count</div>
-                    <div class="word-count">
-                        <div class="count-item">
-                            <div class="count-number" id="wordCount">0</div>
-                            <div class="count-label">Words</div>
+                <!-- Info Section -->
+                <div id="infoSection">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Word Count</div>
+                        <div class="word-count">
+                            <div class="count-item">
+                                <div class="count-number" id="wordCount">0</div>
+                                <div class="count-label">Words</div>
+                            </div>
+                            <div class="count-item">
+                                <div class="count-number" id="charCount">0</div>
+                                <div class="count-label">Characters</div>
+                            </div>
                         </div>
-                        <div class="count-item">
-                            <div class="count-number" id="charCount">0</div>
-                            <div class="count-label">Characters</div>
+                    </div>
+
+                    <div class="panel-section">
+                        <div class="panel-section-title">Document Info</div>
+                        <div class="info-row">
+                            <span class="info-label">Created</span>
+                            <span class="info-value">Today</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Modified</span>
+                            <span class="info-value" id="lastModified">Just now</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Owner</span>
+                            <span class="info-value">{{ request.user.username }}</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="panel-section">
-                    <div class="panel-section-title">Document Info</div>
-                    <div class="info-row">
-                        <span class="info-label">Created</span>
-                        <span class="info-value">Today</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Modified</span>
-                        <span class="info-value" id="lastModified">Just now</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Owner</span>
-                        <span class="info-value">{{ request.user.username }}</span>
-                    </div>
-                </div>
-
-                <div class="panel-section" id="historySection" style="display: none;">
-                    <div class="panel-section-title">Recent Versions</div>
-                    <div class="version-item">
-                        <div class="version-header">
-                            <span class="version-title">Current</span>
-                            <span class="version-time">Just now</span>
+                <!-- History Section (hidden by default) -->
+                <div id="historySection" style="display: none;">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Audit Log</div>
+                        <div id="auditList">
+                            <div class="audit-loading">Loading history...</div>
                         </div>
-                        <div class="version-author">by {{ request.user.username }}</div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Document Modal -->
+    <div class="modal-overlay" id="newDocModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Document</h3>
+                <button class="modal-close" id="closeModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Document Name</label>
+                    <input type="text" class="form-input" id="newDocName" placeholder="Enter document name...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assign to Team</label>
+                    <select class="form-select" id="newDocTeam">
+                        <option value="">Loading teams...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelNewDoc">Cancel</button>
+                <button class="btn btn-primary" id="createDocBtn">Create Document</button>
             </div>
         </div>
     </div>
@@ -1158,7 +1309,10 @@
         const currentUser = "{{ request.user.username }}";
         const editorToken = "{{ editor_token }}";
 
-        // JWT Token Management with Auto-Refresh
+        let currentDocumentId = null;
+        let projectTeams = [];
+
+        // JWT Token Management
         const TokenManager = {
             getToken() {
                 return localStorage.getItem('token');
@@ -1186,7 +1340,7 @@
             }
         };
 
-        // Authenticated fetch with auto token refresh
+        // Authenticated fetch
         async function authFetch(url, options = {}) {
             const token = TokenManager.getToken();
             const headers = {
@@ -1204,7 +1358,6 @@
                 credentials: 'include'
             });
 
-            // Handle token expiry with auto-refresh
             if (response.status === 401) {
                 const data = await response.json();
                 if (data.new_token) {
@@ -1240,13 +1393,255 @@
             }
         });
 
-        // Load initial content
-        const initialContent = `{{ project.content|escapejs }}`;
-        if (initialContent) {
-            quill.root.innerHTML = initialContent;
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // Custom toolbar buttons
+        // ==================== DOCUMENTS ====================
+
+        // Load documents list
+        async function loadDocuments() {
+            try {
+                const response = await authFetch(`/api/project/${projectId}/documents`);
+                if (!response) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    renderDocumentsList(data.documents);
+                    if (data.documents.length > 0 && !currentDocumentId) {
+                        selectDocument(data.documents[0].id);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load documents:', error);
+            }
+        }
+
+        function renderDocumentsList(documents) {
+            const container = document.getElementById('documentsList');
+
+            if (documents.length === 0) {
+                container.innerHTML = `
+                    <div style="padding: 1rem; text-align: center; color: var(--text-tertiary); font-size: 0.85rem;">
+                        No documents yet. Create one!
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = documents.map(doc => `
+                <div class="doc-item ${doc.id === currentDocumentId ? 'active' : ''}" data-doc-id="${doc.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span class="doc-item-name">${escapeHtml(doc.document_name)}</span>
+                    <span class="doc-item-team">${escapeHtml(doc.team_name)}</span>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            container.querySelectorAll('.doc-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    selectDocument(parseInt(item.dataset.docId));
+                });
+            });
+        }
+
+        async function selectDocument(docId) {
+            currentDocumentId = docId;
+
+            // Update active state in sidebar
+            document.querySelectorAll('.doc-item').forEach(item => {
+                item.classList.toggle('active', parseInt(item.dataset.docId) === docId);
+            });
+
+            // Load document content
+            try {
+                const response = await authFetch(`/api/project/${projectId}/documents/${docId}`);
+                if (!response) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    quill.root.innerHTML = data.document.content || '';
+                    updateWordCount();
+                }
+            } catch (error) {
+                console.error('Failed to load document:', error);
+                showToast('Failed to load document', 'error');
+            }
+        }
+
+        // Search documents
+        document.getElementById('docSearch').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            document.querySelectorAll('.doc-item').forEach(item => {
+                const name = item.querySelector('.doc-item-name').textContent.toLowerCase();
+                item.style.display = name.includes(query) ? 'flex' : 'none';
+            });
+        });
+
+        // ==================== NEW DOCUMENT MODAL ====================
+
+        const modal = document.getElementById('newDocModal');
+
+        async function loadTeams() {
+            try {
+                const response = await authFetch(`/api/project/${projectId}/teams`);
+                if (!response) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    projectTeams = data.teams;
+                    const select = document.getElementById('newDocTeam');
+
+                    if (projectTeams.length === 0) {
+                        select.innerHTML = '<option value="">No teams available</option>';
+                    } else {
+                        select.innerHTML = projectTeams.map(team =>
+                            `<option value="${team.id}">${escapeHtml(team.team_name)}</option>`
+                        ).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load teams:', error);
+            }
+        }
+
+        function openNewDocModal() {
+            loadTeams();
+            document.getElementById('newDocName').value = '';
+            modal.classList.add('show');
+        }
+
+        function closeNewDocModal() {
+            modal.classList.remove('show');
+        }
+
+        document.getElementById('newDocBtn').addEventListener('click', openNewDocModal);
+        document.getElementById('closeModal').addEventListener('click', closeNewDocModal);
+        document.getElementById('cancelNewDoc').addEventListener('click', closeNewDocModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeNewDocModal();
+        });
+
+        document.getElementById('createDocBtn').addEventListener('click', async () => {
+            const name = document.getElementById('newDocName').value.trim();
+            const teamId = document.getElementById('newDocTeam').value;
+
+            if (!name) {
+                showToast('Please enter a document name', 'error');
+                return;
+            }
+
+            if (!teamId) {
+                showToast('Please select a team', 'error');
+                return;
+            }
+
+            try {
+                const response = await authFetch(`/api/project/${projectId}/documents/add`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        document_name: name,
+                        team_id: parseInt(teamId)
+                    })
+                });
+
+                if (!response) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Document created!');
+                    closeNewDocModal();
+                    await loadDocuments();
+                    selectDocument(data.document.id);
+                } else {
+                    showToast(data.error || 'Failed to create document', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to create document:', error);
+                showToast('Failed to create document', 'error');
+            }
+        });
+
+        // ==================== AUDIT HISTORY ====================
+
+        async function loadAuditHistory() {
+            const auditList = document.getElementById('auditList');
+            auditList.innerHTML = '<div class="audit-loading">Loading history...</div>';
+
+            try {
+                const response = await authFetch(`/api/project/${projectId}/audits`);
+                if (!response) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    renderAuditHistory(data.audits);
+                } else {
+                    auditList.innerHTML = '<div class="audit-empty">Failed to load history</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load audit history:', error);
+                auditList.innerHTML = '<div class="audit-empty">Failed to load history</div>';
+            }
+        }
+
+        function renderAuditHistory(audits) {
+            const auditList = document.getElementById('auditList');
+
+            if (audits.length === 0) {
+                auditList.innerHTML = '<div class="audit-empty">No history yet</div>';
+                return;
+            }
+
+            auditList.innerHTML = audits.map(audit => `
+                <div class="audit-item">
+                    <div class="audit-header">
+                        <span class="audit-user">${escapeHtml(audit.username)}</span>
+                        <span class="audit-time">${formatTime(audit.created_at)}</span>
+                    </div>
+                    <div class="audit-action">Edited "${escapeHtml(audit.document_name)}"</div>
+                </div>
+            `).join('');
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        // ==================== PANEL TABS ====================
+
+        document.querySelectorAll('.panel-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const tabName = tab.dataset.tab;
+                document.getElementById('infoSection').style.display = tabName === 'info' ? 'block' : 'none';
+                document.getElementById('historySection').style.display = tabName === 'history' ? 'block' : 'none';
+
+                if (tabName === 'history') {
+                    loadAuditHistory();
+                }
+            });
+        });
+
+        // ==================== TOOLBAR ====================
+
         document.getElementById('boldBtn').onclick = () => {
             quill.format('bold', !quill.getFormat().bold);
             updateToolbarState();
@@ -1296,9 +1691,7 @@
 
         document.getElementById('linkBtn').onclick = () => {
             const url = prompt('Enter URL:');
-            if (url) {
-                quill.format('link', url);
-            }
+            if (url) quill.format('link', url);
         };
 
         document.getElementById('imageBtn').onclick = () => {
@@ -1314,9 +1707,7 @@
 
         document.getElementById('clearBtn').onclick = () => {
             const range = quill.getSelection();
-            if (range) {
-                quill.removeFormat(range.index, range.length);
-            }
+            if (range) quill.removeFormat(range.index, range.length);
         };
 
         document.getElementById('headingSelect').onchange = (e) => {
@@ -1324,10 +1715,8 @@
             quill.format('header', value ? parseInt(value) : false);
         };
 
-        // Update toolbar state
         function updateToolbarState() {
             const format = quill.getFormat();
-
             document.getElementById('boldBtn').classList.toggle('active', format.bold);
             document.getElementById('italicBtn').classList.toggle('active', format.italic);
             document.getElementById('underlineBtn').classList.toggle('active', format.underline);
@@ -1337,7 +1726,6 @@
             document.getElementById('quoteBtn').classList.toggle('active', format.blockquote);
             document.getElementById('codeBtn').classList.toggle('active', format.code);
             document.getElementById('codeBlockBtn').classList.toggle('active', format['code-block']);
-
             document.getElementById('headingSelect').value = format.header || '';
         }
 
@@ -1347,52 +1735,24 @@
             updateWordCount();
         });
 
-        // Word count
+        // ==================== WORD COUNT ====================
+
         function updateWordCount() {
             const text = quill.getText().trim();
             const words = text ? text.split(/\s+/).length : 0;
             const chars = text.length;
-
             document.getElementById('wordCount').textContent = words;
             document.getElementById('charCount').textContent = chars;
         }
 
-        updateWordCount();
+        // ==================== SAVE ====================
 
-        // Panel tabs
-        document.querySelectorAll('.panel-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-
-                const tabName = tab.dataset.tab;
-                document.querySelectorAll('.panel-section').forEach(section => {
-                    section.style.display = 'block';
-                });
-
-                if (tabName === 'history') {
-                    document.getElementById('historySection').style.display = 'block';
-                } else {
-                    document.getElementById('historySection').style.display = 'none';
-                }
-            });
-        });
-
-        // Toast
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            const toastMessage = document.getElementById('toastMessage');
-
-            toastMessage.textContent = message;
-            toast.className = 'toast ' + type + ' show';
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        // Save
         document.getElementById('saveBtn').addEventListener('click', async () => {
+            if (!currentDocumentId) {
+                showToast('No document selected', 'error');
+                return;
+            }
+
             const saveBtn = document.getElementById('saveBtn');
             const content = quill.root.innerHTML;
 
@@ -1405,13 +1765,9 @@
             `;
 
             try {
-                const response = await authFetch('/save-doc/', {
+                const response = await authFetch(`/api/project/${projectId}/documents/${currentDocumentId}/save`, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        project_id: projectId,
-                        content: content,
-                        editor_token: editorToken
-                    }),
+                    body: JSON.stringify({ content })
                 });
 
                 if (!response) return;
@@ -1438,7 +1794,8 @@
             }
         });
 
-        // Export
+        // ==================== EXPORT ====================
+
         document.getElementById('exportBtn').addEventListener('click', () => {
             const content = quill.root.innerHTML;
             const blob = new Blob([`
@@ -1467,21 +1824,26 @@
             a.download = '{{ project.project_name }}.html';
             a.click();
             URL.revokeObjectURL(url);
-
             showToast('Exported successfully');
         });
+
+        // ==================== UTILS ====================
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         // Connection status
         function updateStatus(status) {
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
-
             dot.className = 'status-dot ' + status;
             text.textContent = status === 'connecting' ? 'Connecting...' :
                               status === 'disconnected' ? 'Disconnected' : 'Connected';
         }
 
-        // Simulate connection
         setTimeout(() => updateStatus(''), 1000);
 
         // Keyboard shortcuts
@@ -1494,10 +1856,14 @@
             }
         });
 
-        // Add spin animation
+        // Spin animation
         const style = document.createElement('style');
         style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
         document.head.appendChild(style);
+
+        // ==================== INIT ====================
+
+        loadDocuments();
     </script>
 </body>
 </html>

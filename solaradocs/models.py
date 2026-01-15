@@ -3,34 +3,101 @@ from django.db import models
 
 
 class User(AbstractUser):
-    Tier = models.CharField('Tier', max_length=20, default='Free')
+    Tier = models.CharField('Tier', max_length=20, default='free')
+
+
+TIER_LIMITS = {
+    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'backups': False, 'audit': False,
+             'pending': False},
+    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'backups': True, 'audit': False,
+                'pending': False},
+    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'backups': True, 'audit': True,
+             'pending': True},
+    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'backups': True, 'audit': True,
+                   'pending': True},
+}
+
+TEAM_ROLES = [
+    ('EDITOR', 'Editor'),
+    ('ADMIN', 'Admin'),
+]
 
 
 class Project(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_projects')
     project_name = models.CharField(max_length=255)
-    content = models.TextField(default='Welcome to solaradocs')
     people = models.TextField(blank=True)
+    content = models.TextField(blank=True)
     backups_enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    documents = models.IntegerField(default=1)
+    tier = models.CharField(max_length=12, default='free')
 
     def __str__(self):
         return self.project_name
 
 
-class Backup(models.Model):
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='backups')
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='backups')
-    content = models.TextField()
+class Teams(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='project_teams')
+    team_name = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.project_name} - {self.created_at}"
+        return f"{self.team_name} - {self.project.project_name}"
+
+
+class TeamMember(models.Model):
+    team = models.ForeignKey(Teams, on_delete=models.CASCADE, related_name='team_members')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_teams')
+    role = models.CharField(max_length=10, choices=TEAM_ROLES, default='EDITOR')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('team', 'user')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.team.team_name} ({self.role})"
+
+
+class Documents(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='project_documents')
+    document_name = models.CharField(max_length=255)
+    content = models.TextField(blank=True, default='')
+    team_assigned = models.ForeignKey(Teams, on_delete=models.CASCADE, related_name='team_documents')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.document_name} - {self.project.project_name}"
+
+
+class Audit(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='project_audits')
+    document = models.ForeignKey(Documents, on_delete=models.CASCADE, null=True, blank=True, related_name='document_audits')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_audits')
+    action = models.CharField(max_length=50, default='edit')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} {self.action} {self.document.document_name if self.document else 'N/A'}"
+
+
+class Pending(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='pendings')
+    team = models.ForeignKey(Teams, on_delete=models.CASCADE, related_name='team_pendings')
+    document = models.ForeignKey(Documents, on_delete=models.CASCADE, related_name='document_pendings')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_pendings')
+    submitted_content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Pending by {self.user.username} on {self.project.project_name}"
+
 
 class Contributor(models.Model):
     ROLE_CHOICES = [
         ('VIEWER', 'Viewer'),
         ('EDITOR', 'Editor'),
+        ('ADMIN', 'Admin'),
     ]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='contributors')
@@ -44,17 +111,12 @@ class Contributor(models.Model):
     def __str__(self):
         return f"{self.username} - {self.project.project_name} ({self.role})"
 
-class Pending(models.Model):
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-        related_name='pendings'
-    )
 
-    username = models.CharField(max_length=255)
-    submitted_content = models.TextField()
-
+class Backup(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='backups')
+    document = models.ForeignKey(Documents, on_delete=models.CASCADE, related_name='document_backups')
+    content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Pending by {self.username} on {self.project.project_name}"
+        return f"{self.project.project_name} - {self.created_at}"
