@@ -1,3 +1,5 @@
+from wsgiref.util import request_uri
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -632,13 +634,23 @@ def get_documents(request, project_id):
 
     is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        contributor = Contributor.objects.filter(
+    is_admin = Contributor.objects.filter(
+        project_id=project_id,
+        username=request.user.username,
+        role='ADMIN',
+    ).exists()
+
+    if is_owner or is_admin:
+        documents = Documents.objects.filter(
+            project_id=project_id
+        ).select_related('team_assigned').order_by('-created_at')
+    else:
+        is_contributor = Contributor.objects.filter(
             project_id=project_id,
             username=request.user.username
-        ).first()
+        ).exists()
 
-        if not contributor:
+        if not is_contributor:
             return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
         user_team_ids = TeamMember.objects.filter(
@@ -650,14 +662,11 @@ def get_documents(request, project_id):
             project_id=project_id,
             team_assigned_id__in=user_team_ids
         ).select_related('team_assigned').order_by('-created_at')
-    else:
-        documents = Documents.objects.filter(
-            project_id=project_id
-        ).select_related('team_assigned').order_by('-created_at')
 
     docs_data = [{
         'id': doc.id,
         'document_name': doc.document_name,
+        'content': doc.content,
         'team_name': doc.team_assigned.team_name,
         'team_id': doc.team_assigned_id,
         'created_at': doc.created_at.isoformat()
@@ -683,23 +692,20 @@ def get_document(request, project_id, doc_id):
         return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
 
     is_owner = project.owner_id == request.user.id
+    is_admin = Contributor.objects.filter(
+        project_id=project_id,
+        username=request.user.username,
+        role='ADMIN',
+    ).exists()
 
-    if not is_owner:
-        is_contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).exists()
-
-        if not is_contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
-
+    if not is_owner and not is_admin:
         is_team_member = TeamMember.objects.filter(
             team_id=document.team_assigned_id,
             user=request.user
         ).exists()
 
         if not is_team_member:
-            return JsonResponse({'success': False, 'error': 'Not a member of this document\'s team'}, status=403)
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
     return JsonResponse({
         'success': True,
