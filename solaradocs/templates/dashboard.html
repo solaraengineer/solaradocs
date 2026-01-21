@@ -1,1225 +1,1355 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Solara Docs</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #1a1915;
-            --bg-secondary: #21201c;
-            --bg-tertiary: #2a2924;
-            --bg-elevated: #32312b;
-            --border: #3d3b35;
-            --border-subtle: #2e2d28;
-            --text-primary: #e8e4dd;
-            --text-secondary: #a8a59e;
-            --text-tertiary: #6b6963;
-            --accent-orange: #d4a574;
-            --accent-blue: #6b9ece;
-            --accent-purple: #9d7cd8;
-            --accent-teal: #5fb3a1;
-            --accent-green: #7fb069;
-            --accent-red: #d46a6a;
-        }
-
-        html, body {
-            min-height: 100vh;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
-
-        .navbar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.875rem 2rem;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            text-decoration: none;
-            color: var(--text-primary);
-        }
-
-        .nav-logo {
-            width: 32px;
-            height: 32px;
-            background: var(--accent-orange);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.875rem;
-            color: var(--bg-primary);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .nav-brand span {
-            font-weight: 600;
-            font-size: 1rem;
-            letter-spacing: -0.01em;
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .nav-user {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            padding: 0.375rem 0.75rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-        }
-
-        .user-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            background: var(--accent-orange);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--bg-primary);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .user-name {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-size: 0.8125rem;
-            font-weight: 500;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-        }
-
-        .btn svg {
-            width: 15px;
-            height: 15px;
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-secondary);
-        }
-
-        .btn-ghost:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-elevated);
-            border-color: var(--text-tertiary);
-        }
-
-        .btn-primary {
-            background: var(--accent-orange);
-            color: var(--bg-primary);
-        }
-
-        .btn-primary:hover {
-            background: #e0b285;
-        }
-
-        .btn-danger {
-            background: rgba(212, 106, 106, 0.15);
-            color: var(--accent-red);
-            border: 1px solid rgba(212, 106, 106, 0.25);
-        }
-
-        .btn-danger:hover {
-            background: var(--accent-red);
-            color: var(--bg-primary);
-        }
-
-        .btn-success {
-            background: rgba(127, 176, 105, 0.15);
-            color: var(--accent-green);
-            border: 1px solid rgba(127, 176, 105, 0.25);
-        }
-
-        .btn-success:hover {
-            background: var(--accent-green);
-            color: var(--bg-primary);
-        }
-
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-        }
-
-        .btn-sm svg {
-            width: 12px;
-            height: 12px;
-        }
-
-        .main-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .page-title {
-            font-size: 1.75rem;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            color: var(--text-primary);
-        }
-
-        .page-subtitle {
-            color: var(--text-tertiary);
-            font-size: 0.9rem;
-            margin-top: 0.25rem;
-        }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 1.25rem;
-        }
-
-        .stat-label {
-            font-size: 0.6875rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-tertiary);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: var(--accent-orange);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .projects-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .project-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            overflow: hidden;
-            transition: border-color 0.15s ease;
-        }
-
-        .project-card:hover {
-            border-color: var(--border);
-        }
-
-        .project-main {
-            padding: 1.25rem 1.5rem;
-        }
-
-        .project-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .project-info {
-            flex: 1;
-        }
-
-        .project-name {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        .project-name-icon {
-            font-size: 1rem;
-        }
-
-        .project-owner {
-            font-size: 0.8125rem;
-            color: var(--text-tertiary);
-        }
-
-        .project-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .project-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8125rem;
-            color: var(--text-secondary);
-        }
-
-        .meta-item svg {
-            width: 15px;
-            height: 15px;
-            color: var(--text-tertiary);
-        }
-
-        .project-details {
-            display: none;
-            border-top: 1px solid var(--border-subtle);
-            background: var(--bg-tertiary);
-        }
-
-        .project-details.expanded {
-            display: block;
-        }
-
-        .details-content {
-            padding: 1.5rem;
-        }
-
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.25rem;
-        }
-
-        .detail-section {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 1.25rem;
-        }
-
-        .detail-section.full-width {
-            grid-column: span 2;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .section-title {
-            font-size: 0.6875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-tertiary);
-        }
-
-        .section-badge {
-            font-size: 0.6875rem;
-            padding: 0.25rem 0.5rem;
-            background: rgba(212, 165, 116, 0.15);
-            color: var(--accent-orange);
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .users-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .user-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            gap: 1rem;
-        }
-
-        .user-item-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex: 1;
-        }
-
-        .user-item-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 6px;
-            background: var(--bg-elevated);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .user-item-name {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .role-badge {
-            font-size: 0.625rem;
-            padding: 0.25rem 0.5rem;
-            background: var(--bg-elevated);
-            border-radius: 4px;
-            color: var(--text-tertiary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .user-item-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .role-select {
-            padding: 0.375rem 0.75rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 0.8125rem;
-            font-family: inherit;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .role-select:focus {
-            border-color: var(--accent-orange);
-        }
-
-        .role-select option {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .pending-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 1rem;
-            background: rgba(212, 165, 116, 0.08);
-            border: 1px solid rgba(212, 165, 116, 0.2);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-        }
-
-        .pending-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-        }
-
-        .pending-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 6px;
-            background: var(--accent-orange);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--bg-primary);
-        }
-
-        .pending-icon svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .pending-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .backup-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-        }
-
-        .backup-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.8125rem;
-            color: var(--text-secondary);
-        }
-
-        .backup-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 6px;
-            background: var(--bg-elevated);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-tertiary);
-        }
-
-        .backup-icon svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .add-form {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .add-input {
-            flex: 1;
-            padding: 0.625rem 1rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            font-family: inherit;
-            outline: none;
-        }
-
-        .add-input:focus {
-            border-color: var(--accent-orange);
-        }
-
-        .add-input::placeholder {
-            color: var(--text-tertiary);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            background: var(--bg-secondary);
-            border: 1px dashed var(--border);
-            border-radius: 10px;
-        }
-
-        .empty-icon {
-            width: 56px;
-            height: 56px;
-            background: var(--bg-tertiary);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 1.5rem;
-        }
-
-        .empty-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        .empty-text {
-            color: var(--text-tertiary);
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-
-        .detail-value {
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .detail-value.muted {
-            color: var(--text-tertiary);
-        }
-
-        .teams-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .team-card {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .team-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            transition: background 0.15s ease;
-        }
-
-        .team-header:hover {
-            background: var(--bg-elevated);
-        }
-
-        .team-header-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex: 1;
-        }
-
-        .team-expand-icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-tertiary);
-            transition: transform 0.2s ease;
-        }
-
-        .team-expand-icon svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .team-card.expanded .team-expand-icon {
-            transform: rotate(90deg);
-        }
-
-        .team-name {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .team-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .team-member-count {
-            font-size: 0.75rem;
-            color: var(--text-tertiary);
-        }
-
-        .team-header-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .team-body {
-            display: none;
-            border-top: 1px solid var(--border-subtle);
-            background: var(--bg-secondary);
-        }
-
-        .team-card.expanded .team-body {
-            display: block;
-        }
-
-        .team-body-content {
-            padding: 1rem;
-        }
-
-        .team-members-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .team-member-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.5rem 0.75rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-        }
-
-        .team-member-info {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .team-member-avatar {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            background: var(--bg-elevated);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.625rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .team-member-name {
-            font-size: 0.8125rem;
-            color: var(--text-primary);
-        }
-
-        .team-member-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .team-role-select {
-            padding: 0.25rem 0.5rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            color: var(--text-primary);
-            font-size: 0.75rem;
-            font-family: inherit;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .team-role-select:focus {
-            border-color: var(--accent-orange);
-        }
-
-        .team-add-member {
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid var(--border-subtle);
-        }
-
-        .team-add-form {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .team-add-input {
-            flex: 1;
-            padding: 0.5rem 0.75rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 0.8125rem;
-            font-family: inherit;
-            outline: none;
-        }
-
-        .team-add-input:focus {
-            border-color: var(--accent-orange);
-        }
-
-        .team-add-input::placeholder {
-            color: var(--text-tertiary);
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s ease;
-        }
-
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            width: 100%;
-            max-width: 450px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: translateY(-20px);
-            transition: transform 0.2s ease;
-        }
-
-        .modal-overlay.show .modal {
-            transform: translateY(0);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .modal-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .modal-close {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            background: transparent;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-tertiary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .modal-close:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-
-        .modal-close svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
-        .modal-footer {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: flex-end;
-            padding: 1.25rem 1.5rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-
-        .form-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            font-family: inherit;
-            outline: none;
-            transition: border-color 0.2s ease;
-        }
-
-        .form-input:focus {
-            border-color: var(--accent-orange);
-        }
-
-        .form-input::placeholder {
-            color: var(--text-tertiary);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            font-family: inherit;
-            outline: none;
-            cursor: pointer;
-            transition: border-color 0.2s ease;
-        }
-
-        .form-select:focus {
-            border-color: var(--accent-orange);
-        }
-
-        .form-select option {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .form-hint {
-            font-size: 0.75rem;
-            color: var(--text-tertiary);
-            margin-top: 0.5rem;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            padding: 0.75rem 1.25rem;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.875rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-            color: var(--text-primary);
-        }
-
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .toast.success {
-            border-color: var(--accent-green);
-        }
-
-        .toast.error {
-            border-color: var(--accent-red);
-        }
-
-        @media (max-width: 900px) {
-            .stats-row {
-                grid-template-columns: 1fr;
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard - Solara Docs</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
             }
-            .details-grid {
-                grid-template-columns: 1fr;
-            }
-            .detail-section.full-width {
-                grid-column: span 1;
-            }
-        }
 
-        @media (max-width: 600px) {
+            :root {
+                --bg-primary: #1a1915;
+                --bg-secondary: #21201c;
+                --bg-tertiary: #2a2924;
+                --bg-elevated: #32312b;
+                --border: #3d3b35;
+                --border-subtle: #2e2d28;
+                --text-primary: #e8e4dd;
+                --text-secondary: #a8a59e;
+                --text-tertiary: #6b6963;
+                --accent-orange: #d4a574;
+                --accent-blue: #6b9ece;
+                --accent-purple: #9d7cd8;
+                --accent-teal: #5fb3a1;
+                --accent-green: #7fb069;
+                --accent-red: #d46a6a;
+            }
+
+            html, body {
+                min-height: 100vh;
+            }
+
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: var(--bg-primary);
+                color: var(--text-primary);
+                line-height: 1.6;
+            }
+
             .navbar {
-                padding: 0.875rem 1rem;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.875rem 2rem;
+                background: var(--bg-secondary);
+                border-bottom: 1px solid var(--border-subtle);
             }
-            .main-container {
-                padding: 1.5rem 1rem;
+
+            .nav-brand {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                text-decoration: none;
+                color: var(--text-primary);
             }
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            .page-title {
-                font-size: 1.5rem;
-            }
-            .project-header {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            .project-actions {
-                width: 100%;
-            }
-            .project-actions .btn {
-                flex: 1;
+
+            .nav-logo {
+                width: 32px;
+                height: 32px;
+                background: var(--accent-orange);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
                 justify-content: center;
+                font-weight: 700;
+                font-size: 0.875rem;
+                color: var(--bg-primary);
+                font-family: 'JetBrains Mono', monospace;
             }
-            .project-meta {
-                flex-direction: column;
-                gap: 0.5rem;
+
+            .nav-brand span {
+                font-weight: 600;
+                font-size: 1rem;
+                letter-spacing: -0.01em;
             }
-            .user-item {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .user-item-controls {
-                width: 100%;
-                justify-content: flex-end;
-            }
-            .pending-item {
-                flex-direction: column;
-                align-items: flex-start;
+
+            .nav-right {
+                display: flex;
+                align-items: center;
                 gap: 0.75rem;
             }
+
+            .nav-user {
+                display: flex;
+                align-items: center;
+                gap: 0.625rem;
+                padding: 0.375rem 0.75rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+            }
+
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+                border-radius: 6px;
+                background: var(--accent-orange);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: var(--bg-primary);
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .user-name {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+
+            .btn {
+                padding: 0.5rem 1rem;
+                border-radius: 6px;
+                font-size: 0.8125rem;
+                font-weight: 500;
+                font-family: inherit;
+                cursor: pointer;
+                transition: all 0.15s ease;
+                border: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                text-decoration: none;
+            }
+
+            .btn svg {
+                width: 15px;
+                height: 15px;
+            }
+
+            .btn-ghost {
+                background: transparent;
+                color: var(--text-secondary);
+            }
+
+            .btn-ghost:hover {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+            }
+
+            .btn-secondary {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+                border: 1px solid var(--border);
+            }
+
+            .btn-secondary:hover {
+                background: var(--bg-elevated);
+                border-color: var(--text-tertiary);
+            }
+
+            .btn-primary {
+                background: var(--accent-orange);
+                color: var(--bg-primary);
+            }
+
+            .btn-primary:hover {
+                background: #e0b285;
+            }
+
+            .btn-danger {
+                background: rgba(212, 106, 106, 0.15);
+                color: var(--accent-red);
+                border: 1px solid rgba(212, 106, 106, 0.25);
+            }
+
+            .btn-danger:hover {
+                background: var(--accent-red);
+                color: var(--bg-primary);
+            }
+
+            .btn-success {
+                background: rgba(127, 176, 105, 0.15);
+                color: var(--accent-green);
+                border: 1px solid rgba(127, 176, 105, 0.25);
+            }
+
+            .btn-success:hover {
+                background: var(--accent-green);
+                color: var(--bg-primary);
+            }
+
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+
+            .btn-sm svg {
+                width: 12px;
+                height: 12px;
+            }
+
+            .main-container {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 2rem;
+            }
+
+            .page-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 2rem;
+            }
+
+            .page-title {
+                font-size: 1.75rem;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+                color: var(--text-primary);
+            }
+
+            .page-subtitle {
+                color: var(--text-tertiary);
+                font-size: 0.9rem;
+                margin-top: 0.25rem;
+            }
+
+            .stats-row {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .stat-card {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 10px;
+                padding: 1.25rem;
+            }
+
+            .stat-label {
+                font-size: 0.6875rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: var(--text-tertiary);
+                margin-bottom: 0.5rem;
+            }
+
+            .stat-value {
+                font-size: 1.75rem;
+                font-weight: 600;
+                color: var(--accent-orange);
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .projects-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .project-card {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 10px;
+                overflow: hidden;
+                transition: border-color 0.15s ease;
+            }
+
+            .project-card:hover {
+                border-color: var(--border);
+            }
+
+            .project-main {
+                padding: 1.25rem 1.5rem;
+            }
+
+            .project-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 1rem;
+            }
+
+            .project-info {
+                flex: 1;
+            }
+
+            .project-name {
+                font-size: 1.125rem;
+                font-weight: 600;
+                margin-bottom: 0.25rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-primary);
+            }
+
+            .project-name-icon {
+                font-size: 1rem;
+            }
+
+            .project-owner {
+                font-size: 0.8125rem;
+                color: var(--text-tertiary);
+            }
+
+            .project-actions {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .project-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1.5rem;
+            }
+
+            .meta-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.8125rem;
+                color: var(--text-secondary);
+            }
+
+            .meta-item svg {
+                width: 15px;
+                height: 15px;
+                color: var(--text-tertiary);
+            }
+
+            .project-details {
+                display: none;
+                border-top: 1px solid var(--border-subtle);
+                background: var(--bg-tertiary);
+            }
+
+            .project-details.expanded {
+                display: block;
+            }
+
+            .details-content {
+                padding: 1.5rem;
+            }
+
+            .details-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.25rem;
+            }
+
+            .detail-section {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 10px;
+                padding: 1.25rem;
+            }
+
+            .detail-section.full-width {
+                grid-column: span 2;
+            }
+
+            .section-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+            }
+
+            .section-title {
+                font-size: 0.6875rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: var(--text-tertiary);
+            }
+
+            .section-badge {
+                font-size: 0.6875rem;
+                padding: 0.25rem 0.5rem;
+                background: rgba(212, 165, 116, 0.15);
+                color: var(--accent-orange);
+                border-radius: 4px;
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .users-list {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .user-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+                gap: 1rem;
+            }
+
+            .user-item-info {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                flex: 1;
+            }
+
+            .user-item-avatar {
+                width: 30px;
+                height: 30px;
+                border-radius: 6px;
+                background: var(--bg-elevated);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: var(--text-secondary);
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .user-item-name {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+
+            .role-badge {
+                font-size: 0.625rem;
+                padding: 0.25rem 0.5rem;
+                background: var(--bg-elevated);
+                border-radius: 4px;
+                color: var(--text-tertiary);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .user-item-controls {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .role-select {
+                padding: 0.375rem 0.75rem;
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-primary);
+                font-size: 0.8125rem;
+                font-family: inherit;
+                cursor: pointer;
+                outline: none;
+            }
+
+            .role-select:focus {
+                border-color: var(--accent-orange);
+            }
+
+            .role-select option {
+                background: var(--bg-secondary);
+                color: var(--text-primary);
+            }
+
+            .pending-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                background: rgba(212, 165, 116, 0.08);
+                border: 1px solid rgba(212, 165, 116, 0.2);
+                border-radius: 8px;
+                margin-bottom: 0.5rem;
+            }
+
+            .pending-info {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                font-size: 0.875rem;
+                color: var(--text-primary);
+            }
+
+            .pending-icon {
+                width: 30px;
+                height: 30px;
+                border-radius: 6px;
+                background: var(--accent-orange);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--bg-primary);
+            }
+
+            .pending-icon svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .pending-actions {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .backup-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+                margin-bottom: 0.5rem;
+            }
+
+            .backup-info {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                font-size: 0.8125rem;
+                color: var(--text-secondary);
+            }
+
+            .backup-icon {
+                width: 30px;
+                height: 30px;
+                border-radius: 6px;
+                background: var(--bg-elevated);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-tertiary);
+            }
+
+            .backup-icon svg {
+                width: 14px;
+                height: 14px;
+            }
+
             .add-form {
+                display: flex;
+                gap: 0.5rem;
+                margin-top: 1rem;
+            }
+
+            .add-input {
+                flex: 1;
+                padding: 0.625rem 1rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-primary);
+                font-size: 0.875rem;
+                font-family: inherit;
+                outline: none;
+            }
+
+            .add-input:focus {
+                border-color: var(--accent-orange);
+            }
+
+            .add-input::placeholder {
+                color: var(--text-tertiary);
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 4rem 2rem;
+                background: var(--bg-secondary);
+                border: 1px dashed var(--border);
+                border-radius: 10px;
+            }
+
+            .empty-icon {
+                width: 56px;
+                height: 56px;
+                background: var(--bg-tertiary);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 1.5rem;
+                font-size: 1.5rem;
+            }
+
+            .empty-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+                color: var(--text-primary);
+            }
+
+            .empty-text {
+                color: var(--text-tertiary);
+                margin-bottom: 1.5rem;
+                font-size: 0.9rem;
+            }
+
+            .detail-value {
+                font-size: 0.875rem;
+                color: var(--text-primary);
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .detail-value.muted {
+                color: var(--text-tertiary);
+            }
+
+            .teams-list {
+                display: flex;
                 flex-direction: column;
+                gap: 0.5rem;
             }
-            .modal {
-                margin: 1rem;
+
+            .team-card {
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+                overflow: hidden;
             }
+
             .team-header {
-                flex-direction: column;
-                align-items: flex-start;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                cursor: pointer;
+                transition: background 0.15s ease;
+            }
+
+            .team-header:hover {
+                background: var(--bg-elevated);
+            }
+
+            .team-header-left {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                flex: 1;
+            }
+
+            .team-expand-icon {
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-tertiary);
+                transition: transform 0.2s ease;
+            }
+
+            .team-expand-icon svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .team-card.expanded .team-expand-icon {
+                transform: rotate(90deg);
+            }
+
+            .team-name {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+
+            .team-meta {
+                display: flex;
+                align-items: center;
                 gap: 0.5rem;
             }
+
+            .team-member-count {
+                font-size: 0.75rem;
+                color: var(--text-tertiary);
+            }
+
             .team-header-actions {
-                width: 100%;
-                justify-content: flex-end;
-            }
-            .team-member-item {
-                flex-direction: column;
-                align-items: flex-start;
+                display: flex;
+                align-items: center;
                 gap: 0.5rem;
             }
-            .team-member-controls {
-                width: 100%;
-                justify-content: flex-end;
+
+            .team-body {
+                display: none;
+                border-top: 1px solid var(--border-subtle);
+                background: var(--bg-secondary);
             }
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <a href="/dashboard" class="nav-brand">
-            <div class="nav-logo">S</div>
-            <span>Solara Docs</span>
-        </a>
-        <div class="nav-right">
-            <div class="nav-user">
-                <div class="user-avatar">{{ request.user.username|slice:":1"|upper }}</div>
-                <span class="user-name">{{ request.user.username }}</span>
-            </div>
-            <button class="btn btn-ghost" onclick="handleLogout()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-                Logout
-            </button>
-        </div>
-    </nav>
 
-    <main class="main-container">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">My Projects</h1>
-                <p class="page-subtitle">Manage your documentation workspaces</p>
-            </div>
-            <a href="/setup" class="btn btn-primary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                New Project
+            .team-card.expanded .team-body {
+                display: block;
+            }
+
+            .team-body-content {
+                padding: 1rem;
+            }
+
+            .team-members-list {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .team-member-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.5rem 0.75rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 6px;
+            }
+
+            .team-member-info {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .team-member-avatar {
+                width: 24px;
+                height: 24px;
+                border-radius: 4px;
+                background: var(--bg-elevated);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.625rem;
+                font-weight: 600;
+                color: var(--text-secondary);
+            }
+
+            .team-member-name {
+                font-size: 0.8125rem;
+                color: var(--text-primary);
+            }
+
+            .team-member-controls {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .team-role-select {
+                padding: 0.25rem 0.5rem;
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                color: var(--text-primary);
+                font-size: 0.75rem;
+                font-family: inherit;
+                cursor: pointer;
+                outline: none;
+            }
+
+            .team-role-select:focus {
+                border-color: var(--accent-orange);
+            }
+
+            .team-add-member {
+                margin-top: 0.75rem;
+                padding-top: 0.75rem;
+                border-top: 1px solid var(--border-subtle);
+            }
+
+            .team-add-form {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .team-add-input {
+                flex: 1;
+                padding: 0.5rem 0.75rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-primary);
+                font-size: 0.8125rem;
+                font-family: inherit;
+                outline: none;
+            }
+
+            .team-add-input:focus {
+                border-color: var(--accent-orange);
+            }
+
+            .team-add-input::placeholder {
+                color: var(--text-tertiary);
+            }
+
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.2s ease;
+            }
+
+            .modal-overlay.show {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .modal {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                width: 100%;
+                max-width: 450px;
+                max-height: 90vh;
+                overflow-y: auto;
+                transform: translateY(-20px);
+                transition: transform 0.2s ease;
+            }
+
+            .modal-overlay.show .modal {
+                transform: translateY(0);
+            }
+
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1.25rem 1.5rem;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .modal-title {
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+
+            .modal-close {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                background: transparent;
+                border: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-tertiary);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .modal-close:hover {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+            }
+
+            .modal-close svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .modal-body {
+                padding: 1.5rem;
+            }
+
+            .modal-footer {
+                display: flex;
+                gap: 0.75rem;
+                justify-content: flex-end;
+                padding: 1.25rem 1.5rem;
+                border-top: 1px solid var(--border);
+            }
+
+            .form-group {
+                margin-bottom: 1.25rem;
+            }
+
+            .form-group:last-child {
+                margin-bottom: 0;
+            }
+
+            .form-label {
+                display: block;
+                font-size: 0.85rem;
+                font-weight: 500;
+                color: var(--text-secondary);
+                margin-bottom: 0.5rem;
+            }
+
+            .form-input {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text-primary);
+                font-size: 0.9rem;
+                font-family: inherit;
+                outline: none;
+                transition: border-color 0.2s ease;
+            }
+
+            .form-input:focus {
+                border-color: var(--accent-orange);
+            }
+
+            .form-input::placeholder {
+                color: var(--text-tertiary);
+            }
+
+            .form-select {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text-primary);
+                font-size: 0.9rem;
+                font-family: inherit;
+                outline: none;
+                cursor: pointer;
+                transition: border-color 0.2s ease;
+            }
+
+            .form-select:focus {
+                border-color: var(--accent-orange);
+            }
+
+            .form-select option {
+                background: var(--bg-secondary);
+                color: var(--text-primary);
+            }
+
+            .form-hint {
+                font-size: 0.75rem;
+                color: var(--text-tertiary);
+                margin-top: 0.5rem;
+            }
+
+            .toast {
+                position: fixed;
+                bottom: 2rem;
+                left: 50%;
+                transform: translateX(-50%) translateY(100px);
+                padding: 0.75rem 1.25rem;
+                background: var(--bg-elevated);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                font-size: 0.875rem;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+                color: var(--text-primary);
+            }
+
+            .toast.show {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            .toast.success {
+                border-color: var(--accent-green);
+            }
+
+            .toast.error {
+                border-color: var(--accent-red);
+            }
+
+            @media (max-width: 900px) {
+                .stats-row {
+                    grid-template-columns: 1fr;
+                }
+                .details-grid {
+                    grid-template-columns: 1fr;
+                }
+                .detail-section.full-width {
+                    grid-column: span 1;
+                }
+            }
+
+            @media (max-width: 600px) {
+                .navbar {
+                    padding: 0.875rem 1rem;
+                }
+                .main-container {
+                    padding: 1.5rem 1rem;
+                }
+                .page-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 1rem;
+                }
+                .page-title {
+                    font-size: 1.5rem;
+                }
+                .project-header {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                .project-actions {
+                    width: 100%;
+                }
+                .project-actions .btn {
+                    flex: 1;
+                    justify-content: center;
+                }
+                .project-meta {
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }
+                .user-item {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+                .user-item-controls {
+                    width: 100%;
+                    justify-content: flex-end;
+                }
+                .pending-item {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.75rem;
+                }
+                .add-form {
+                    flex-direction: column;
+                }
+                .modal {
+                    margin: 1rem;
+                }
+                .team-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.5rem;
+                }
+                .team-header-actions {
+                    width: 100%;
+                    justify-content: flex-end;
+                }
+                .team-member-item {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.5rem;
+                }
+                .team-member-controls {
+                    width: 100%;
+                    justify-content: flex-end;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <nav class="navbar">
+            <a href="/dashboard" class="nav-brand">
+                <div class="nav-logo">S</div>
+                <span>Solara Docs</span>
             </a>
-        </div>
-
-        {% if projects %}
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Total Projects</div>
-                <div class="stat-value">{{ projects|length }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Collaborators</div>
-                <div class="stat-value" id="totalCollaborators">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Pending Changes</div>
-                <div class="stat-value" id="totalPending">0</div>
-            </div>
-        </div>
-
-        <div class="projects-grid">
-            {% for project in projects %}
-            <div class="project-card">
-                <div class="project-main">
-                    <div class="project-header">
-                        <div class="project-info">
-                            <h2 class="project-name">
-                                <span class="project-name-icon">📝</span>
-                                {{ project.project_name }}
-                            </h2>
-                            <p class="project-owner">Owned by {{ project.owner.username }}</p>
-                        </div>
-                        <div class="project-actions">
-                            <button class="btn btn-secondary" onclick="toggleDetails('project-{{ project.id }}')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 12 15 18 9"/>
-                                </svg>
-                                Details
-                            </button>
-                            <a href="/project/{{ project.id }}" class="btn btn-primary">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                    <polyline points="15 3 21 3 21 9"/>
-                                    <line x1="10" y1="14" x2="21" y2="3"/>
-                                </svg>
-                                Open
-                            </a>
-                            <button class="btn btn-danger" onclick="deleteProject({{ project.id }})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="project-meta">
-                        <div class="meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            {{ project.created_at|date:"M d, Y" }}
-                        </div>
-                        <div class="meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                            {{ project.contributors.count }} collaborator{{ project.contributors.count|pluralize }}
-                        </div>
-                        <div class="meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                <polyline points="17 21 17 13 7 13 7 21"/>
-                                <polyline points="7 3 7 8 15 8"/>
-                            </svg>
-                            {% if project.backups_enabled %}Backups enabled{% else %}Backups disabled{% endif %}
-                        </div>
-                    </div>
+            <div class="nav-right">
+                <div class="nav-user">
+                    <div class="user-avatar">{{ request.user.username|slice:":1"|upper }}</div>
+                    <span class="user-name">{{ request.user.username }}</span>
                 </div>
+                <button class="btn btn-ghost" onclick="handleLogout()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </nav>
 
-                <div class="project-details" id="project-{{ project.id }}">
-                    <div class="details-content">
-                        <div class="details-grid">
-                            <!-- Teams Section -->
-                            <div class="detail-section">
-                                <div class="section-header">
-                                    <span class="section-title">Teams</span>
-                                    <button class="btn btn-secondary btn-sm" onclick="openCreateTeamModal({{ project.id }})">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <line x1="12" y1="5" x2="12" y2="19"/>
-                                            <line x1="5" y1="12" x2="19" y2="12"/>
-                                        </svg>
-                                        New Team
-                                    </button>
-                                </div>
-                                {% if project.project_teams.all %}
-                                <div class="teams-list">
-                                    {% for team in project.project_teams.all %}
-                                    <div class="team-card" id="team-card-{{ team.id }}">
-                                        <div class="team-header" onclick="toggleTeam({{ team.id }})">
-                                            <div class="team-header-left">
-                                                <div class="team-expand-icon">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                        <polyline points="9 18 15 12 9 6"/>
-                                                    </svg>
+        <main class="main-container">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">My Projects</h1>
+                    <p class="page-subtitle">Manage your documentation workspaces</p>
+                </div>
+                <a href="/setup" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Project
+                </a>
+            </div>
+
+            {% if projects %}
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-label">Total Projects</div>
+                    <div class="stat-value">{{ projects|length }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Collaborators</div>
+                    <div class="stat-value" id="totalCollaborators">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Pending Changes</div>
+                    <div class="stat-value" id="totalPending">0</div>
+                </div>
+            </div>
+
+            <div class="projects-grid">
+                {% for project in projects %}
+                <div class="project-card" id="project-card-{{ project.id }}">
+                    <div class="project-main">
+                        <div class="project-header">
+                            <div class="project-info">
+                                <h2 class="project-name">
+                                    <span class="project-name-icon">📝</span>
+                                    {{ project.project_name }}
+                                </h2>
+                                <p class="project-owner">Owned by {{ project.owner.username }}</p>
+                            </div>
+                            <div class="project-actions">
+                                <button class="btn btn-secondary" onclick="toggleDetails('project-{{ project.id }}')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                    Details
+                                </button>
+                                <a href="/project/{{ project.id }}" class="btn btn-primary">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="10" y1="14" x2="21" y2="3"/>
+                                    </svg>
+                                    Open
+                                </a>
+                                <button class="btn btn-danger" onclick="deleteProject({{ project.id }})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="project-meta">
+                            <div class="meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                {{ project.created_at|date:"M d, Y" }}
+                            </div>
+                            <div class="meta-item" id="collab-count-{{ project.id }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <span class="collab-count-text">{{ project.contributors.count }}</span> collaborator{{ project.contributors.count|pluralize }}
+                            </div>
+                            <div class="meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                {% if project.backups_enabled %}Backups enabled{% else %}Backups disabled{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="project-details" id="project-{{ project.id }}">
+                        <div class="details-content">
+                            <div class="details-grid">
+                                <div class="detail-section">
+                                    <div class="section-header">
+                                        <span class="section-title">Teams</span>
+                                        <button class="btn btn-secondary btn-sm" onclick="openCreateTeamModal({{ project.id }})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                            </svg>
+                                            New Team
+                                        </button>
+                                    </div>
+                                    <div class="teams-list" id="teams-list-{{ project.id }}">
+                                        {% if project.project_teams.all %}
+                                        {% for team in project.project_teams.all %}
+                                        <div class="team-card" id="team-card-{{ team.id }}">
+                                            <div class="team-header" onclick="toggleTeam({{ team.id }})">
+                                                <div class="team-header-left">
+                                                    <div class="team-expand-icon">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <polyline points="9 18 15 12 9 6"/>
+                                                        </svg>
+                                                    </div>
+                                                    <span class="team-name">{{ team.team_name }}</span>
+                                                    <div class="team-meta">
+                                                        <span class="team-member-count">{{ team.team_members.count }} member{{ team.team_members.count|pluralize }}</span>
+                                                    </div>
                                                 </div>
-                                                <span class="team-name">{{ team.team_name }}</span>
-                                                <div class="team-meta">
-                                                    <span class="team-member-count">{{ team.team_members.count }} member{{ team.team_members.count|pluralize }}</span>
+                                                <div class="team-header-actions" onclick="event.stopPropagation()">
+                                                    <button class="btn btn-secondary btn-sm" onclick="openEditTeamModal({{ project.id }}, {{ team.id }}, '{{ team.team_name }}')">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm" onclick="deleteTeam({{ project.id }}, {{ team.id }})">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                                        </svg>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div class="team-header-actions" onclick="event.stopPropagation()">
-                                                <button class="btn btn-secondary btn-sm" onclick="openEditTeamModal({{ project.id }}, {{ team.id }}, '{{ team.team_name }}')">
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                                    </svg>
-                                                </button>
-                                                <button class="btn btn-danger btn-sm" onclick="deleteTeam({{ project.id }}, {{ team.id }})">
+                                            <div class="team-body">
+                                                <div class="team-body-content">
+                                                    <div class="team-members-list" id="team-members-{{ team.id }}">
+                                                        {% for membership in team.team_members.all %}
+                                                        <div class="team-member-item" data-username="{{ membership.user.username }}">
+                                                            <div class="team-member-info">
+                                                                <div class="team-member-avatar">{{ membership.user.username|slice:":1"|upper }}</div>
+                                                                <span class="team-member-name">{{ membership.user.username }}</span>
+                                                                <span class="role-badge">{{ membership.role }}</span>
+                                                            </div>
+                                                            <div class="team-member-controls">
+                                                                <select class="team-role-select" onchange="updateTeamMemberRole({{ project.id }}, {{ team.id }}, '{{ membership.user.username }}', this.value)">
+                                                                    <option value="EDITOR" {% if membership.role == 'EDITOR' %}selected{% endif %}>Editor</option>
+                                                                    <option value="ADMIN" {% if membership.role == 'ADMIN' %}selected{% endif %}>Admin</option>
+                                                                </select>
+                                                                <button class="btn btn-danger btn-sm" onclick="removeTeamMember({{ project.id }}, {{ team.id }}, '{{ membership.user.username }}')">
+                                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        {% empty %}
+                                                        <p class="detail-value muted no-members-msg">No members yet</p>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="team-add-member">
+                                                        <div class="team-add-form">
+                                                            <input type="text" class="team-add-input" id="add-member-{{ team.id }}" placeholder="Username">
+                                                            <select class="team-role-select" id="add-member-role-{{ team.id }}">
+                                                                <option value="EDITOR">Editor</option>
+                                                                <option value="ADMIN">Admin</option>
+                                                            </select>
+                                                            <button class="btn btn-primary btn-sm" onclick="addTeamMember({{ project.id }}, {{ team.id }})">Add</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                        {% else %}
+                                        <p class="detail-value muted no-teams-msg">No teams yet</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <div class="section-header">
+                                        <span class="section-title">Pending Changes</span>
+                                        <span class="section-badge" id="pending-badge-{{ project.id }}">{{ project.pendings.count }}</span>
+                                    </div>
+                                    <div id="pending-list-{{ project.id }}">
+                                        {% if project.pendings.all %}
+                                            {% for pending in project.pendings.all %}
+                                            <div class="pending-item" id="pending-{{ pending.id }}">
+                                                <div class="pending-info">
+                                                    <div class="pending-icon">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <polyline points="12 6 12 12 16 14"/>
+                                                        </svg>
+                                                    </div>
+                                                    <span>{{ pending.user.username }} submitted changes</span>
+                                                </div>
+                                                <div class="pending-actions">
+                                                    <button class="btn btn-success btn-sm" onclick="acceptPending({{ project.id }}, {{ pending.id }})">Accept</button>
+                                                    <button class="btn btn-danger btn-sm" onclick="declinePending({{ project.id }}, {{ pending.id }})">Decline</button>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <p class="detail-value muted">No pending changes</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <div class="section-header">
+                                        <span class="section-title">Backup History</span>
+                                    </div>
+                                    <div id="backup-list-{{ project.id }}">
+                                        {% if project.backups.all %}
+                                            {% for backup in project.backups.all %}
+                                            <div class="backup-item" id="backup-{{ backup.id }}">
+                                                <div class="backup-info">
+                                                    <div class="backup-icon">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <polyline points="23 4 23 10 17 10"/>
+                                                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                                        </svg>
+                                                    </div>
+                                                    <span>{{ backup.created_at|date:"M d, Y h:i A" }}</span>
+                                                </div>
+                                                <button class="btn btn-secondary btn-sm" onclick="revertBackup({{ project.id }}, {{ backup.id }})">Revert</button>
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <p class="detail-value muted">No backups yet</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="detail-section full-width">
+                                    <div class="section-header">
+                                        <span class="section-title">Collaborators</span>
+                                    </div>
+                                    <div class="users-list" id="users-list-{{ project.id }}">
+                                        {% if project.contributors.all %}
+                                        {% for contributor in project.contributors.all %}
+                                        <div class="user-item" id="user-{{ project.id }}-{{ contributor.id }}">
+                                            <div class="user-item-info">
+                                                <div class="user-item-avatar">{{ contributor.username|slice:":1"|upper }}</div>
+                                                <span class="user-item-name">{{ contributor.username }}</span>
+                                                <span class="role-badge" id="role-badge-{{ project.id }}-{{ contributor.id }}">{{ contributor.role }}</span>
+                                            </div>
+                                            <div class="user-item-controls">
+                                                <select class="role-select" id="role-{{ project.id }}-{{ contributor.id }}">
+                                                    <option value="VIEWER" {% if contributor.role == 'VIEWER' %}selected{% endif %}>Viewer</option>
+                                                    <option value="EDITOR" {% if contributor.role == 'EDITOR' %}selected{% endif %}>Editor</option>
+                                                    <option value="ADMIN" {% if contributor.role == 'ADMIN' %}selected{% endif %}>Admin</option>
+                                                </select>
+                                                <button class="btn btn-secondary btn-sm" onclick="saveRole({{ project.id }}, {{ contributor.id }})">Save</button>
+                                                <button class="btn btn-danger btn-sm" onclick="deleteUser({{ project.id }}, {{ contributor.id }})">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                         <line x1="18" y1="6" x2="6" y2="18"/>
                                                         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -1227,663 +1357,694 @@
                                                 </button>
                                             </div>
                                         </div>
-                                        <div class="team-body">
-                                            <div class="team-body-content">
-                                                <div class="team-members-list" id="team-members-{{ team.id }}">
-                                                    {% for membership in team.team_members.all %}
-                                                    <div class="team-member-item" data-username="{{ membership.user.username }}">
-                                                        <div class="team-member-info">
-                                                            <div class="team-member-avatar">{{ membership.user.username|slice:":1"|upper }}</div>
-                                                            <span class="team-member-name">{{ membership.user.username }}</span>
-                                                            <span class="role-badge">{{ membership.role }}</span>
-                                                        </div>
-                                                        <div class="team-member-controls">
-                                                            <select class="team-role-select" onchange="updateTeamMemberRole({{ project.id }}, {{ team.id }}, '{{ membership.user.username }}', this.value)">
-                                                                <option value="EDITOR" {% if membership.role == 'EDITOR' %}selected{% endif %}>Editor</option>
-                                                                <option value="ADMIN" {% if membership.role == 'ADMIN' %}selected{% endif %}>Admin</option>
-                                                            </select>
-                                                            <button class="btn btn-danger btn-sm" onclick="removeTeamMember({{ project.id }}, {{ team.id }}, '{{ membership.user.username }}')">
-                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                                    <line x1="18" y1="6" x2="6" y2="18"/>
-                                                                    <line x1="6" y1="6" x2="18" y2="18"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    {% empty %}
-                                                    <p class="detail-value muted">No members yet</p>
-                                                    {% endfor %}
-                                                </div>
-                                                <div class="team-add-member">
-                                                    <div class="team-add-form">
-                                                        <input type="text" class="team-add-input" id="add-member-{{ team.id }}" placeholder="Username">
-                                                        <select class="team-role-select" id="add-member-role-{{ team.id }}">
-                                                            <option value="EDITOR">Editor</option>
-                                                            <option value="ADMIN">Admin</option>
-                                                        </select>
-                                                        <button class="btn btn-primary btn-sm" onclick="addTeamMember({{ project.id }}, {{ team.id }})">Add</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        {% endfor %}
+                                        {% else %}
+                                            <p class="detail-value muted no-collabs-msg">No collaborators yet</p>
+                                        {% endif %}
                                     </div>
-                                    {% endfor %}
-                                </div>
-                                {% else %}
-                                <p class="detail-value muted">No teams yet</p>
-                                {% endif %}
-                            </div>
 
-                            <!-- Pending Changes Section -->
-                            <div class="detail-section">
-                                <div class="section-header">
-                                    <span class="section-title">Pending Changes</span>
-                                    {% if project.pendings.all %}
-                                    <span class="section-badge">{{ project.pendings.count }}</span>
-                                    {% endif %}
-                                </div>
-                                {% if project.pendings.all %}
-                                    {% for pending in project.pendings.all %}
-                                    <div class="pending-item">
-                                        <div class="pending-info">
-                                            <div class="pending-icon">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <circle cx="12" cy="12" r="10"/>
-                                                    <polyline points="12 6 12 12 16 14"/>
-                                                </svg>
-                                            </div>
-                                            <span>{{ pending.user.username }} submitted changes</span>
-                                        </div>
-                                        <div class="pending-actions">
-                                            <button class="btn btn-success btn-sm" onclick="acceptPending({{ pending.id }})">Accept</button>
-                                            <button class="btn btn-danger btn-sm" onclick="declinePending({{ pending.id }})">Decline</button>
-                                        </div>
+                                    <div class="add-form">
+                                        <input type="text" class="add-input" id="add-people-{{ project.id }}" placeholder="Enter usernames (separated by spaces)">
+                                        <select class="role-select" id="add-people-role-{{ project.id }}">
+                                            <option value="VIEWER">Viewer</option>
+                                            <option value="EDITOR">Editor</option>
+                                            <option value="ADMIN">Admin</option>
+                                        </select>
+                                        <button class="btn btn-primary" onclick="addPeople({{ project.id }})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                                <circle cx="8.5" cy="7" r="4"/>
+                                                <line x1="20" y1="8" x2="20" y2="14"/>
+                                                <line x1="23" y1="11" x2="17" y2="11"/>
+                                            </svg>
+                                            Add
+                                        </button>
                                     </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <p class="detail-value muted">No pending changes</p>
-                                {% endif %}
-                            </div>
-
-                            <!-- Backup History Section -->
-                            <div class="detail-section">
-                                <div class="section-header">
-                                    <span class="section-title">Backup History</span>
-                                </div>
-                                {% if project.backups.all %}
-                                    {% for backup in project.backups.all %}
-                                    <div class="backup-item">
-                                        <div class="backup-info">
-                                            <div class="backup-icon">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <polyline points="23 4 23 10 17 10"/>
-                                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                                                </svg>
-                                            </div>
-                                            <span>{{ backup.created_at|date:"M d, Y h:i A" }}</span>
-                                        </div>
-                                        <button class="btn btn-secondary btn-sm" onclick="revertBackup({{ project.id }}, {{ backup.id }})">Revert</button>
-                                    </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <p class="detail-value muted">No backups yet</p>
-                                {% endif %}
-                            </div>
-
-                            <!-- Collaborators Section -->
-                            <div class="detail-section full-width">
-                                <div class="section-header">
-                                    <span class="section-title">Collaborators</span>
-                                </div>
-                                {% if project.contributors.all %}
-                                <div class="users-list">
-                                    {% for contributor in project.contributors.all %}
-                                    <div class="user-item">
-                                        <div class="user-item-info">
-                                            <div class="user-item-avatar">{{ contributor.username|slice:":1"|upper }}</div>
-                                            <span class="user-item-name">{{ contributor.username }}</span>
-                                            <span class="role-badge">{{ contributor.role }}</span>
-                                        </div>
-                                        <div class="user-item-controls">
-                                            <select class="role-select" id="role-{{ project.id }}-{{ contributor.id }}">
-                                                <option value="VIEWER" {% if contributor.role == 'VIEWER' %}selected{% endif %}>Viewer</option>
-                                                <option value="EDITOR" {% if contributor.role == 'EDITOR' %}selected{% endif %}>Editor</option>
-                                                <option value="ADMIN" {% if contributor.role == 'ADMIN' %}selected{% endif %}>Admin</option>
-                                            </select>
-                                            <button class="btn btn-secondary btn-sm" onclick="saveRole({{ project.id }}, {{ contributor.id }})">Save</button>
-                                            <button class="btn btn-danger btn-sm" onclick="deleteUser({{ project.id }}, {{ contributor.id }})">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <line x1="18" y1="6" x2="6" y2="18"/>
-                                                    <line x1="6" y1="6" x2="18" y2="18"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% else %}
-                                    <p class="detail-value muted">No collaborators yet</p>
-                                {% endif %}
-
-                                <div class="add-form">
-                                    <input type="text" class="add-input" id="add-people-{{ project.id }}" placeholder="Enter usernames (separated by spaces)">
-                                    <select class="role-select" id="add-people-role-{{ project.id }}">
-                                        <option value="VIEWER">Viewer</option>
-                                        <option value="EDITOR">Editor</option>
-                                        <option value="ADMIN">Admin</option>
-                                    </select>
-                                    <button class="btn btn-primary" onclick="addPeople({{ project.id }})">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                            <circle cx="8.5" cy="7" r="4"/>
-                                            <line x1="20" y1="8" x2="20" y2="14"/>
-                                            <line x1="23" y1="11" x2="17" y2="11"/>
-                                        </svg>
-                                        Add
-                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">📁</div>
-            <h2 class="empty-title">No projects yet</h2>
-            <p class="empty-text">Create your first project to get started with Solara Docs</p>
-            <a href="/setup" class="btn btn-primary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Create Project
-            </a>
-        </div>
-        {% endif %}
-    </main>
-
-    <!-- Create Team Modal -->
-    <div class="modal-overlay" id="createTeamModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Create New Team</h3>
-                <button class="modal-close" onclick="closeModal('createTeamModal')">
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📁</div>
+                <h2 class="empty-title">No projects yet</h2>
+                <p class="empty-text">Create your first project to get started with Solara Docs</p>
+                <a href="/setup" class="btn btn-primary">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                </button>
+                    Create Project
+                </a>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="createTeamProjectId">
-                <div class="form-group">
-                    <label class="form-label">Team Name</label>
-                    <input type="text" class="form-input" id="createTeamName" placeholder="e.g. Engineering, Marketing...">
+            {% endif %}
+        </main>
+
+        <div class="modal-overlay" id="createTeamModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Create New Team</h3>
+                    <button class="modal-close" onclick="closeModal('createTeamModal')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="createTeamProjectId">
+                    <div class="form-group">
+                        <label class="form-label">Team Name</label>
+                        <input type="text" class="form-input" id="createTeamName" placeholder="e.g. Engineering, Marketing...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-ghost" onclick="closeModal('createTeamModal')">Cancel</button>
+                    <button class="btn btn-primary" onclick="createTeam()">Create Team</button>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="closeModal('createTeamModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="createTeam()">Create Team</button>
-            </div>
         </div>
-    </div>
 
-    <!-- Edit Team Modal -->
-    <div class="modal-overlay" id="editTeamModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Edit Team</h3>
-                <button class="modal-close" onclick="closeModal('editTeamModal')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editTeamProjectId">
-                <input type="hidden" id="editTeamId">
-                <div class="form-group">
-                    <label class="form-label">Team Name</label>
-                    <input type="text" class="form-input" id="editTeamName" placeholder="Team name">
+        <div class="modal-overlay" id="editTeamModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Edit Team</h3>
+                    <button class="modal-close" onclick="closeModal('editTeamModal')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editTeamProjectId">
+                    <input type="hidden" id="editTeamId">
+                    <div class="form-group">
+                        <label class="form-label">Team Name</label>
+                        <input type="text" class="form-input" id="editTeamName" placeholder="Team name">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-ghost" onclick="closeModal('editTeamModal')">Cancel</button>
+                    <button class="btn btn-primary" onclick="updateTeam()">Save Changes</button>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="closeModal('editTeamModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="updateTeam()">Save Changes</button>
-            </div>
         </div>
-    </div>
 
-    <div class="toast" id="toast">
-        <span id="toastMessage">Action completed</span>
-    </div>
+        <div class="toast" id="toast">
+            <span id="toastMessage">Action completed</span>
+        </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            let totalCollaborators = 0;
-            let totalPending = 0;
-
-            document.querySelectorAll('.users-list').forEach(list => {
-                totalCollaborators += list.querySelectorAll('.user-item').length;
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                updateStats();
             });
 
-            document.querySelectorAll('.pending-item').forEach(() => {
-                totalPending++;
-            });
+            function updateStats() {
+                let totalCollaborators = 0;
+                let totalPending = 0;
 
-            const collabEl = document.getElementById('totalCollaborators');
-            const pendingEl = document.getElementById('totalPending');
-            if (collabEl) collabEl.textContent = totalCollaborators;
-            if (pendingEl) pendingEl.textContent = totalPending;
-        });
+                document.querySelectorAll('.users-list').forEach(list => {
+                    totalCollaborators += list.querySelectorAll('.user-item').length;
+                });
 
-        const TokenManager = {
-            getToken() { return localStorage.getItem('token'); },
-            setToken(token) { if (token) localStorage.setItem('token', token); },
-            clearToken() { localStorage.removeItem('token'); },
-            async refreshToken() {
-                try {
-                    const res = await fetch('/gen/token', { credentials: 'include' });
-                    const data = await res.json();
-                    if (data.success && data.token) {
-                        this.setToken(data.token);
-                        return data.token;
-                    }
-                } catch (e) { console.error('Token refresh failed:', e); }
-                return null;
+                document.querySelectorAll('.pending-item').forEach(() => {
+                    totalPending++;
+                });
+
+                const collabEl = document.getElementById('totalCollaborators');
+                const pendingEl = document.getElementById('totalPending');
+                if (collabEl) collabEl.textContent = totalCollaborators;
+                if (pendingEl) pendingEl.textContent = totalPending;
             }
-        };
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
+            const TokenManager = {
+                getToken() { return localStorage.getItem('token'); },
+                setToken(token) { if (token) localStorage.setItem('token', token); },
+                clearToken() { localStorage.removeItem('token'); },
+                async refreshToken() {
+                    try {
+                        const res = await fetch('/gen/token', { credentials: 'include' });
+                        const data = await res.json();
+                        if (data.success && data.token) {
+                            this.setToken(data.token);
+                            return data.token;
+                        }
+                    } catch (e) { console.error('Token refresh failed:', e); }
+                    return null;
+                }
+            };
+
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
                     }
                 }
+                return cookieValue;
             }
-            return cookieValue;
-        }
 
-        async function authFetch(url, options = {}) {
-            const token = TokenManager.getToken();
-            const headers = {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'),
-                ...(options.headers || {})
-            };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
+            async function authFetch(url, options = {}) {
+                const token = TokenManager.getToken();
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    ...(options.headers || {})
+                };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            let response = await fetch(url, { ...options, headers, credentials: 'include' });
+                let response = await fetch(url, { ...options, headers, credentials: 'include' });
 
-            if (response.status === 401) {
-                const data = await response.json();
-                if (data.new_token) {
-                    TokenManager.setToken(data.new_token);
-                    headers['Authorization'] = `Bearer ${data.new_token}`;
-                    response = await fetch(url, { ...options, headers, credentials: 'include' });
-                } else {
-                    const newToken = await TokenManager.refreshToken();
-                    if (newToken) {
-                        headers['Authorization'] = `Bearer ${newToken}`;
+                if (response.status === 401) {
+                    const data = await response.json();
+                    if (data.new_token) {
+                        TokenManager.setToken(data.new_token);
+                        headers['Authorization'] = `Bearer ${data.new_token}`;
                         response = await fetch(url, { ...options, headers, credentials: 'include' });
                     } else {
-                        TokenManager.clearToken();
-                        window.location.href = '/login/';
-                        return null;
+                        const newToken = await TokenManager.refreshToken();
+                        if (newToken) {
+                            headers['Authorization'] = `Bearer ${newToken}`;
+                            response = await fetch(url, { ...options, headers, credentials: 'include' });
+                        } else {
+                            TokenManager.clearToken();
+                            window.location.href = '/login/';
+                            return null;
+                        }
                     }
                 }
+                return response;
             }
-            return response;
-        }
 
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            const toastMessage = document.getElementById('toastMessage');
-            toastMessage.textContent = message;
-            toast.className = 'toast ' + type + ' show';
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toastMessage');
+                toastMessage.textContent = message;
+                toast.className = 'toast ' + type + ' show';
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
 
-        function handleLogout() {
-            TokenManager.clearToken();
-            window.location.href = '/logout';
-        }
+            function handleLogout() {
+                TokenManager.clearToken();
+                window.location.href = '/logout';
+            }
 
-        function toggleDetails(id) {
-            const details = document.getElementById(id);
-            const btn = event.currentTarget;
-            const svg = btn.querySelector('svg');
-            details.classList.toggle('expanded');
-            svg.style.transform = details.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0)';
-        }
+            function toggleDetails(id) {
+                const details = document.getElementById(id);
+                const btn = event.currentTarget;
+                const svg = btn.querySelector('svg');
+                details.classList.toggle('expanded');
+                svg.style.transform = details.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0)';
+            }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('show');
-        }
+            function closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('show');
+            }
 
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.classList.remove('show');
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.classList.remove('show');
+                });
             });
-        });
 
-        function toggleTeam(teamId) {
-            const teamCard = document.getElementById(`team-card-${teamId}`);
-            teamCard.classList.toggle('expanded');
-        }
+            function toggleTeam(teamId) {
+                const teamCard = document.getElementById(`team-card-${teamId}`);
+                teamCard.classList.toggle('expanded');
+            }
 
-        async function deleteProject(projectId) {
-            if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
-            try {
-                const response = await authFetch('/deleteproject/', {
-                    method: 'POST',
-                    body: JSON.stringify({ project_id: projectId })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Project deleted');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to delete project', 'error');
+            async function deleteProject(projectId) {
+                if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
+                try {
+                    const response = await authFetch('/deleteproject/', {
+                        method: 'POST',
+                        body: JSON.stringify({ project_id: projectId })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Project deleted');
+                        document.getElementById(`project-card-${projectId}`).remove();
+                        updateStats();
+                    } else {
+                        showToast(data.error || 'Failed to delete project', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to delete project', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to delete project', 'error');
             }
-        }
 
-        async function acceptPending(pendingId) {
-            try {
-                const response = await authFetch('/handlepending/', {
-                    method: 'POST',
-                    body: JSON.stringify({ pending_id: pendingId, action: 'accept' })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Changes accepted');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to accept changes', 'error');
+            async function acceptPending(projectId, pendingId) {
+                try {
+                    const response = await authFetch('/handlepending/', {
+                        method: 'POST',
+                        body: JSON.stringify({ pending_id: pendingId, action: 'accept' })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Changes accepted');
+                        document.getElementById(`pending-${pendingId}`).remove();
+                        updatePendingBadge(projectId);
+                        updateStats();
+                    } else {
+                        showToast(data.error || 'Failed to accept changes', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to accept changes', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to accept changes', 'error');
             }
-        }
 
-        async function declinePending(pendingId) {
-            try {
-                const response = await authFetch('/handlepending/', {
-                    method: 'POST',
-                    body: JSON.stringify({ pending_id: pendingId, action: 'reject' })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Changes declined');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to decline changes', 'error');
+            async function declinePending(projectId, pendingId) {
+                try {
+                    const response = await authFetch('/handlepending/', {
+                        method: 'POST',
+                        body: JSON.stringify({ pending_id: pendingId, action: 'reject' })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Changes declined');
+                        document.getElementById(`pending-${pendingId}`).remove();
+                        updatePendingBadge(projectId);
+                        updateStats();
+                    } else {
+                        showToast(data.error || 'Failed to decline changes', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to decline changes', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to decline changes', 'error');
             }
-        }
 
-        async function revertBackup(projectId, backupId) {
-            if (!confirm('Revert to this backup?')) return;
-            try {
-                const response = await authFetch('/revert/', {
-                    method: 'POST',
-                    body: JSON.stringify({ project_id: projectId, backup_id: backupId })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Backup restored');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to revert', 'error');
+            function updatePendingBadge(projectId) {
+                const list = document.getElementById(`pending-list-${projectId}`);
+                const count = list.querySelectorAll('.pending-item').length;
+                document.getElementById(`pending-badge-${projectId}`).textContent = count;
+                if (count === 0) {
+                    list.innerHTML = '<p class="detail-value muted">No pending changes</p>';
                 }
-            } catch (error) {
-                showToast('Failed to revert', 'error');
             }
-        }
 
-        async function saveRole(projectId, contributorId) {
-            const newRole = document.getElementById(`role-${projectId}-${contributorId}`).value;
-            try {
-                const response = await authFetch('/changeroles/', {
-                    method: 'POST',
-                    body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Role updated');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to update role', 'error');
+            async function revertBackup(projectId, backupId) {
+                if (!confirm('Revert to this backup?')) return;
+                try {
+                    const response = await authFetch('/revert/', {
+                        method: 'POST',
+                        body: JSON.stringify({ project_id: projectId, backup_id: backupId })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Backup restored');
+                        document.getElementById(`backup-${backupId}`).remove();
+                    } else {
+                        showToast(data.error || 'Failed to revert', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to revert', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to update role', 'error');
             }
-        }
 
-        async function deleteUser(projectId, contributorId) {
-            if (!confirm('Remove this collaborator?')) return;
-            try {
-                const response = await authFetch('/deleteuser/', {
-                    method: 'POST',
-                    body: JSON.stringify({ project_id: projectId, contributor_id: contributorId })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Collaborator removed');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to remove collaborator', 'error');
+            async function saveRole(projectId, contributorId) {
+                const newRole = document.getElementById(`role-${projectId}-${contributorId}`).value;
+                try {
+                    const response = await authFetch('/changeroles/', {
+                        method: 'POST',
+                        body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Role updated');
+                        document.getElementById(`role-badge-${projectId}-${contributorId}`).textContent = newRole;
+                    } else {
+                        showToast(data.error || 'Failed to update role', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to update role', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to remove collaborator', 'error');
             }
-        }
 
-        async function addPeople(projectId) {
-            const usernames = document.getElementById(`add-people-${projectId}`).value.trim();
-            const role = document.getElementById(`add-people-role-${projectId}`).value;
-            if (!usernames) {
-                showToast('Please enter at least one username', 'error');
-                return;
-            }
-            try {
-                const response = await authFetch('/addpeople/', {
-                    method: 'POST',
-                    body: JSON.stringify({ project_id: projectId, usernames: usernames, role: role })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('People added');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to add people', 'error');
+            async function deleteUser(projectId, contributorId) {
+                if (!confirm('Remove this collaborator?')) return;
+                try {
+                    const response = await authFetch('/deleteuser/', {
+                        method: 'POST',
+                        body: JSON.stringify({ project_id: projectId, contributor_id: contributorId })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Collaborator removed');
+                        document.getElementById(`user-${projectId}-${contributorId}`).remove();
+                        updateCollabCount(projectId);
+                        updateStats();
+                    } else {
+                        showToast(data.error || 'Failed to remove collaborator', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to remove collaborator', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to add people', 'error');
-            }
-        }
-
-        function openCreateTeamModal(projectId) {
-            document.getElementById('createTeamProjectId').value = projectId;
-            document.getElementById('createTeamName').value = '';
-            document.getElementById('createTeamModal').classList.add('show');
-        }
-
-        async function createTeam() {
-            const projectId = document.getElementById('createTeamProjectId').value;
-            const teamName = document.getElementById('createTeamName').value.trim();
-
-            if (!teamName) {
-                showToast('Please enter a team name', 'error');
-                return;
             }
 
-            try {
-                const response = await authFetch(`/api/project/${projectId}/teams/add`, {
-                    method: 'POST',
-                    body: JSON.stringify({ team_name: teamName })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Team created!');
-                    closeModal('createTeamModal');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to create team', 'error');
+            function updateCollabCount(projectId) {
+                const list = document.getElementById(`users-list-${projectId}`);
+                const count = list.querySelectorAll('.user-item').length;
+                const metaItem = document.getElementById(`collab-count-${projectId}`);
+                metaItem.querySelector('.collab-count-text').textContent = count;
+            }
+
+            async function addPeople(projectId) {
+                const input = document.getElementById(`add-people-${projectId}`);
+                const usernames = input.value.trim();
+                const role = document.getElementById(`add-people-role-${projectId}`).value;
+                if (!usernames) {
+                    showToast('Please enter at least one username', 'error');
+                    return;
                 }
-            } catch (error) {
-                showToast('Failed to create team', 'error');
-            }
-        }
+                try {
+                    const response = await authFetch('/addpeople/', {
+                        method: 'POST',
+                        body: JSON.stringify({ project_id: projectId, usernames: usernames, role: role })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('People added');
+                        input.value = '';
+                        const list = document.getElementById(`users-list-${projectId}`);
+                        const noCollabsMsg = list.querySelector('.no-collabs-msg');
+                        if (noCollabsMsg) noCollabsMsg.remove();
 
-        function openEditTeamModal(projectId, teamId, teamName) {
-            document.getElementById('editTeamProjectId').value = projectId;
-            document.getElementById('editTeamId').value = teamId;
-            document.getElementById('editTeamName').value = teamName;
-            document.getElementById('editTeamModal').classList.add('show');
-        }
-
-        async function updateTeam() {
-            const projectId = document.getElementById('editTeamProjectId').value;
-            const teamId = document.getElementById('editTeamId').value;
-            const teamName = document.getElementById('editTeamName').value.trim();
-
-            if (!teamName) {
-                showToast('Please enter a team name', 'error');
-                return;
-            }
-
-            try {
-                const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/update`, {
-                    method: 'POST',
-                    body: JSON.stringify({ team_name: teamName })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Team updated!');
-                    closeModal('editTeamModal');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to update team', 'error');
+                        usernames.split(/\s+/).forEach(username => {
+                            if (!username) return;
+                            const newId = Date.now() + Math.random();
+                            const userHtml = `
+                                <div class="user-item" id="user-${projectId}-${newId}">
+                                    <div class="user-item-info">
+                                        <div class="user-item-avatar">${username.charAt(0).toUpperCase()}</div>
+                                        <span class="user-item-name">${username}</span>
+                                        <span class="role-badge" id="role-badge-${projectId}-${newId}">${role}</span>
+                                    </div>
+                                    <div class="user-item-controls">
+                                        <select class="role-select" id="role-${projectId}-${newId}">
+                                            <option value="VIEWER" ${role === 'VIEWER' ? 'selected' : ''}>Viewer</option>
+                                            <option value="EDITOR" ${role === 'EDITOR' ? 'selected' : ''}>Editor</option>
+                                            <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin</option>
+                                        </select>
+                                        <button class="btn btn-secondary btn-sm" onclick="saveRole(${projectId}, ${newId})">Save</button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteUser(${projectId}, ${newId})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                                <line x1="6" y1="6" x2="18" y2="18"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            list.insertAdjacentHTML('beforeend', userHtml);
+                        });
+                        updateCollabCount(projectId);
+                        updateStats();
+                    } else {
+                        showToast(data.error || 'Failed to add people', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to add people', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to update team', 'error');
             }
-        }
 
-        async function deleteTeam(projectId, teamId) {
-            if (!confirm('Delete this team?')) return;
-            try {
-                const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/delete`, {
-                    method: 'POST'
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Team deleted');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to delete team', 'error');
+            function openCreateTeamModal(projectId) {
+                document.getElementById('createTeamProjectId').value = projectId;
+                document.getElementById('createTeamName').value = '';
+                document.getElementById('createTeamModal').classList.add('show');
+            }
+
+            async function createTeam() {
+                const projectId = document.getElementById('createTeamProjectId').value;
+                const teamName = document.getElementById('createTeamName').value.trim();
+
+                if (!teamName) {
+                    showToast('Please enter a team name', 'error');
+                    return;
                 }
-            } catch (error) {
-                showToast('Failed to delete team', 'error');
-            }
-        }
 
-        async function addTeamMember(projectId, teamId) {
-            const username = document.getElementById(`add-member-${teamId}`).value.trim();
-            const role = document.getElementById(`add-member-role-${teamId}`).value;
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/add`, {
+                        method: 'POST',
+                        body: JSON.stringify({ team_name: teamName })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Team created!');
+                        closeModal('createTeamModal');
 
-            if (!username) {
-                showToast('Please enter a username', 'error');
-                return;
-            }
+                        const teamsList = document.getElementById(`teams-list-${projectId}`);
+                        const noTeamsMsg = teamsList.querySelector('.no-teams-msg');
+                        if (noTeamsMsg) noTeamsMsg.remove();
 
-            try {
-                const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/add`, {
-                    method: 'POST',
-                    body: JSON.stringify({ username: username, role: role })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Member added!');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to add member', 'error');
+                        const teamId = data.team.id;
+                        const teamHtml = `
+                            <div class="team-card" id="team-card-${teamId}">
+                                <div class="team-header" onclick="toggleTeam(${teamId})">
+                                    <div class="team-header-left">
+                                        <div class="team-expand-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="9 18 15 12 9 6"/>
+                                            </svg>
+                                        </div>
+                                        <span class="team-name">${teamName}</span>
+                                        <div class="team-meta">
+                                            <span class="team-member-count">0 members</span>
+                                        </div>
+                                    </div>
+                                    <div class="team-header-actions" onclick="event.stopPropagation()">
+                                        <button class="btn btn-secondary btn-sm" onclick="openEditTeamModal(${projectId}, ${teamId}, '${teamName}')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteTeam(${projectId}, ${teamId})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                                <line x1="6" y1="6" x2="18" y2="18"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="team-body">
+                                    <div class="team-body-content">
+                                        <div class="team-members-list" id="team-members-${teamId}">
+                                            <p class="detail-value muted no-members-msg">No members yet</p>
+                                        </div>
+                                        <div class="team-add-member">
+                                            <div class="team-add-form">
+                                                <input type="text" class="team-add-input" id="add-member-${teamId}" placeholder="Username">
+                                                <select class="team-role-select" id="add-member-role-${teamId}">
+                                                    <option value="EDITOR">Editor</option>
+                                                    <option value="ADMIN">Admin</option>
+                                                </select>
+                                                <button class="btn btn-primary btn-sm" onclick="addTeamMember(${projectId}, ${teamId})">Add</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        teamsList.insertAdjacentHTML('beforeend', teamHtml);
+                    } else {
+                        showToast(data.error || 'Failed to create team', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to create team', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to add member', 'error');
             }
-        }
 
-        async function removeTeamMember(projectId, teamId, username) {
-            if (!confirm(`Remove ${username} from this team?`)) return;
+            function openEditTeamModal(projectId, teamId, teamName) {
+                document.getElementById('editTeamProjectId').value = projectId;
+                document.getElementById('editTeamId').value = teamId;
+                document.getElementById('editTeamName').value = teamName;
+                document.getElementById('editTeamModal').classList.add('show');
+            }
 
-            try {
-                const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/remove`, {
-                    method: 'POST',
-                    body: JSON.stringify({ username: username })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Member removed');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(data.error || 'Failed to remove member', 'error');
+            async function updateTeam() {
+                const projectId = document.getElementById('editTeamProjectId').value;
+                const teamId = document.getElementById('editTeamId').value;
+                const teamName = document.getElementById('editTeamName').value.trim();
+
+                if (!teamName) {
+                    showToast('Please enter a team name', 'error');
+                    return;
                 }
-            } catch (error) {
-                showToast('Failed to remove member', 'error');
-            }
-        }
 
-        async function updateTeamMemberRole(projectId, teamId, username, newRole) {
-            try {
-                const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/role`, {
-                    method: 'POST',
-                    body: JSON.stringify({ username: username, role: newRole })
-                });
-                if (!response) return;
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Role updated!');
-                } else {
-                    showToast(data.error || 'Failed to update role', 'error');
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/update`, {
+                        method: 'POST',
+                        body: JSON.stringify({ team_name: teamName })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Team updated!');
+                        closeModal('editTeamModal');
+                        document.querySelector(`#team-card-${teamId} .team-name`).textContent = teamName;
+                    } else {
+                        showToast(data.error || 'Failed to update team', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to update team', 'error');
                 }
-            } catch (error) {
-                showToast('Failed to update role', 'error');
             }
-        }
 
-        (async function initToken() {
-            if (!TokenManager.getToken()) {
-                await TokenManager.refreshToken();
+            async function deleteTeam(projectId, teamId) {
+                if (!confirm('Delete this team?')) return;
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/delete`, {
+                        method: 'POST'
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Team deleted');
+                        document.getElementById(`team-card-${teamId}`).remove();
+                    } else {
+                        showToast(data.error || 'Failed to delete team', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to delete team', 'error');
+                }
             }
-        })();
-    </script>
-</body>
-</html>
+
+            async function addTeamMember(projectId, teamId) {
+                const input = document.getElementById(`add-member-${teamId}`);
+                const username = input.value.trim();
+                const role = document.getElementById(`add-member-role-${teamId}`).value;
+
+                if (!username) {
+                    showToast('Please enter a username', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/add`, {
+                        method: 'POST',
+                        body: JSON.stringify({ username: username, role: role })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Member added!');
+                        input.value = '';
+
+                        const membersList = document.getElementById(`team-members-${teamId}`);
+                        const noMembersMsg = membersList.querySelector('.no-members-msg');
+                        if (noMembersMsg) noMembersMsg.remove();
+
+                        const memberHtml = `
+                            <div class="team-member-item" data-username="${username}">
+                                <div class="team-member-info">
+                                    <div class="team-member-avatar">${username.charAt(0).toUpperCase()}</div>
+                                    <span class="team-member-name">${username}</span>
+                                    <span class="role-badge">${role}</span>
+                                </div>
+                                <div class="team-member-controls">
+                                    <select class="team-role-select" onchange="updateTeamMemberRole(${projectId}, ${teamId}, '${username}', this.value)">
+                                        <option value="EDITOR" ${role === 'EDITOR' ? 'selected' : ''}>Editor</option>
+                                        <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin</option>
+                                    </select>
+                                    <button class="btn btn-danger btn-sm" onclick="removeTeamMember(${projectId}, ${teamId}, '${username}')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        membersList.insertAdjacentHTML('beforeend', memberHtml);
+                        updateTeamMemberCount(teamId);
+                    } else {
+                        showToast(data.error || 'Failed to add member', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to add member', 'error');
+                }
+            }
+
+            async function removeTeamMember(projectId, teamId, username) {
+                if (!confirm(`Remove ${username} from this team?`)) return;
+
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/remove`, {
+                        method: 'POST',
+                        body: JSON.stringify({ username: username })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Member removed');
+                        const membersList = document.getElementById(`team-members-${teamId}`);
+                        const memberItem = membersList.querySelector(`[data-username="${username}"]`);
+                        if (memberItem) memberItem.remove();
+                        updateTeamMemberCount(teamId);
+
+                        if (membersList.querySelectorAll('.team-member-item').length === 0) {
+                            membersList.innerHTML = '<p class="detail-value muted no-members-msg">No members yet</p>';
+                        }
+                    } else {
+                        showToast(data.error || 'Failed to remove member', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to remove member', 'error');
+                }
+            }
+
+            async function updateTeamMemberRole(projectId, teamId, username, newRole) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/role`, {
+                        method: 'POST',
+                        body: JSON.stringify({ username: username, role: newRole })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast('Role updated!');
+                        const membersList = document.getElementById(`team-members-${teamId}`);
+                        const memberItem = membersList.querySelector(`[data-username="${username}"]`);
+                        if (memberItem) {
+                            memberItem.querySelector('.role-badge').textContent = newRole;
+                        }
+                    } else {
+                        showToast(data.error || 'Failed to update role', 'error');
+                    }
+                } catch (error) {
+                    showToast('Failed to update role', 'error');
+                }
+            }
+
+            function updateTeamMemberCount(teamId) {
+                const membersList = document.getElementById(`team-members-${teamId}`);
+                const count = membersList.querySelectorAll('.team-member-item').length;
+                const teamCard = document.getElementById(`team-card-${teamId}`);
+                const countEl = teamCard.querySelector('.team-member-count');
+                countEl.textContent = `${count} member${count !== 1 ? 's' : ''}`;
+            }
+
+            (async function initToken() {
+                if (!TokenManager.getToken()) {
+                    await TokenManager.refreshToken();
+                }
+            })();
+        </script>
+    </body>
+    </html>

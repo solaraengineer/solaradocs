@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie, csrf_protect
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.cache import cache_page
 from django.db import transaction
@@ -49,7 +49,7 @@ def generate_auth_token(user_id):
         'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS),
         'iat': datetime.utcnow()
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS512')
+    return jwt.encode(payload, JWT_SECRET, algorithm='RS256')
 
 
 def verify_auth_token(token, verify_expiration=True):
@@ -322,7 +322,7 @@ def login(request):
         if user is None:
             return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=401)
 
-        auth_login(request, user)
+        auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         user_id = request.user.id
         token = generate_auth_token(user_id)
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
@@ -358,13 +358,14 @@ def register(request):
             return JsonResponse({'success': False, 'error': 'Email taken'})
 
         user = User.objects.create_user(username=username, password=password, email=email)
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
         auth_login(request, user)
         user_id = request.user.id
         token = generate_auth_token(user_id)
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
-    except Exception:
-        return JsonResponse({'success': False, 'error': str({e})}, status=500)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'})
 
 
 @require_POST
@@ -1269,3 +1270,6 @@ def update_team_member_role(request, project_id, team_id):
             'role': role
         }
     })
+
+
+
