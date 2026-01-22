@@ -50,6 +50,7 @@ class TeamMember(models.Model):
     team = models.ForeignKey(Teams, on_delete=models.CASCADE, related_name='team_members')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_teams')
     role = models.CharField(max_length=10, choices=TEAM_ROLES, default='EDITOR')
+    can_direct_save = models.BooleanField(default=False)  # If True, saves directly; if False, changes go to pending review
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -766,6 +766,30 @@
                 border-color: var(--accent-orange);
             }
 
+            .review-toggle {
+                display: flex;
+                align-items: center;
+                gap: 0.375rem;
+                cursor: pointer;
+            }
+
+            .review-checkbox {
+                width: 14px;
+                height: 14px;
+                accent-color: var(--accent-green);
+                cursor: pointer;
+            }
+
+            .review-label {
+                font-size: 0.7rem;
+                color: var(--text-tertiary);
+                white-space: nowrap;
+            }
+
+            .review-toggle:hover .review-label {
+                color: var(--text-secondary);
+            }
+
             .team-add-member {
                 margin-top: 0.75rem;
                 padding-top: 0.75rem;
@@ -1065,7 +1089,7 @@
     </head>
     <body>
         <nav class="navbar">
-            <a href="/dashboard" class="nav-brand">
+            <a href="/buy" class="nav-brand">
                 <div class="nav-logo">S</div>
                 <span>Solara Docs</span>
             </a>
@@ -1237,6 +1261,10 @@
                                                                 <span class="role-badge">{{ membership.role }}</span>
                                                             </div>
                                                             <div class="team-member-controls">
+                                                                <label class="review-toggle" title="If checked, user can save directly without review">
+                                                                    <input type="checkbox" class="review-checkbox" {% if membership.can_direct_save %}checked{% endif %} onchange="updateTeamMemberReview({{ project.id }}, {{ team.id }}, '{{ membership.user.username }}', this.checked)">
+                                                                    <span class="review-label">Direct Save</span>
+                                                                </label>
                                                                 <select class="team-role-select" onchange="updateTeamMemberRole({{ project.id }}, {{ team.id }}, '{{ membership.user.username }}', this.value)">
                                                                     <option value="EDITOR" {% if membership.role == 'EDITOR' %}selected{% endif %}>Editor</option>
                                                                     <option value="ADMIN" {% if membership.role == 'ADMIN' %}selected{% endif %}>Admin</option>
@@ -1958,6 +1986,10 @@
                                     <span class="role-badge">${role}</span>
                                 </div>
                                 <div class="team-member-controls">
+                                    <label class="review-toggle" title="If checked, user can save directly without review">
+                                        <input type="checkbox" class="review-checkbox" onchange="updateTeamMemberReview(${projectId}, ${teamId}, '${username}', this.checked)">
+                                        <span class="review-label">Direct Save</span>
+                                    </label>
                                     <select class="team-role-select" onchange="updateTeamMemberRole(${projectId}, ${teamId}, '${username}', this.value)">
                                         <option value="EDITOR" ${role === 'EDITOR' ? 'selected' : ''}>Editor</option>
                                         <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin</option>
@@ -2029,6 +2061,30 @@
                     }
                 } catch (error) {
                     showToast('Failed to update role', 'error');
+                }
+            }
+
+            async function updateTeamMemberReview(projectId, teamId, username, canDirectSave) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/review`, {
+                        method: 'POST',
+                        body: JSON.stringify({ username: username, can_direct_save: canDirectSave })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast(canDirectSave ? 'Direct save enabled' : 'Review required');
+                    } else {
+                        showToast(data.error || 'Failed to update setting', 'error');
+                        // Revert checkbox on error
+                        const membersList = document.getElementById(`team-members-${teamId}`);
+                        const memberItem = membersList.querySelector(`[data-username="${username}"]`);
+                        if (memberItem) {
+                            memberItem.querySelector('.review-checkbox').checked = !canDirectSave;
+                        }
+                    }
+                } catch (error) {
+                    showToast('Failed to update setting', 'error');
                 }
             }
 

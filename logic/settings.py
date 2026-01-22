@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-
-
+import base64
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,6 +11,9 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 JWT_SECRET = os.getenv('JWT_SECRET_KEY')
+
+JWT_PRIVATE_KEY = base64.b64decode(os.getenv('JWT_PRIVATE_KEY', '')).decode('utf-8')
+JWT_PUBLIC_KEY = base64.b64decode(os.getenv('JWT_PUBLIC_KEY', '')).decode('utf-8')
 
 AUTH_USER_MODEL = 'solaradocs.User'
 
