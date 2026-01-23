@@ -1195,6 +1195,7 @@
     </style>
 </head>
 <body>
+    {% csrf_token %}
     <!-- Top Bar -->
     <div class="top-bar">
         <div class="top-bar-left">
@@ -1834,11 +1835,9 @@
 
                     const data = await response.json();
                     if (data.success && data.document) {
-                        // Get team name from teams cache
                         const teams = CacheManager.get('teams') || [];
                         const team = teams.find(t => t.id === parseInt(teamId));
 
-                        // Add to documents cache
                         const newDoc = {
                             id: data.document.id,
                             document_name: data.document.document_name,
@@ -1848,7 +1847,6 @@
                             created_at: new Date().toISOString()
                         };
                         CacheManager.addDocumentToList(newDoc);
-                        // Invalidate audits
                         CacheManager.invalidate('audits');
                     }
                     return data;
@@ -1996,11 +1994,17 @@
         };
 
         // Authenticated fetch
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+        }
+
         async function authFetch(url, options = {}) {
             const token = TokenManager.getToken();
+            const csrfToken = getCsrfToken();
             const headers = {
                 'Content-Type': 'application/json',
                 'X-Editor-Token': editorToken,
+                'X-CSRFToken': csrfToken,
                 ...(options.headers || {})
             };
             if (token) {
@@ -2898,6 +2902,20 @@
         // ==================== INIT ====================
 
         loadDocuments();
+    function getCookie(name) {
+let cookieValue = null;
+if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+    }
+}
+return cookieValue;
+}
     </script>
 </body>
 </html>

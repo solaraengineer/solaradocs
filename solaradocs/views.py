@@ -95,17 +95,12 @@ def require_auth_token(view_func):
             if not request.user.is_authenticated:
                 return redirect('login')
             return view_func(request, *args, **kwargs)
-
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
-
         if not token:
             return JsonResponse({'success': False, 'error': 'Auth token required'}, status=401)
-
         payload = verify_auth_token(token)
-
         if payload is None:
             return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
-
         if payload == 'expired':
             expired_payload = verify_auth_token(token, verify_expiration=False)
             if expired_payload and expired_payload != 'expired':
@@ -115,12 +110,12 @@ def require_auth_token(view_func):
         if payload == 'invalid':
             return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
         try:
-            User = request.user
-        except User.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'User not found'}, status=401)
-
-        return view_func(request, *args, **kwargs)
-
+            user = request.user
+            if not user:
+                return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+            return view_func(request, *args, **kwargs)
+        except jwt.PyJWTError as e:
+            return JsonResponse({'success': False, 'error': 'Please try again later'}, status=401)
     return wrapper
 
 
