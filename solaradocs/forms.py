@@ -41,3 +41,6 @@ class LoginForm(forms.Form):
             'placeholder': 'Password'
         })
     )
+
+
+

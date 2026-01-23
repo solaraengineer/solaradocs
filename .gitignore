@@ -11,6 +11,8 @@ ENV/
 *.egg-info/
 dist/
 build/
+private.pem
+public.pem
 
 # Django
 *.log

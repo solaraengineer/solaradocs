@@ -20,7 +20,6 @@ packaging==25.0
 prometheus_client==0.23.1
 psycopg2-binary==2.9.11
 PyJWT==2.10.1
-pymemcache==4.0.0
 pyp==3.0.9
 python-dotenv==1.2.1
 PyYAML==6.0.3
@@ -34,7 +33,9 @@ uvicorn==0.38.0
 uvloop==0.22.1
 watchfiles==1.1.1
 stripe
+redis
 websockets==15.0.1
+uvicorn==
 y-py==0.6.2
 ypy==0.2
 django-allauth==65.13.1
