@@ -1,0 +1,744 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .sidebar-header:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--bg-primary);
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 0;
+            overflow-y: auto;
+        }
+
+        .nav-section { margin-bottom: 8px; }
+
+        .nav-section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 8px 20px 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+            border-left-color: var(--accent-orange);
+        }
+
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        .nav-item.active svg { opacity: 1; }
+
+        /* Main */
+        .main {
+            flex: 1;
+            margin-left: 280px;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(26, 25, 21, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .back-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb-sep { color: var(--text-tertiary); }
+        .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #e0b385;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Content */
+        .content {
+            max-width: 800px;
+            padding: 48px 40px;
+        }
+
+        .page-header {
+            margin-bottom: 48px;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Doc sections */
+        .doc-section {
+            margin-bottom: 48px;
+        }
+
+        .doc-section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .doc-section-content {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+
+        .doc-section-content p {
+            margin-bottom: 16px;
+        }
+
+        .doc-section-content ul, .doc-section-content ol {
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        .doc-section-content li {
+            margin-bottom: 8px;
+        }
+
+        .doc-section-content code {
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: var(--accent-orange);
+        }
+
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .code-block .comment {
+            color: var(--text-tertiary);
+        }
+
+        .code-block .keyword {
+            color: var(--accent-purple);
+        }
+
+        .code-block .string {
+            color: var(--accent-orange);
+        }
+
+        .code-block .function {
+            color: var(--accent-blue);
+        }
+
+        /* Feature cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .feature-card:hover {
+            border-color: var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Callout */
+        .callout {
+            background: rgba(212, 165, 116, 0.1);
+            border: 1px solid rgba(212, 165, 116, 0.3);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+
+        .callout-title {
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .callout-content {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+        }
+
+        @media (max-width: 600px) {
+            .content { padding: 24px 16px; }
+            .page-title { font-size: 1.75rem; }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="/" class="sidebar-header">
+                <div class="logo">S</div>
+                <span class="logo-text">Solara Docs</span>
+            </a>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="#introduction" class="nav-item active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        Introduction
+                    </a>
+                    <a href="#quickstart" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        Quick Start
+                    </a>
+                    <a href="#projects" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Projects
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Features</div>
+                    <a href="#documents" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        Documents
+                    </a>
+                    <a href="#teams" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Teams
+                    </a>
+                    <a href="#collaboration" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="18" cy="5" r="3"/>
+                            <circle cx="6" cy="12" r="3"/>
+                            <circle cx="18" cy="19" r="3"/>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg>
+                        Collaboration
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Resources</div>
+                    <a href="/buy" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Pricing
+                    </a>
+                    <a href="/changelog" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Changelog
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <nav class="navbar">
+                <div class="navbar-left">
+                    <a href="javascript:history.back()" class="back-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="19" y1="12" x2="5" y2="12"/>
+                            <polyline points="12 19 5 12 12 5"/>
+                        </svg>
+                        Back
+                    </a>
+                    <div class="breadcrumb">
+                        <span>Solara Docs</span>
+                        <span class="breadcrumb-sep">/</span>
+                        <span class="breadcrumb-current">Documentation</span>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    {% if request.user.is_authenticated %}
+                    <div class="user-menu">
+                        <span class="user-name">{{ request.user.username }}</span>
+                        <a href="/profile" class="user-avatar" title="Profile">
+                            {{ request.user.username|slice:":1"|upper }}
+                        </a>
+                        <a href="/dashboard" class="btn btn-primary">Dashboard</a>
+                    </div>
+                    {% else %}
+                    <a href="/login" class="btn btn-ghost">Sign In</a>
+                    <a href="/register" class="btn btn-primary">Get Started</a>
+                    {% endif %}
+                </div>
+            </nav>
+
+            <div class="content">
+                <div class="page-header">
+                    <h1 class="page-title">Documentation</h1>
+                    <p class="page-subtitle">
+                        Learn how to use Solara Docs to create, manage, and collaborate on documentation with your team.
+                    </p>
+                </div>
+
+                <!-- Introduction -->
+                <section id="introduction" class="doc-section">
+                    <h2 class="doc-section-title">Introduction</h2>
+                    <div class="doc-section-content">
+                        <p>
+                            Solara Docs is a modern documentation platform built for teams who need to create, organize,
+                            and maintain documentation efficiently. With real-time collaboration, version control, and
+                            team-based access management, it's the perfect solution for technical documentation.
+                        </p>
+
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <h4>Real-time Collaboration</h4>
+                                <p>Work together with your team. See changes as they happen with live editing.</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>Team Management</h4>
+                                <p>Organize members into teams with role-based access control.</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>Version Control</h4>
+                                <p>Full history with automatic backups. Roll back anytime.</p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>Audit Logs</h4>
+                                <p>Track every change with detailed audit logs (Team+ plans).</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Start -->
+                <section id="quickstart" class="doc-section">
+                    <h2 class="doc-section-title">Quick Start</h2>
+                    <div class="doc-section-content">
+                        <p>Get started with Solara Docs in just a few steps:</p>
+
+                        <ol>
+                            <li><strong>Create an account</strong> - Sign up for free or use Google OAuth</li>
+                            <li><strong>Create a project</strong> - Set up your first documentation project</li>
+                            <li><strong>Create teams</strong> - Organize your collaborators into teams</li>
+                            <li><strong>Add documents</strong> - Start writing your documentation</li>
+                            <li><strong>Invite collaborators</strong> - Add team members to contribute</li>
+                        </ol>
+
+                        <div class="callout">
+                            <div class="callout-title">Pro Tip</div>
+                            <div class="callout-content">
+                                Start with the Free plan to explore all features. You can upgrade anytime as your needs grow.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Projects -->
+                <section id="projects" class="doc-section">
+                    <h2 class="doc-section-title">Projects</h2>
+                    <div class="doc-section-content">
+                        <p>
+                            Projects are the top-level containers for your documentation. Each project can contain
+                            multiple teams, documents, and collaborators.
+                        </p>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Creating a Project</h3>
+                        <p>
+                            Navigate to your dashboard and click "New Project". Enter a name and optionally
+                            enable backups (available on paid plans).
+                        </p>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Project Limits</h3>
+                        <p>Each plan has different limits:</p>
+                        <ul>
+                            <li><code>Free</code> - 1 project, 2 documents, 3 members</li>
+                            <li><code>Student</code> - 3 projects, 5 documents, 6 members</li>
+                            <li><code>Team</code> - 5 projects, 20 documents, 20 members</li>
+                            <li><code>Enterprise</code> - Unlimited everything</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Documents -->
+                <section id="documents" class="doc-section">
+                    <h2 class="doc-section-title">Documents</h2>
+                    <div class="doc-section-content">
+                        <p>
+                            Documents are where your content lives. Each document belongs to a team within a project,
+                            controlling who can view and edit it.
+                        </p>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Rich Text Editor</h3>
+                        <p>
+                            Our editor supports rich text formatting including headers, lists, code blocks,
+                            and more. Changes are saved automatically as you type.
+                        </p>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Pending Edits</h3>
+                        <p>
+                            On Team+ plans, editors without direct-save permission will have their changes
+                            submitted for review. Admins can approve or reject pending edits.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Teams -->
+                <section id="teams" class="doc-section">
+                    <h2 class="doc-section-title">Teams</h2>
+                    <div class="doc-section-content">
+                        <p>
+                            Teams help organize your collaborators and control document access. Each team
+                            can have multiple members with different roles.
+                        </p>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Team Roles</h3>
+                        <ul>
+                            <li><strong>Editor</strong> - Can edit documents assigned to their team</li>
+                            <li><strong>Admin</strong> - Can edit + manage documents and approve pending edits</li>
+                        </ul>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Direct Save Permission</h3>
+                        <p>
+                            Editors can be granted "direct save" permission, allowing their changes to
+                            be saved immediately without admin review.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Collaboration -->
+                <section id="collaboration" class="doc-section">
+                    <h2 class="doc-section-title">Collaboration</h2>
+                    <div class="doc-section-content">
+                        <p>
+                            Solara Docs makes it easy to collaborate with your team on documentation.
+                        </p>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Project Roles</h3>
+                        <ul>
+                            <li><strong>Owner</strong> - Full control over the project</li>
+                            <li><strong>Admin</strong> - Can manage teams and documents</li>
+                            <li><strong>Editor</strong> - Can edit assigned documents</li>
+                            <li><strong>Viewer</strong> - Read-only access</li>
+                        </ul>
+
+                        <h3 style="font-size: 1.1rem; margin: 24px 0 12px; color: var(--text-primary);">Inviting Collaborators</h3>
+                        <p>
+                            Project owners can invite users by their username. Invited users become
+                            contributors and can be assigned to teams.
+                        </p>
+
+                        <div class="callout">
+                            <div class="callout-title">Note</div>
+                            <div class="callout-content">
+                                Users must have a Solara Docs account before they can be added as collaborators.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .sidebar-header:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--bg-primary);
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 0;
+            overflow-y: auto;
+        }
+
+        .nav-section { margin-bottom: 8px; }
+
+        .nav-section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 8px 20px 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+            border-left-color: var(--accent-orange);
+        }
+
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        .nav-item.active svg { opacity: 1; }
+
+        /* Main */
+        .main {
+            flex: 1;
+            margin-left: 260px;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb-sep { color: var(--text-tertiary); }
+        .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
+
+        /* Profile Content */
+        .profile-container {
+            max-width: 700px;
+            padding: 48px 32px;
+        }
+
+        .profile-header {
+            margin-bottom: 40px;
+        }
+
+        .profile-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .profile-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Cards */
+        .profile-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent-orange);
+        }
+
+        /* Info rows */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .info-row:last-child { border-bottom: none; }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Tier badge */
+        .tier-badge {
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+        }
+
+        .tier-free { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .tier-student { background: rgba(107, 158, 206, 0.2); color: var(--accent-blue); }
+        .tier-team { background: rgba(157, 124, 216, 0.2); color: var(--accent-purple); }
+        .tier-enterprise { background: rgba(212, 165, 116, 0.2); color: var(--accent-orange); }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #e0b385;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
+        .btn-danger:hover {
+            background: rgba(212, 106, 106, 0.25);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .alert-success {
+            background: rgba(127, 176, 105, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
+        .alert-error {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
+        /* Subscription section */
+        .subscription-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .subscription-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-active { background: var(--accent-green); }
+        .status-canceled { background: var(--accent-red); }
+        .status-none { background: var(--text-tertiary); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .modal-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+        }
+
+        @media (max-width: 600px) {
+            .profile-container { padding: 24px 16px; }
+            .info-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="/" class="sidebar-header">
+                <div class="logo">S</div>
+                <span class="logo-text">Solara Docs</span>
+            </a>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Overview</div>
+                    <a href="/dashboard" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a href="/collaborations" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Collaborations
+                    </a>
+                    <a href="/profile" class="nav-item active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Profile
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Resources</div>
+                    <a href="/docs" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        Documentation
+                    </a>
+                    <a href="/buy" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Upgrade Plan
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <div class="topbar">
+                <div class="topbar-breadcrumb">
+                    <span>Solara Docs</span>
+                    <span class="breadcrumb-sep">/</span>
+                    <span class="breadcrumb-current">Profile</span>
+                </div>
+            </div>
+
+            <div class="profile-container">
+                <div class="profile-header">
+                    <h1 class="profile-title">Profile Settings</h1>
+                    <p class="profile-subtitle">Manage your account information and preferences</p>
+                </div>
+
+                <!-- Account Info -->
+                <div class="profile-card">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Account Information
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Username</span>
+                        <span class="info-value">{{ user.username }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">{{ user.email }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Member since</span>
+                        <span class="info-value">{{ user.date_joined|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+
+                <!-- Subscription -->
+                <div class="profile-card">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        Subscription
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Current Plan</span>
+                        <span class="tier-badge tier-{{ user.Tier|lower }}">{{ user.Tier|upper }}</span>
+                    </div>
+                    <div class="info-row">
+                        <div class="subscription-info">
+                            <div class="subscription-status">
+                                <span class="status-dot status-{% if user.subscription_status == 'active' %}active{% elif user.subscription_status == 'canceled' %}canceled{% else %}none{% endif %}"></span>
+                                <span class="info-label">
+                                    {% if user.subscription_status == 'active' %}Active
+                                    {% elif user.subscription_status == 'past_due' %}Past Due
+                                    {% elif user.subscription_status == 'canceled' %}Canceled
+                                    {% else %}No active subscription{% endif %}
+                                </span>
+                            </div>
+                            {% if user.subscription_status == 'active' %}
+                            <button class="btn btn-danger" onclick="openCancelModal()">Cancel Subscription</button>
+                            {% elif user.Tier == 'free' %}
+                            <a href="/buy" class="btn btn-primary">Upgrade</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Change Password -->
+                <div class="profile-card">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        Change Password
+                    </div>
+
+                    <div id="password-alert" class="alert"></div>
+
+                    <form id="password-form">
+                        <div class="form-group">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" class="form-input" name="current_password" placeholder="Enter current password" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">New Password</label>
+                            <input type="password" class="form-input" name="new_password" placeholder="Enter new password" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-input" name="confirm_password" placeholder="Confirm new password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                    </form>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="profile-card" style="border-color: var(--accent-red);">
+                    <div class="card-title" style="color: var(--accent-red);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        Danger Zone
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 16px;">
+                        Once you delete your account, there is no going back. Please be certain.
+                    </p>
+                    <button class="btn btn-danger" onclick="openDeleteModal()">Delete Account</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Cancel Subscription Modal -->
+    <div class="modal-overlay" id="cancel-modal">
+        <div class="modal">
+            <div class="modal-title">Cancel Subscription?</div>
+            <p class="modal-text">
+                Your subscription will remain active until the end of your billing period.
+                After that, you'll be downgraded to the free plan.
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeCancelModal()">Keep Subscription</button>
+                <button class="btn btn-danger" onclick="cancelSubscription()">Yes, Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Modal -->
+    <div class="modal-overlay" id="delete-modal">
+        <div class="modal">
+            <div class="modal-title">Delete Account?</div>
+            <p class="modal-text">
+                This will permanently delete your account and all associated data.
+                This action cannot be undone.
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const csrfToken = '{{ csrf_token }}';
+
+        // Password change
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const alert = document.getElementById('password-alert');
+
+            const currentPassword = form.current_password.value;
+            const newPassword = form.new_password.value;
+            const confirmPassword = form.confirm_password.value;
+
+            if (newPassword !== confirmPassword) {
+                alert.className = 'alert alert-error';
+                alert.textContent = 'New passwords do not match';
+                alert.style.display = 'block';
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert.className = 'alert alert-error';
+                alert.textContent = 'Password must be at least 6 characters';
+                alert.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch('/change-password/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert.className = 'alert alert-success';
+                    alert.textContent = 'Password updated successfully';
+                    form.reset();
+                } else {
+                    alert.className = 'alert alert-error';
+                    alert.textContent = data.error || 'Failed to update password';
+                }
+                alert.style.display = 'block';
+            } catch (err) {
+                alert.className = 'alert alert-error';
+                alert.textContent = 'Something went wrong';
+                alert.style.display = 'block';
+            }
+        });
+
+        // Cancel subscription
+        function openCancelModal() {
+            document.getElementById('cancel-modal').classList.add('active');
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancel-modal').classList.remove('active');
+        }
+
+        async function cancelSubscription() {
+            try {
+                const res = await fetch('/cancel-subscription/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Subscription canceled. You will retain access until the end of your billing period.');
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed to cancel subscription');
+                }
+            } catch (err) {
+                alert('Something went wrong');
+            }
+            closeCancelModal();
+        }
+
+        // Delete account
+        function openDeleteModal() {
+            document.getElementById('delete-modal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('active');
+        }
+
+        async function deleteAccount() {
+            try {
+                const res = await fetch('/delete-account/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    alert(data.error || 'Failed to delete account');
+                }
+            } catch (err) {
+                alert('Something went wrong');
+            }
+            closeDeleteModal();
+        }
+
+        // Close modals on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 from django.urls import path, include
 from . import views
+from . import views_admin
 
 
 urlpatterns = [
@@ -16,6 +17,7 @@ urlpatterns = [
     path('handlepending/', views.handle_pending, name='handle_pending'),
     path('', include('django_prometheus.urls')),
     path('docs/', views.docs, name='docs'),
+    path('changelog/', views.changelog, name='changelog'),
     path('project/<int:project_id>/', views.project_detail, name='project_detail'),
     path('addpeople/', views.add_people, name='add_people'),
     path('deleteuser/', views.deleteuser, name='deleteuser'),
@@ -43,4 +45,15 @@ urlpatterns = [
     path('api/project/<int:project_id>/teams/<int:team_id>/members/remove', views.remove_team_member, name='remove_team_member'),
     path('api/project/<int:project_id>/teams/<int:team_id>/members/role', views.update_team_member_role, name='update_team_member_role'),
     path('api/project/<int:project_id>/teams/<int:team_id>/members/review', views.update_team_member_review, name='update_team_member_review'),
+    path('profile/', views.profile, name='profile'),
+    path('change-password/', views.change_password, name='change_password'),
+    path('cancel-subscription/', views.cancel_subscription, name='cancel_subscription'),
+    path('delete-account/', views.delete_account, name='delete_account'),
+    path('admin-panel/', views_admin.admin_panel, name='admin_panel'),
+    path('admin-panel/update-user/', views_admin.admin_update_user, name='admin_update_user'),
+    path('admin-panel/delete-user/', views_admin.admin_delete_user, name='admin_delete_user'),
+    path('admin-panel/delete-project/', views_admin.admin_delete_project, name='admin_delete_project'),
+    path('admin-panel/add-changelog/', views_admin.admin_add_changelog, name='admin_add_changelog'),
+    path('admin-panel/update-changelog/', views_admin.admin_update_changelog, name='admin_update_changelog'),
+    path('admin-panel/delete-changelog/', views_admin.admin_delete_changelog, name='admin_delete_changelog'),
 ]

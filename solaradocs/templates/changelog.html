@@ -1,0 +1,462 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 25, 21, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .back-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .nav-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--bg-primary);
+        }
+
+        .nav-brand span {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #e0b385;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 48px 32px;
+        }
+
+        .page-header {
+            margin-bottom: 48px;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .changelog-entry {
+            position: relative;
+            padding-left: 60px;
+            padding-bottom: 40px;
+        }
+
+        .changelog-entry:last-child {
+            padding-bottom: 0;
+        }
+
+        .changelog-dot {
+            position: absolute;
+            left: 12px;
+            top: 4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--bg-primary);
+            border: 3px solid var(--accent-orange);
+        }
+
+        .changelog-entry.major .changelog-dot {
+            border-color: var(--accent-purple);
+            width: 22px;
+            height: 22px;
+            left: 10px;
+            top: 2px;
+        }
+
+        .changelog-entry.patch .changelog-dot {
+            border-color: var(--accent-teal);
+            width: 14px;
+            height: 14px;
+            left: 14px;
+            top: 6px;
+        }
+
+        .changelog-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .changelog-version {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .changelog-type {
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .type-major {
+            background: rgba(157, 124, 216, 0.2);
+            color: var(--accent-purple);
+        }
+
+        .type-minor {
+            background: rgba(212, 165, 116, 0.2);
+            color: var(--accent-orange);
+        }
+
+        .type-patch {
+            background: rgba(95, 179, 161, 0.2);
+            color: var(--accent-teal);
+        }
+
+        .changelog-date {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .changelog-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .changelog-description {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .changelog-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .changelog-card:hover {
+            border-color: var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .empty-state-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .main-container { padding: 24px 16px; }
+            .page-title { font-size: 1.75rem; }
+            .changelog-entry { padding-left: 48px; }
+            .timeline::before { left: 14px; }
+            .changelog-dot { left: 6px; }
+            .changelog-entry.major .changelog-dot { left: 4px; }
+            .changelog-entry.patch .changelog-dot { left: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="javascript:history.back()" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back
+            </a>
+            <a href="/" class="nav-brand">
+                <div class="nav-logo">S</div>
+                <span>Solara Docs</span>
+            </a>
+        </div>
+        <div class="navbar-right">
+            {% if request.user.is_authenticated %}
+            <div class="user-menu">
+                <span class="user-name">{{ request.user.username }}</span>
+                <a href="/profile" class="user-avatar" title="Profile">
+                    {{ request.user.username|slice:":1"|upper }}
+                </a>
+                <a href="/dashboard" class="btn btn-primary">Dashboard</a>
+            </div>
+            {% else %}
+            <a href="/login" class="btn btn-ghost">Sign In</a>
+            <a href="/register" class="btn btn-primary">Get Started</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <div class="page-header">
+            <h1 class="page-title">Changelog</h1>
+            <p class="page-subtitle">
+                Stay up to date with the latest features, improvements, and bug fixes.
+            </p>
+        </div>
+
+        {% if changelogs %}
+        <div class="timeline">
+            {% for entry in changelogs %}
+            <div class="changelog-entry {{ entry.version_type }}">
+                <div class="changelog-dot"></div>
+                <div class="changelog-card">
+                    <div class="changelog-header">
+                        <span class="changelog-version">v{{ entry.version }}</span>
+                        <span class="changelog-type type-{{ entry.version_type }}">{{ entry.version_type }}</span>
+                        <span class="changelog-date">{{ entry.created_at }}</span>
+                    </div>
+                    <h3 class="changelog-title">{{ entry.title }}</h3>
+                    <p class="changelog-description">{{ entry.description }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <h3>No changelog entries yet</h3>
+            <p>Check back soon for updates and new features.</p>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

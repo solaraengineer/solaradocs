@@ -1,7 +1,8 @@
+{% load static %}
+{% load socialaccount %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pricing - Solara Docs</title>
@@ -127,6 +128,63 @@
         .btn-primary:hover {
             background: #e0b285;
             transform: translateY(-1px);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .back-btn svg {
+            width: 14px;
+            height: 14px;
         }
 
         /* Main */
@@ -451,13 +509,32 @@
 <body>
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="/" class="nav-brand">
-            <div class="nav-logo">S</div>
-            <span>Solara Docs</span>
-        </a>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <a href="javascript:history.back()" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back
+            </a>
+            <a href="/" class="nav-brand">
+                <div class="nav-logo">S</div>
+                <span>Solara Docs</span>
+            </a>
+        </div>
         <div class="nav-right">
+            {% if request.user.is_authenticated %}
+            <div class="user-menu">
+                <span class="user-name">{{ request.user.username }}</span>
+                <a href="/profile" class="user-avatar" title="Profile">
+                    {{ request.user.username|slice:":1"|upper }}
+                </a>
+                <a href="/dashboard" class="btn btn-primary">Dashboard</a>
+            </div>
+            {% else %}
             <a href="/login" class="btn btn-ghost">Sign In</a>
             <a href="/register" class="btn btn-primary">Get Started</a>
+            {% endif %}
         </div>
     </nav>
 
@@ -539,7 +616,7 @@
                 <h3 class="plan-name">Student</h3>
                 <p class="plan-desc">Perfect for personal projects.</p>
                 <div class="plan-price">
-                    <span class="price-amount">$5</span>
+                    <span class="price-amount">$5.50</span>
                     <span class="price-period">/ month</span>
                 </div>
                 <ul class="plan-features">
@@ -608,7 +685,7 @@
                 <h3 class="plan-name">Team</h3>
                 <p class="plan-desc">For teams that need to ship fast.</p>
                 <div class="plan-price">
-                    <span class="price-amount">$15</span>
+                    <span class="price-amount">$15.50</span>
                     <span class="price-period">/ month</span>
                 </div>
                 <ul class="plan-features">
@@ -683,7 +760,7 @@
                 <h3 class="plan-name">Large Teams</h3>
                 <p class="plan-desc">Unlimited everything. Scale it.</p>
                 <div class="plan-price">
-                    <span class="price-amount">$35</span>
+                    <span class="price-amount">$35.50</span>
                     <span class="price-period">/ month</span>
                 </div>
                 <ul class="plan-features">

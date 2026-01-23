@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Solara Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-red);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--bg-primary);
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .logo-badge {
+            font-size: 0.65rem;
+            background: var(--accent-red);
+            color: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+            border-left-color: var(--accent-orange);
+        }
+
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Main */
+        .main {
+            flex: 1;
+            margin-left: 240px;
+            padding: 32px;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-orange);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.15s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--accent-orange);
+            border-bottom-color: var(--accent-orange);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .table-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-input {
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            width: 200px;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #e0b385;
+        }
+
+        .btn-danger {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+        }
+
+        .btn-danger:hover {
+            background: rgba(212, 106, 106, 0.25);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        th {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg-tertiary);
+        }
+
+        td {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-purple);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        .tier-badge {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+        }
+
+        .tier-free { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .tier-student { background: rgba(107, 158, 206, 0.2); color: var(--accent-blue); }
+        .tier-team { background: rgba(157, 124, 216, 0.2); color: var(--accent-purple); }
+        .tier-enterprise { background: rgba(212, 165, 116, 0.2); color: var(--accent-orange); }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .status-active { background: rgba(127, 176, 105, 0.2); color: var(--accent-green); }
+        .status-inactive { background: rgba(212, 106, 106, 0.2); color: var(--accent-red); }
+
+        .version-badge {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .version-major { background: rgba(212, 106, 106, 0.2); color: var(--accent-red); }
+        .version-minor { background: rgba(107, 158, 206, 0.2); color: var(--accent-blue); }
+        .version-patch { background: rgba(127, 176, 105, 0.2); color: var(--accent-green); }
+
+        .actions-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .action-btn.danger {
+            color: var(--accent-red);
+        }
+
+        .action-btn.danger:hover {
+            background: rgba(212, 106, 106, 0.2);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main {
+                margin-left: 0;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">S</div>
+                <span class="logo-text">Solara</span>
+                <span class="logo-badge">ADMIN</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" onclick="showTab('dashboard')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    Dashboard
+                </div>
+                <div class="nav-item" onclick="showTab('users')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Users
+                </div>
+                <div class="nav-item" onclick="showTab('projects')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Projects
+                </div>
+                <div class="nav-item" onclick="showTab('changelog')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    Changelog
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="page-header">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Overview of your SolaraDocs instance</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value">{{ stats.total_users }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Projects</div>
+                        <div class="stat-value">{{ stats.total_projects }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Documents</div>
+                        <div class="stat-value">{{ stats.total_documents }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Paid Users</div>
+                        <div class="stat-value">{{ stats.paid_users }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <div id="users-tab" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Users</h1>
+                    <p class="page-subtitle">Manage all registered users</p>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <span class="table-title">All Users ({{ users|length }})</span>
+                        <div class="table-actions">
+                            <input type="text" class="search-input" placeholder="Search users..." id="user-search" onkeyup="filterUsers()">
+                        </div>
+                    </div>
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Tier</th>
+                                <th>Status</th>
+                                <th>Projects</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr data-username="{{ user.username }}" data-email="{{ user.email }}">
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+                                        <div class="user-info">
+                                            <span class="user-name">{{ user.username }}</span>
+                                            <span class="user-email">{{ user.email }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="tier-badge tier-{{ user.Tier }}">{{ user.Tier }}</span></td>
+                                <td>
+                                    {% if user.subscription_status == 'active' %}
+                                    <span class="status-badge status-active">Active</span>
+                                    {% else %}
+                                    <span class="status-badge status-inactive">{{ user.subscription_status|default:"None" }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.owned_projects.count }}</td>
+                                <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <button class="action-btn" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.Tier }}')">Edit</button>
+                                        <button class="action-btn danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Projects Tab -->
+            <div id="projects-tab" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Projects</h1>
+                    <p class="page-subtitle">All projects across the platform</p>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <span class="table-title">All Projects ({{ projects|length }})</span>
+                        <div class="table-actions">
+                            <input type="text" class="search-input" placeholder="Search projects..." id="project-search" onkeyup="filterProjects()">
+                        </div>
+                    </div>
+                    <table id="projects-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Owner</th>
+                                <th>Tier</th>
+                                <th>Documents</th>
+                                <th>Teams</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in projects %}
+                            <tr data-name="{{ project.project_name }}">
+                                <td>
+                                    <span style="color: var(--text-primary); font-weight: 500;">{{ project.project_name }}</span>
+                                </td>
+                                <td>{{ project.owner.username }}</td>
+                                <td><span class="tier-badge tier-{{ project.tier }}">{{ project.tier }}</span></td>
+                                <td>{{ project.project_documents.count }}</td>
+                                <td>{{ project.project_teams.count }}</td>
+                                <td>{{ project.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <button class="action-btn danger" onclick="deleteProject({{ project.id }}, '{{ project.project_name }}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Changelog Tab -->
+            <div id="changelog-tab" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Changelog</h1>
+                    <p class="page-subtitle">Manage version history and release notes</p>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <span class="table-title">All Releases ({{ changelogs|length }})</span>
+                        <div class="table-actions">
+                            <button class="btn btn-primary" onclick="openChangelogModal()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                Add Release
+                            </button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Version</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in changelogs %}
+                            <tr>
+                                <td>
+                                    <span style="font-family: 'JetBrains Mono', monospace; color: var(--accent-orange);">v{{ log.version }}</span>
+                                </td>
+                                <td>{{ log.title }}</td>
+                                <td><span class="version-badge version-{{ log.version_type }}">{{ log.version_type }}</span></td>
+                                <td>{{ log.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <button class="action-btn" onclick="editChangelog({{ log.id }}, '{{ log.version }}', '{{ log.title }}', '{{ log.description|escapejs }}', '{{ log.version_type }}')">Edit</button>
+                                        <button class="action-btn danger" onclick="deleteChangelog({{ log.id }})">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal-overlay" id="user-modal">
+        <div class="modal">
+            <h3 class="modal-title">Edit User</h3>
+            <form id="user-form">
+                <input type="hidden" name="user_id" id="edit-user-id">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="edit-username" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tier</label>
+                    <select class="form-select" name="tier" id="edit-tier">
+                        <option value="free">Free</option>
+                        <option value="student">Student</option>
+                        <option value="team">Team</option>
+                        <option value="enterprise">Enterprise</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div class="modal-overlay" id="changelog-modal">
+        <div class="modal">
+            <h3 class="modal-title" id="changelog-modal-title">Add Release</h3>
+            <form id="changelog-form">
+                <input type="hidden" name="changelog_id" id="edit-changelog-id">
+                <div class="form-group">
+                    <label class="form-label">Version</label>
+                    <input type="text" class="form-input" name="version" id="edit-version" placeholder="1.0.0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-input" name="title" id="edit-title" placeholder="Release title" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" name="version_type" id="edit-version-type">
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
+                        <option value="patch">Patch</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" name="description" id="edit-description" placeholder="What's new in this release..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('changelog-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // Modal helpers
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('active');
+            });
+        });
+
+        // User functions
+        function filterUsers() {
+            const search = document.getElementById('user-search').value.toLowerCase();
+            document.querySelectorAll('#users-table tbody tr').forEach(row => {
+                const username = row.dataset.username.toLowerCase();
+                const email = row.dataset.email.toLowerCase();
+                row.style.display = (username.includes(search) || email.includes(search)) ? '' : 'none';
+            });
+        }
+
+        function editUser(id, username, tier) {
+            document.getElementById('edit-user-id').value = id;
+            document.getElementById('edit-username').value = username;
+            document.getElementById('edit-tier').value = tier;
+            document.getElementById('user-modal').classList.add('active');
+        }
+
+        function deleteUser(id, username) {
+            if (confirm(`Delete user "${username}"? This cannot be undone.`)) {
+                fetch('/admin-panel/delete-user/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: id })
+                }).then(() => location.reload());
+            }
+        }
+
+        document.getElementById('user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            await fetch('/admin-panel/update-user/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: formData.get('user_id'),
+                    tier: formData.get('tier')
+                })
+            });
+            location.reload();
+        });
+
+        // Project functions
+        function filterProjects() {
+            const search = document.getElementById('project-search').value.toLowerCase();
+            document.querySelectorAll('#projects-table tbody tr').forEach(row => {
+                const name = row.dataset.name.toLowerCase();
+                row.style.display = name.includes(search) ? '' : 'none';
+            });
+        }
+
+        function deleteProject(id, name) {
+            if (confirm(`Delete project "${name}"? This cannot be undone.`)) {
+                fetch('/admin-panel/delete-project/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_id: id })
+                }).then(() => location.reload());
+            }
+        }
+
+        // Changelog functions
+        function openChangelogModal() {
+            document.getElementById('changelog-modal-title').textContent = 'Add Release';
+            document.getElementById('changelog-form').reset();
+            document.getElementById('edit-changelog-id').value = '';
+            document.getElementById('changelog-modal').classList.add('active');
+        }
+
+        function editChangelog(id, version, title, description, type) {
+            document.getElementById('changelog-modal-title').textContent = 'Edit Release';
+            document.getElementById('edit-changelog-id').value = id;
+            document.getElementById('edit-version').value = version;
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-description').value = description;
+            document.getElementById('edit-version-type').value = type;
+            document.getElementById('changelog-modal').classList.add('active');
+        }
+
+        function deleteChangelog(id) {
+            if (confirm('Delete this changelog entry?')) {
+                fetch('/admin-panel/delete-changelog/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ changelog_id: id })
+                }).then(() => location.reload());
+            }
+        }
+
+        document.getElementById('changelog-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const id = formData.get('changelog_id');
+            const url = id ? '/admin-panel/update-changelog/' : '/admin-panel/add-changelog/';
+
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    changelog_id: id || null,
+                    version: formData.get('version'),
+                    title: formData.get('title'),
+                    description: formData.get('description'),
+                    version_type: formData.get('version_type')
+                })
+            });
+            location.reload();
+        });
+    </script>
+</body>
+</html>
