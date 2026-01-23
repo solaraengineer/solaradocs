@@ -1,3 +1,4 @@
+{% load socialaccount %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,6 +103,11 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            text-decoration: none;
+        }
+
+        .sidebar-header:hover {
+            background: var(--bg-tertiary);
         }
 
         .logo {
@@ -298,6 +304,38 @@
 
         .topbar-btn.primary:hover {
             background: #1a85d4;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
 
         /* Hero section */
@@ -763,10 +801,10 @@
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-header">
+            <a href="/" class="sidebar-header">
                 <div class="logo">S</div>
                 <span class="logo-text">Solara Docs</span>
-            </div>
+            </a>
 
             <nav class="sidebar-nav">
                 <div class="nav-section">
@@ -807,20 +845,6 @@
 
                 <div class="nav-section">
                     <div class="nav-section-title">Resources</div>
-                    <a href="/guides" class="nav-item">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                        </svg>
-                        Guides
-                    </a>
-                    <a href="/api" class="nav-item">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="16 18 22 12 16 6"/>
-                            <polyline points="8 6 2 12 8 18"/>
-                        </svg>
-                        API Reference
-                    </a>
                     <a href="/changelog" class="nav-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
@@ -848,6 +872,15 @@
             </nav>
 
             <div class="sidebar-footer">
+                {% if request.user.is_authenticated %}
+                <a href="/dashboard" class="sidebar-cta">
+                    Go to Dashboard
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% else %}
                 <a href="/register" class="sidebar-cta">
                     Get Started
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -855,6 +888,7 @@
                         <polyline points="12 5 19 12 12 19"/>
                     </svg>
                 </a>
+                {% endif %}
             </div>
         </aside>
 
@@ -868,6 +902,23 @@
                     <span class="breadcrumb-current">Home</span>
                 </div>
                 <div class="topbar-actions">
+                    {% if request.user.is_authenticated %}
+                    <div class="user-menu">
+                        <span class="user-name">{{ request.user.username }}</span>
+                        <a href="/profile" class="user-avatar" title="Profile">
+                            {{ request.user.username|slice:":1"|upper }}
+                        </a>
+                        <a href="/dashboard" class="topbar-btn primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                            Dashboard
+                        </a>
+                    </div>
+                    {% else %}
                     <a href="/login" class="topbar-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
@@ -885,6 +936,7 @@
                         </svg>
                         Create account
                     </a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -899,6 +951,15 @@
                     Real-time collaboration, version control, and instant publishing. The modern way to create and maintain documentation for your team.
                 </p>
                 <div class="hero-actions">
+                    {% if request.user.is_authenticated %}
+                    <a href="/dashboard" class="btn btn-primary">
+                        Go to Dashboard
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </a>
+                    {% else %}
                     <a href="/register" class="btn btn-primary">
                         Get started free
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -906,6 +967,7 @@
                             <polyline points="12 5 19 12 12 19"/>
                         </svg>
                     </a>
+                    {% endif %}
                     <a href="/docs" class="btn btn-secondary">
                         Read the docs
                     </a>
@@ -1048,6 +1110,15 @@
             <section class="cta">
                 <h2 class="cta-title">Ready to get started?</h2>
                 <p class="cta-desc">Create your first project in under a minute.</p>
+                {% if request.user.is_authenticated %}
+                <a href="/setup" class="btn btn-primary">
+                    Create new project
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% else %}
                 <a href="/register" class="btn btn-primary">
                     Start for free
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1055,6 +1126,7 @@
                         <polyline points="12 5 19 12 12 19"/>
                     </svg>
                 </a>
+                {% endif %}
             </section>
 
             <!-- Footer -->

@@ -17,7 +17,9 @@ from datetime import datetime, timedelta
 from django_ratelimit.decorators import ratelimit
 from functools import wraps
 from .forms import LoginForm, RegisterForm
-from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember
+
+from django.contrib.auth import update_session_auth_hash
+from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog
 import re
 
 PROJECT_NAME_REGEX = re.compile(r'^[a-zA-Z0-9\s@#$!]+$')
@@ -364,10 +366,16 @@ def about(request):
     return render(request, 'about.html')
 
 
-@cache_page(60 * 15)
 @require_GET
+@cache_page(60 * 15)
 def docs(request):
     return render(request, 'docs.html')
+
+@require_GET
+@cache_page(60 * 15)
+def changelog(request):
+    changelogs = Changelog.objects.all().order_by('-created_at')
+    return render(request, 'changelog.html', {'changelogs': changelogs})
 
 
 @ratelimit(key='ip', rate='5/m', block=True)
@@ -657,6 +665,13 @@ def home(request):
     return render(request, 'index.html')
 
 
+PRICE_IDS = {
+    'student': 'price_1SstN86RgjVGr3Dc9jG2YCip',
+    'team': 'price_1SspcWHVqJxZgWX0bv4QsgrW',
+    'enterprise': 'price_1SspdtHVqJxZgWX0J2ZR4dIU',
+}
+
+
 @login_required
 @require_POST
 @transaction.atomic
@@ -664,39 +679,20 @@ def home(request):
 def create_checkout_session(request):
     tier = request.POST.get('tier')
 
-    prices = {
-        'student': {'amount': 500, 'name': 'Student', 'display_price': '5.00'},
-        'team': {'amount': 1500, 'name': 'Team', 'display_price': '15.00'},
-        'enterprise': {'amount': 3500, 'name': 'Large Teams', 'display_price': '35.00'},
-    }
-
-    if tier not in prices:
+    if tier not in PRICE_IDS:
         return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
-
-    selected_tier = prices[tier]
-
-    request.session['plan_name'] = selected_tier['name']
-    request.session['amount'] = selected_tier['display_price']
-    request.session['tier'] = tier
 
     try:
         session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
+            customer_email=request.user.email,
+            mode='subscription',
             line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': selected_tier['name'],
-                    },
-                    'unit_amount': selected_tier['amount'],
-                },
+                'price': PRICE_IDS[tier],
                 'quantity': 1,
             }],
-            mode='payment',
-            customer_email=request.user.email,
             metadata={
-                'plan_tier': tier,
                 'user_id': str(request.user.id),
+                'tier': tier,
             },
             success_url=request.build_absolute_uri('/success/') + '?session_id={CHECKOUT_SESSION_ID}',
             cancel_url=request.build_absolute_uri('/buy/'),
@@ -704,6 +700,78 @@ def create_checkout_session(request):
         return redirect(session.url)
     except stripe.error.StripeError:
         return JsonResponse({'success': False, 'error': 'Payment service unavailable'}, status=503)
+
+
+@csrf_exempt
+@require_POST
+@ratelimit(key='ip', rate='20/m', block=True)
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.headers.get('Stripe-Signature', '')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError:
+        return HttpResponse(status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        user_id = session.get('metadata', {}).get('user_id')
+        tier = session.get('metadata', {}).get('tier')
+        customer_id = session.get('customer')
+
+        if user_id and tier:
+            try:
+                user = User.objects.get(id=int(user_id))
+                user.Tier = tier
+                user.stripe_customer_id = customer_id
+                user.subscription_status = 'active'
+                user.save(update_fields=['Tier', 'stripe_customer_id', 'subscription_status'])
+            except (User.DoesNotExist, ValueError):
+                pass
+
+    elif event['type'] == 'invoice.paid':
+        invoice = event['data']['object']
+        customer_id = invoice.get('customer')
+
+        if customer_id:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                user.subscription_status = 'active'
+                user.save(update_fields=['subscription_status'])
+            except User.DoesNotExist:
+                pass
+
+    elif event['type'] == 'invoice.payment_failed':
+        invoice = event['data']['object']
+        customer_id = invoice.get('customer')
+
+        if customer_id:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                user.subscription_status = 'past_due'
+                user.save(update_fields=['subscription_status'])
+            except User.DoesNotExist:
+                pass
+
+    elif event['type'] == 'customer.subscription.deleted':
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+
+        if customer_id:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                user.Tier = 'free'
+                user.subscription_status = 'canceled'
+                user.save(update_fields=['Tier', 'subscription_status'])
+            except User.DoesNotExist:
+                pass
+
+    return HttpResponse(status=200)
 
 
 @login_required
@@ -714,37 +782,6 @@ def success(request):
         'user': request.user
     })
 
-
-@csrf_protect
-@require_POST
-@ratelimit(key='ip', rate='5/m', block=True)
-@transaction.atomic
-def stripe_webhook(request):
-    payload = request.body
-    sig_header = request.headers.get('Stripe-Signature', '')
-    webhook_secret = settings.STRIPE_WEBHOOK_SECRET
-
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except ValueError:
-        return JsonResponse({'success': False, 'error': 'Invalid payload'}, status=400)
-    except stripe.error.SignatureVerificationError:
-        return JsonResponse({'success': False, 'error': 'Invalid signature'}, status=400)
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        user_id = session.get('metadata', {}).get('user_id')
-        tier = session.get('metadata', {}).get('plan_tier')
-
-        if user_id and tier and session.get('payment_status') == 'paid':
-            try:
-                user = User.objects.get(id=int(user_id))
-                user.Tier = tier
-                user.save(update_fields=['Tier'])
-            except (User.DoesNotExist, ValueError):
-                pass
-
-    return JsonResponse({'success': True})
 
 
 def buy(request):
@@ -1795,3 +1832,92 @@ def update_team_member_review(request, project_id, team_id):
             'can_direct_save': membership.can_direct_save
         }
     })
+
+
+@login_required
+@require_GET
+def profile(request):
+    return render(request, 'profile.html', {'user': request.user})
+
+
+@login_required
+@require_POST
+@ratelimit(key='ip', rate='5/m', block=True)
+def change_password(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    if not current_password or not new_password:
+        return JsonResponse({'success': False, 'error': 'All fields required'}, status=400)
+
+    if len(new_password) < 6:
+        return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters'}, status=400)
+
+    if not request.user.check_password(current_password):
+        return JsonResponse({'success': False, 'error': 'Current password is incorrect'}, status=400)
+
+    request.user.set_password(new_password)
+    request.user.save()
+
+    update_session_auth_hash(request, request.user)
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+@ratelimit(key='ip', rate='5/m', block=True)
+def cancel_subscription(request):
+    if not request.user.stripe_customer_id:
+        return JsonResponse({'success': False, 'error': 'No active subscription'}, status=400)
+
+    try:
+        subscriptions = stripe.Subscription.list(
+            customer=request.user.stripe_customer_id,
+            status='active',
+            limit=1
+        )
+
+        if not subscriptions.data:
+            return JsonResponse({'success': False, 'error': 'No active subscription'}, status=400)
+
+        stripe.Subscription.modify(
+            subscriptions.data[0].id,
+            cancel_at_period_end=True
+        )
+
+        request.user.subscription_status = 'canceled'
+        request.user.save(update_fields=['subscription_status'])
+
+        return JsonResponse({'success': True})
+
+    except stripe.error.StripeError:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@login_required
+@require_POST
+@ratelimit(key='ip', rate='3/m', block=True)
+def delete_account(request):
+    user = request.user
+
+    if user.stripe_customer_id:
+        try:
+            subscriptions = stripe.Subscription.list(
+                customer=user.stripe_customer_id,
+                status='active'
+            )
+            for sub in subscriptions.data:
+                stripe.Subscription.cancel(sub.id)
+        except stripe.error.StripeError:
+            pass
+
+    auth_logout(request)
+    user.delete()
+
+    return JsonResponse({'success': True})

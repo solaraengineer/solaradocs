@@ -72,6 +72,34 @@
             color: var(--text-primary);
         }
 
+        .back-btn {
+            position: absolute;
+            top: 2.5rem;
+            right: 4rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .back-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
         .logo-icon {
             width: 36px;
             height: 36px;
@@ -502,9 +530,17 @@
     <div class="container">
         <!-- Left Side - Branding -->
         <div class="brand-side">
-            <a href="/dashboard" class="logo">
+            <a href="/" class="logo">
                 <div class="logo-icon">S</div>
                 <span>Solara Docs</span>
+            </a>
+
+            <a href="/dashboard" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back to Dashboard
             </a>
 
             <div class="brand-content">

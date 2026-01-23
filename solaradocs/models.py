@@ -4,6 +4,8 @@ from django.db import models
 
 class User(AbstractUser):
     Tier = models.CharField('Tier', max_length=20, default='free')
+    stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
+    subscription_status = models.CharField(max_length=50, default='none')
 
 
 TIER_LIMITS = {
@@ -121,3 +123,23 @@ class Backup(models.Model):
 
     def __str__(self):
         return f"{self.project.project_name} - {self.created_at}"
+
+
+class Changelog(models.Model):
+    VERSION_TYPES = [
+        ('major', 'Major'),
+        ('minor', 'Minor'),
+        ('patch', 'Patch'),
+    ]
+
+    version = models.CharField(max_length=20)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    version_type = models.CharField(max_length=10, choices=VERSION_TYPES, default='minor')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"v{self.version} - {self.title}"
