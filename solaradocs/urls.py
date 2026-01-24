@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/project/<int:project_id>/teams', views.get_teams, name='get_teams'),
     path('api/project/<int:project_id>/audits', views.get_audits, name='get_audits'),
     path('api/project/<int:project_id>/pending', views.get_pending_edits, name='get_pending_edits'),
+    path('api/project/<int:project_id>/pending-actions', views.get_pending_actions, name='get_pending_actions'),
     path('api/project/<int:project_id>/teams/add', views.create_team, name='create_team'),
     path('api/project/<int:project_id>/teams/<int:team_id>/update', views.update_team, name='update_team'),
     path('api/project/<int:project_id>/teams/<int:team_id>/delete', views.delete_team, name='delete_team'),
