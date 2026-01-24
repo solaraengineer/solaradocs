@@ -1566,6 +1566,37 @@
         </div>
     </div>
 
+    <!-- Pending Note Modal (for editors submitting changes for review) -->
+    <div class="modal-overlay" id="pendingNoteModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Submit Changes for Review</h3>
+                <button class="modal-close" id="closePendingNoteModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Your changes require admin approval. Please describe what you changed.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="pendingNoteInput">Change Note <span style="color: var(--accent-red);">*</span></label>
+                    <textarea class="form-input" id="pendingNoteInput" rows="4" placeholder="Describe your changes (e.g., Fixed typo in section 2, Updated pricing info...)" maxlength="500" style="resize: vertical;"></textarea>
+                    <div style="text-align: right; font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.25rem;">
+                        <span id="pendingNoteCharCount">0</span>/500
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelPendingNote">Cancel</button>
+                <button class="btn btn-primary" id="confirmPendingNote">Submit for Review</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast">
         <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1795,24 +1826,30 @@
             },
 
             // Save document and update cache
-            async saveDocument(docId, content) {
+            async saveDocument(docId, content, note = '') {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents/${docId}/save`, {
                         method: 'POST',
-                        body: JSON.stringify({ content })
+                        body: JSON.stringify({ content, note })
                     });
                     if (!response) return { success: false };
 
                     const data = await response.json();
                     if (data.success) {
-                        // Update document content cache
-                        const cached = CacheManager.get('document', docId);
-                        if (cached) {
-                            cached.content = content;
-                            CacheManager.set('document', cached, docId, CacheManager.CONTENT_TTL);
+                        // Update document content cache (only if not pending)
+                        if (!data.pending) {
+                            const cached = CacheManager.get('document', docId);
+                            if (cached) {
+                                cached.content = content;
+                                CacheManager.set('document', cached, docId, CacheManager.CONTENT_TTL);
+                            }
                         }
                         // Invalidate audits cache since we just edited
                         CacheManager.invalidate('audits');
+                        // Invalidate pending cache if applicable
+                        if (data.pending) {
+                            CacheManager.invalidate('pending');
+                        }
                     }
                     return data;
                 } catch (error) {
@@ -2434,10 +2471,13 @@
                         <div class="pending-info">
                             <div class="pending-user">${escapeHtml(p.username)}</div>
                             <div class="pending-doc">${escapeHtml(p.document_name)}</div>
+                            <div class="pending-team" style="font-size: 0.7rem; color: var(--text-tertiary);">Team: ${escapeHtml(p.team_name)}</div>
                         </div>
                         <span class="pending-time">${formatTime(p.created_at)}</span>
                     </div>
+                    ${p.note ? `<div class="pending-note" style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-elevated); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 2px solid var(--accent-orange);">"${escapeHtml(p.note)}"</div>` : ''}
                     <div class="pending-actions">
+                        <button class="pending-btn pending-btn-preview" data-pending-id="${p.id}" data-content="${encodeURIComponent(p.submitted_content)}">Preview</button>
                         <button class="pending-btn pending-btn-accept" data-pending-id="${p.id}" data-action="accept">Accept</button>
                         <button class="pending-btn pending-btn-reject" data-pending-id="${p.id}" data-action="reject">Reject</button>
                     </div>
@@ -2520,9 +2560,33 @@
                         <span class="audit-user">${escapeHtml(audit.username)}</span>
                         <span class="audit-time">${formatTime(audit.created_at)}</span>
                     </div>
-                    <div class="audit-action">Edited "${escapeHtml(audit.document_name)}"</div>
+                    <div class="audit-action">${formatAuditAction(audit.action, audit.document_name)}</div>
                 </div>
             `).join('');
+        }
+
+        function formatAuditAction(action, documentName) {
+            const docName = escapeHtml(documentName || 'N/A');
+            switch(action) {
+                case 'edit':
+                    return `Edited "${docName}"`;
+                case 'create':
+                    return `Created "${docName}"`;
+                case 'rename':
+                    return `Renamed "${docName}"`;
+                case 'create_team':
+                    return 'Created a team';
+                case 'pending_accept':
+                    return `Accepted pending edit for "${docName}"`;
+                case 'pending_reject':
+                    return `Rejected pending edit for "${docName}"`;
+                default:
+                    if (action.startsWith('delete:')) {
+                        const deletedName = action.substring(7);
+                        return `Deleted "${escapeHtml(deletedName)}"`;
+                    }
+                    return `${action} on "${docName}"`;
+            }
         }
 
         function formatTime(isoString) {
@@ -2840,6 +2904,63 @@
             hasUnsavedChanges = false;
         };
 
+        // ==================== PENDING NOTE MODAL ====================
+
+        let pendingSaveContent = null; // Store content while waiting for note
+
+        const pendingNoteModal = document.getElementById('pendingNoteModal');
+        const pendingNoteInput = document.getElementById('pendingNoteInput');
+        const pendingNoteCharCount = document.getElementById('pendingNoteCharCount');
+
+        // Character count for note
+        pendingNoteInput.addEventListener('input', () => {
+            pendingNoteCharCount.textContent = pendingNoteInput.value.length;
+        });
+
+        function showPendingNoteModal() {
+            pendingNoteInput.value = '';
+            pendingNoteCharCount.textContent = '0';
+            pendingNoteModal.classList.add('show');
+            pendingNoteInput.focus();
+        }
+
+        function hidePendingNoteModal() {
+            pendingNoteModal.classList.remove('show');
+            pendingSaveContent = null;
+        }
+
+        document.getElementById('closePendingNoteModal').addEventListener('click', hidePendingNoteModal);
+        document.getElementById('cancelPendingNote').addEventListener('click', hidePendingNoteModal);
+
+        pendingNoteModal.addEventListener('click', (e) => {
+            if (e.target === pendingNoteModal) hidePendingNoteModal();
+        });
+
+        document.getElementById('confirmPendingNote').addEventListener('click', async () => {
+            const note = pendingNoteInput.value.trim();
+            if (!note) {
+                showToast('Please enter a note describing your changes', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmPendingNote');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Submitting...';
+
+            const data = await API.saveDocument(currentDocumentId, pendingSaveContent, note);
+            if (data.success) {
+                showToast('Changes submitted for review');
+                document.getElementById('lastModified').textContent = 'Just now';
+                hasUnsavedChanges = false;
+                hidePendingNoteModal();
+            } else {
+                showToast('Submit failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Submit for Review';
+        });
+
         // Update after successful save
         const originalSaveHandler = document.getElementById('saveBtn').onclick;
         document.getElementById('saveBtn').onclick = null;
@@ -2860,12 +2981,17 @@
                 Saving...
             `;
 
+            // First try without a note
             const data = await API.saveDocument(currentDocumentId, content);
             if (data.success) {
                 showToast(data.pending ? 'Changes submitted for review' : 'Saved successfully');
                 document.getElementById('lastModified').textContent = 'Just now';
                 lastSavedContent = content;
                 hasUnsavedChanges = false;
+            } else if (data.requires_note) {
+                // User needs to provide a note for pending review
+                pendingSaveContent = content;
+                showPendingNoteModal();
             } else {
                 showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
             }

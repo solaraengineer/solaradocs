@@ -19,7 +19,7 @@ from functools import wraps
 from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
-from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog
+from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, PendingAction
 import re
 
 PROJECT_NAME_REGEX = re.compile(r'^[a-zA-Z0-9\s@#$!]+$')
@@ -611,38 +611,148 @@ def revert(request):
 
 @require_POST
 @require_auth_token
-# another function to review.
+@login_required
+@ratelimit(key='ip', rate='10/m', block=True)
 def handle_pending(request):
+    """
+    Handle pending edits - accept or reject.
+
+    Authorization:
+    - Owner: Can handle all pending edits in the project
+    - Project Admin (Contributor with role='ADMIN'): Can handle all pending edits
+    - Team Admin: Can only handle pending edits from their team(s)
+
+    On accept: Updates the document content, creates backup, audit entry, and PendingAction record
+    On reject: Creates PendingAction record for audit trail, deletes pending
+    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
     pending_id = data.get('pending_id')
     action = data.get('action', '').lower()
 
-    if not pending_id:
-        return JsonResponse({'success': False, 'error': 'Pending ID required'})
+    if not isinstance(pending_id, int) or pending_id < 1:
+        return JsonResponse({'success': False, 'error': 'Invalid pending ID'}, status=400)
 
     if action not in ('accept', 'reject'):
-        return JsonResponse({'success': False, 'error': 'Invalid action'})
+        return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
 
     with transaction.atomic():
-        pending = Pending.objects.filter(id=pending_id).select_related('project').first()
+        # Fetch pending with all related objects for permission checks
+        pending = Pending.objects.select_related(
+            'project', 'document', 'team', 'user'
+        ).filter(id=pending_id).first()
 
         if not pending:
-            return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+            return JsonResponse({'success': False, 'error': 'Pending edit not found'}, status=404)
 
-        if pending.project.owner_id != request.user.id:
-            return JsonResponse({'success': False, 'error': 'Not authorized'}, status=403)
+        project = pending.project
+        is_owner = project.owner_id == request.user.id
+
+        # Check authorization
+        can_handle = False
+
+        if is_owner:
+            # Owner can handle all pending edits
+            can_handle = True
+        else:
+            # Check if user is a project-level admin
+            is_project_admin = Contributor.objects.filter(
+                project_id=project.id,
+                username=request.user.username,
+                role='ADMIN'
+            ).exists()
+
+            if is_project_admin:
+                # Project admin can handle all pending edits
+                can_handle = True
+            else:
+                # Check if user is a team admin for this pending's team
+                is_team_admin = TeamMember.objects.filter(
+                    team_id=pending.team_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).exists()
+
+                if is_team_admin:
+                    can_handle = True
+
+        if not can_handle:
+            return JsonResponse({'success': False, 'error': 'Not authorized to handle this pending edit'}, status=403)
+
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+        # Store data for PendingAction before potentially deleting pending
+        document = pending.document
+        pending_user = pending.user
+        document_name = document.document_name if document else 'Unknown'
+        pending_note = pending.note
 
         if action == 'accept':
-            pending.project.content = pending.submitted_content
-            pending.project.save(update_fields=['content'])
+            if not document:
+                return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
 
+            # Lock document for update
+            document = Documents.objects.select_for_update().get(id=document.id)
+
+            # Create backup if enabled
+            if project.backups_enabled and tier_config.get('backups', False):
+                backup_count = Backup.objects.filter(document=document).count()
+                max_backups = 50
+
+                if backup_count >= max_backups:
+                    Backup.objects.filter(document=document).order_by('created_at').first().delete()
+
+                Backup.objects.create(
+                    project=project,
+                    document=document,
+                    content=document.content
+                )
+
+            # Update document content
+            document.content = pending.submitted_content
+            document.save(update_fields=['content'])
+
+            # Create audit entry for the edit
+            if tier_config.get('audit', False):
+                Audit.objects.create(
+                    project=project,
+                    document=document,
+                    user=pending_user,
+                    action='edit'
+                )
+
+        # Create PendingAction for audit trail
+        PendingAction.objects.create(
+            project=project,
+            document=document if document else None,
+            pending_user=pending_user,
+            actioned_by=request.user,
+            action=action,
+            document_name=document_name,
+            pending_note=pending_note
+        )
+
+        # Create audit entry for the accept/reject action
+        if tier_config.get('audit', False):
+            Audit.objects.create(
+                project=project,
+                document=document if document else None,
+                user=request.user,
+                action=f'pending_{action}'
+            )
+
+        # Delete the pending entry
         pending.delete()
 
-    return JsonResponse({'success': True})
+    return JsonResponse({
+        'success': True,
+        'action': action,
+        'document_name': document_name
+    })
 
 
 @require_GET
@@ -1019,6 +1129,16 @@ def add_document(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def save_document(request, project_id, doc_id):
+    """
+    Save document content.
+
+    Authorization:
+    - Owner: Can save any document directly
+    - Project Admin: Can save any document directly
+    - Team Admin: Can save documents in their team directly
+    - Team Editor with can_direct_save=True: Can save directly
+    - Team Editor with can_direct_save=False: Changes go to pending review (requires note)
+    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -1031,12 +1151,16 @@ def save_document(request, project_id, doc_id):
         return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
 
     content = data.get('content')
+    change_note = data.get('note', '').strip()
 
     if content is None:
         return JsonResponse({'success': False, 'error': 'Content required'}, status=400)
 
     if not isinstance(content, str):
         return JsonResponse({'success': False, 'error': 'Invalid content type'}, status=400)
+
+    if len(change_note) > 500:
+        return JsonResponse({'success': False, 'error': 'Note too long (max 500 chars)'}, status=400)
 
     try:
         with transaction.atomic():
@@ -1047,7 +1171,13 @@ def save_document(request, project_id, doc_id):
             tier = project.tier.lower()
             tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-            if not is_owner:
+            # Determine if user can direct save
+            can_direct_save = False
+            requires_pending = False
+
+            if is_owner:
+                can_direct_save = True
+            else:
                 is_contributor = Contributor.objects.filter(
                     project_id=project_id,
                     username=request.user.username
@@ -1056,27 +1186,62 @@ def save_document(request, project_id, doc_id):
                 if not is_contributor:
                     return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-                membership = TeamMember.objects.filter(
-                    team_id=document.team_assigned_id,
-                    user=request.user
-                ).first()
+                # Check if project-level admin
+                is_project_admin = Contributor.objects.filter(
+                    project_id=project_id,
+                    username=request.user.username,
+                    role='ADMIN'
+                ).exists()
 
-                if not membership:
-                    return JsonResponse({'success': False, 'error': 'Not a team member'}, status=403)
+                if is_project_admin:
+                    can_direct_save = True
+                else:
+                    # Check team membership
+                    membership = TeamMember.objects.filter(
+                        team_id=document.team_assigned_id,
+                        user=request.user
+                    ).first()
 
-                if membership.role == 'EDITOR':
-                    if not membership.can_direct_save and tier_config.get('pending', False):
-                        Pending.objects.create(
-                            project=project,
-                            team=document.team_assigned,
-                            document=document,
-                            user=request.user,
-                            submitted_content=content
-                        )
-                        return JsonResponse({'success': True, 'pending': True})
-                elif membership.role != 'ADMIN':
-                    return JsonResponse({'success': False, 'error': 'Invalid role'}, status=403)
+                    if not membership:
+                        return JsonResponse({'success': False, 'error': 'Not a team member for this document'}, status=403)
 
+                    if membership.role == 'ADMIN':
+                        can_direct_save = True
+                    elif membership.role == 'EDITOR':
+                        if membership.can_direct_save:
+                            can_direct_save = True
+                        elif tier_config.get('pending', False):
+                            requires_pending = True
+                        else:
+                            # Pending feature not available for this tier, allow direct save
+                            can_direct_save = True
+                    else:
+                        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=403)
+
+            # If requires pending, validate note is provided
+            if requires_pending:
+                if not change_note:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'A note is required when submitting changes for review',
+                        'requires_note': True
+                    }, status=400)
+
+                # Check if content actually changed
+                if document.content == content:
+                    return JsonResponse({'success': True, 'message': 'No changes to submit'})
+
+                Pending.objects.create(
+                    project=project,
+                    team=document.team_assigned,
+                    document=document,
+                    user=request.user,
+                    submitted_content=content,
+                    note=change_note
+                )
+                return JsonResponse({'success': True, 'pending': True})
+
+            # Direct save path
             if document.content == content:
                 return JsonResponse({'success': True, 'message': 'No changes'})
 
@@ -1143,14 +1308,23 @@ def rename_document(request, project_id, doc_id):
     is_owner = project.owner_id == request.user.id
 
     if not is_owner:
-        is_team_admin = TeamMember.objects.filter(
-            team_id=document.team_assigned_id,
-            user=request.user,
+        # Check if user is a project-level admin
+        is_project_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
             role='ADMIN'
         ).exists()
 
-        if not is_team_admin:
-            return JsonResponse({'success': False, 'error': 'Only project owner or team admin can rename documents'}, status=403)
+        if not is_project_admin:
+            # Check if user is a team admin for this document's team
+            is_team_admin = TeamMember.objects.filter(
+                team_id=document.team_assigned_id,
+                user=request.user,
+                role='ADMIN'
+            ).exists()
+
+            if not is_team_admin:
+                return JsonResponse({'success': False, 'error': 'Only project owner, project admin, or team admin can rename documents'}, status=403)
 
     old_name = document.document_name
 
@@ -1197,14 +1371,23 @@ def delete_document(request, project_id, doc_id):
     is_owner = project.owner_id == request.user.id
 
     if not is_owner:
-        is_team_admin = TeamMember.objects.filter(
-            team_id=document.team_assigned_id,
-            user=request.user,
+        # Check if user is a project-level admin
+        is_project_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
             role='ADMIN'
         ).exists()
 
-        if not is_team_admin:
-            return JsonResponse({'success': False, 'error': 'Only project owner or team admin can delete documents'}, status=403)
+        if not is_project_admin:
+            # Check if user is a team admin for this document's team
+            is_team_admin = TeamMember.objects.filter(
+                team_id=document.team_assigned_id,
+                user=request.user,
+                role='ADMIN'
+            ).exists()
+
+            if not is_team_admin:
+                return JsonResponse({'success': False, 'error': 'Only project owner, project admin, or team admin can delete documents'}, status=403)
 
     document_name = document.document_name
     document_id = document.id
@@ -1287,6 +1470,14 @@ def get_teams(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_pending_edits(request, project_id):
+    """
+    Get pending edits for review.
+
+    Authorization:
+    - Owner: Sees ALL pending edits in the project
+    - Project Admin (Contributor with role='ADMIN'): Sees ALL pending edits
+    - Team Admin: Sees only pending edits from their team(s)
+    """
     if not isinstance(project_id, int) or project_id < 1:
         return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
@@ -1297,15 +1488,32 @@ def get_pending_edits(request, project_id):
 
     is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        is_admin = TeamMember.objects.filter(
-            team__project_id=project_id,
-            user=request.user,
+    # Determine user's access level
+    can_see_all = False
+    team_admin_team_ids = []
+
+    if is_owner:
+        can_see_all = True
+    else:
+        # Check if project-level admin
+        is_project_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
             role='ADMIN'
         ).exists()
 
-        if not is_admin:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        if is_project_admin:
+            can_see_all = True
+        else:
+            # Check if team admin
+            team_admin_team_ids = list(TeamMember.objects.filter(
+                team__project_id=project_id,
+                user=request.user,
+                role='ADMIN'
+            ).values_list('team_id', flat=True))
+
+            if not team_admin_team_ids:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
     tier = project.tier.lower()
     tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
@@ -1313,20 +1521,15 @@ def get_pending_edits(request, project_id):
     if not tier_config.get('pending', False):
         return JsonResponse({'success': False, 'error': 'Pending edits not available for your tier'}, status=403)
 
-    if is_owner:
+    if can_see_all:
         pending_edits = Pending.objects.filter(
             project_id=project_id
         ).select_related('document', 'user', 'team').order_by('-created_at')
     else:
-        admin_team_ids = TeamMember.objects.filter(
-            team__project_id=project_id,
-            user=request.user,
-            role='ADMIN'
-        ).values_list('team_id', flat=True)
-
+        # Team admin: only see pending from their teams
         pending_edits = Pending.objects.filter(
             project_id=project_id,
-            team_id__in=admin_team_ids
+            team_id__in=team_admin_team_ids
         ).select_related('document', 'user', 'team').order_by('-created_at')
 
     pending_data = [{
@@ -1334,8 +1537,10 @@ def get_pending_edits(request, project_id):
         'document_id': p.document.id,
         'document_name': p.document.document_name,
         'username': p.user.username,
+        'team_id': p.team.id,
         'team_name': p.team.team_name,
         'submitted_content': p.submitted_content,
+        'note': p.note,
         'created_at': p.created_at.isoformat()
     } for p in pending_edits]
 
@@ -1385,6 +1590,57 @@ def get_audits(request, project_id):
     } for audit in audits]
 
     return JsonResponse({'success': True, 'audits': audits_data})
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_pending_actions(request, project_id):
+    """
+    Get pending action history (accept/reject log).
+    Shows: "USER X ACCEPTED/REJECTED PENDING FROM Z AT {DATETIME}"
+    """
+    if not isinstance(project_id, int) or project_id < 1:
+        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+    project = Project.objects.filter(id=project_id).first()
+
+    if not project:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+    is_owner = project.owner_id == request.user.id
+
+    if not is_owner:
+        contributor = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username
+        ).exists()
+
+        if not contributor:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+    tier = project.tier.lower()
+    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+    if not tier_config.get('audit', False):
+        return JsonResponse({'success': False, 'error': 'Audit logs not available for your tier'}, status=403)
+
+    pending_actions = PendingAction.objects.filter(
+        project_id=project_id
+    ).select_related('pending_user', 'actioned_by', 'document').order_by('-created_at')[:100]
+
+    actions_data = [{
+        'id': action.id,
+        'actioned_by': action.actioned_by.username,
+        'pending_user': action.pending_user.username,
+        'action': action.action,
+        'document_name': action.document_name,
+        'pending_note': action.pending_note,
+        'created_at': action.created_at.isoformat()
+    } for action in pending_actions]
+
+    return JsonResponse({'success': True, 'pending_actions': actions_data})
 
 
 @require_POST
