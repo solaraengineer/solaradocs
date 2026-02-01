@@ -1,4 +1,3 @@
-from wsgiref.util import request_uri
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -48,7 +47,6 @@ JWT_PRIVATE_KEY = settings.JWT_PRIVATE_KEY
 JWT_PUBLIC_KEY = settings.JWT_PUBLIC_KEY
 JWT_EXPIRY_HOURS = 1
 
-# Require RS384 with RSA keys - no fallback
 if not JWT_PRIVATE_KEY or not JWT_PUBLIC_KEY:
     raise ValueError("JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required for RS384 authentication")
 
@@ -249,7 +247,6 @@ def setup(request):
             backups_enabled=backups_enabled,
             tier=user_tier,
         )
-
         if people:
             Contributor.objects.bulk_create(
                 [Contributor(project=project, username=p, role='VIEWER') for p in people]
@@ -273,9 +270,6 @@ def change_roles(request):
 
     if not isinstance(project_id, int) or project_id < 1:
         return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
-
-    if not isinstance(contributor_id, int) or contributor_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid contributor ID'}, status=400)
 
     if not isinstance(new_role, str):
         return JsonResponse({'success': False, 'error': 'Invalid role type'}, status=400)
@@ -776,7 +770,7 @@ def home(request):
 
 
 PRICE_IDS = {
-    'student': 'price_1SstN86RgjVGr3Dc9jG2YCip',
+    'student': 'price_1SspbqHVqJxZgWX0LLHVKyrq',
     'team': 'price_1SspcWHVqJxZgWX0bv4QsgrW',
     'enterprise': 'price_1SspdtHVqJxZgWX0J2ZR4dIU',
 }
@@ -814,7 +808,6 @@ def create_checkout_session(request):
 
 @csrf_exempt
 @require_POST
-@ratelimit(key='ip', rate='20/m', block=True)
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.headers.get('Stripe-Signature', '')
@@ -844,17 +837,66 @@ def stripe_webhook(request):
             except (User.DoesNotExist, ValueError):
                 pass
 
+    elif event['type'] == 'customer.subscription.created':
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+        tier = subscription.get('metadata', {}).get('tier')
+
+        if not tier:
+            items = subscription.get('items', {}).get('data', [])
+            if items:
+                price_id = items[0].get('price', {}).get('id')
+                tier = {
+                    'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
+                    'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
+                    'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                }.get(price_id)
+
+        if customer_id and tier:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                user.Tier = tier
+                user.subscription_status = 'active'
+                user.save(update_fields=['Tier', 'subscription_status'])
+            except User.DoesNotExist:
+                pass
+
     elif event['type'] == 'invoice.paid':
         invoice = event['data']['object']
         customer_id = invoice.get('customer')
+        subscription_id = invoice.get('subscription')
+
+        tier = None
+        if subscription_id:
+            sub = stripe.Subscription.retrieve(subscription_id)
+            tier = sub.metadata.get('tier')
+            if not tier:
+                items = sub.get('items', {}).get('data', [])
+                if items:
+                    price_id = items[0].get('price', {}).get('id')
+                    tier = {
+                        'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
+                        'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
+                        'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                    }.get(price_id)
 
         if customer_id:
             try:
                 user = User.objects.get(stripe_customer_id=customer_id)
+                if tier:
+                    user.Tier = tier
                 user.subscription_status = 'active'
-                user.save(update_fields=['subscription_status'])
+                user.save(update_fields=['Tier', 'subscription_status'])
             except User.DoesNotExist:
-                pass
+                if tier:
+                    try:
+                        user = User.objects.get(email=invoice.get('customer_email'))
+                        user.Tier = tier
+                        user.stripe_customer_id = customer_id
+                        user.subscription_status = 'active'
+                        user.save(update_fields=['Tier', 'stripe_customer_id', 'subscription_status'])
+                    except User.DoesNotExist:
+                        pass
 
     elif event['type'] == 'invoice.payment_failed':
         invoice = event['data']['object']
@@ -877,6 +919,37 @@ def stripe_webhook(request):
                 user = User.objects.get(stripe_customer_id=customer_id)
                 user.Tier = 'free'
                 user.subscription_status = 'canceled'
+                user.save(update_fields=['Tier', 'subscription_status'])
+            except User.DoesNotExist:
+                pass
+
+    elif event['type'] == 'customer.subscription.updated':
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+        status = subscription.get('status')
+
+        items = subscription.get('items', {}).get('data', [])
+        tier = None
+        if items:
+            price_id = items[0].get('price', {}).get('id')
+            tier = {
+                'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
+                'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
+                'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+            }.get(price_id)
+
+        if customer_id:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                if tier:
+                    user.Tier = tier
+                if status == 'active':
+                    user.subscription_status = 'active'
+                elif status == 'past_due':
+                    user.subscription_status = 'past_due'
+                elif status in ('canceled', 'unpaid'):
+                    user.subscription_status = 'canceled'
+                    user.Tier = 'free'
                 user.save(update_fields=['Tier', 'subscription_status'])
             except User.DoesNotExist:
                 pass
