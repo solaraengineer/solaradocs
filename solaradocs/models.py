@@ -127,10 +127,6 @@ class Backup(models.Model):
 
 
 class PendingAction(models.Model):
-    """
-    Tracks actions taken on pending edits (accept/reject).
-    Provides audit trail: "USER X ACCEPTED/REJECTED PENDING FROM Z AT {DATETIME}"
-    """
     ACTION_CHOICES = [
         ('accept', 'Accepted'),
         ('reject', 'Rejected'),
@@ -138,11 +134,11 @@ class PendingAction(models.Model):
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='pending_actions')
     document = models.ForeignKey(Documents, on_delete=models.SET_NULL, null=True, blank=True, related_name='pending_actions')
-    pending_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_pendings')  # User who submitted the pending edit
-    actioned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='actioned_pendings')  # User who accepted/rejected
+    pending_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_pendings')
+    actioned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='actioned_pendings')
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
-    document_name = models.CharField(max_length=255)  # Store document name in case document is deleted
-    pending_note = models.TextField(blank=True)  # The note from the original pending submission
+    document_name = models.CharField(max_length=255)
+    pending_note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
