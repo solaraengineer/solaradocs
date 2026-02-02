@@ -2528,8 +2528,6 @@
 
         async function loadAuditHistory(forceRefresh = false) {
             const auditList = document.getElementById('auditList');
-
-            // Show cached data immediately if available
             const cached = CacheManager.get('audits');
             if (cached && !forceRefresh) {
                 renderAuditHistory(cached);

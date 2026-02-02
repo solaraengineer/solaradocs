@@ -608,17 +608,6 @@ def revert(request):
 @login_required
 @ratelimit(key='ip', rate='10/m', block=True)
 def handle_pending(request):
-    """
-    Handle pending edits - accept or reject.
-
-    Authorization:
-    - Owner: Can handle all pending edits in the project
-    - Project Admin (Contributor with role='ADMIN'): Can handle all pending edits
-    - Team Admin: Can only handle pending edits from their team(s)
-
-    On accept: Updates the document content, creates backup, audit entry, and PendingAction record
-    On reject: Creates PendingAction record for audit trail, deletes pending
-    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -634,7 +623,6 @@ def handle_pending(request):
         return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
 
     with transaction.atomic():
-        # Fetch pending with all related objects for permission checks
         pending = Pending.objects.select_related(
             'project', 'document', 'team', 'user'
         ).filter(id=pending_id).first()
@@ -645,14 +633,11 @@ def handle_pending(request):
         project = pending.project
         is_owner = project.owner_id == request.user.id
 
-        # Check authorization
         can_handle = False
 
         if is_owner:
-            # Owner can handle all pending edits
             can_handle = True
         else:
-            # Check if user is a project-level admin
             is_project_admin = Contributor.objects.filter(
                 project_id=project.id,
                 username=request.user.username,
@@ -660,10 +645,8 @@ def handle_pending(request):
             ).exists()
 
             if is_project_admin:
-                # Project admin can handle all pending edits
                 can_handle = True
             else:
-                # Check if user is a team admin for this pending's team
                 is_team_admin = TeamMember.objects.filter(
                     team_id=pending.team_id,
                     user=request.user,
@@ -679,7 +662,6 @@ def handle_pending(request):
         tier = project.tier.lower()
         tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-        # Store data for PendingAction before potentially deleting pending
         document = pending.document
         pending_user = pending.user
         document_name = document.document_name if document else 'Unknown'
@@ -689,10 +671,9 @@ def handle_pending(request):
             if not document:
                 return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
 
-            # Lock document for update
+
             document = Documents.objects.select_for_update().get(id=document.id)
 
-            # Create backup if enabled
             if project.backups_enabled and tier_config.get('backups', False):
                 backup_count = Backup.objects.filter(document=document).count()
                 max_backups = 50
@@ -706,11 +687,9 @@ def handle_pending(request):
                     content=document.content
                 )
 
-            # Update document content
             document.content = pending.submitted_content
             document.save(update_fields=['content'])
 
-            # Create audit entry for the edit
             if tier_config.get('audit', False):
                 Audit.objects.create(
                     project=project,
@@ -719,7 +698,7 @@ def handle_pending(request):
                     action='edit'
                 )
 
-        # Create PendingAction for audit trail
+
         PendingAction.objects.create(
             project=project,
             document=document if document else None,
@@ -730,7 +709,7 @@ def handle_pending(request):
             pending_note=pending_note
         )
 
-        # Create audit entry for the accept/reject action
+
         if tier_config.get('audit', False):
             Audit.objects.create(
                 project=project,
@@ -739,7 +718,6 @@ def handle_pending(request):
                 action=f'pending_{action}'
             )
 
-        # Delete the pending entry
         pending.delete()
 
     return JsonResponse({
@@ -1670,10 +1648,6 @@ def get_audits(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_pending_actions(request, project_id):
-    """
-    Get pending action history (accept/reject log).
-    Shows: "USER X ACCEPTED/REJECTED PENDING FROM Z AT {DATETIME}"
-    """
     if not isinstance(project_id, int) or project_id < 1:
         return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
