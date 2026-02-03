@@ -9,14 +9,14 @@ class User(AbstractUser):
 
 
 TIER_LIMITS = {
-    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'backups': False, 'audit': False,
-             'pending': False},
-    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'backups': True, 'audit': False,
-                'pending': False},
-    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'backups': True, 'audit': True,
-             'pending': True},
-    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'backups': True, 'audit': True,
-                   'pending': True},
+    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'collaborations': 2,
+             'backups': False, 'audit': False, 'pending': False},
+    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'collaborations': 5,
+                'backups': True, 'audit': False, 'pending': False},
+    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'collaborations': 8,
+             'backups': True, 'audit': True, 'pending': True},
+    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
+                   'backups': True, 'audit': True, 'pending': True},
 }
 
 TEAM_ROLES = [

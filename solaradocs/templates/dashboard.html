@@ -974,35 +974,247 @@
                 margin-top: 0.5rem;
             }
 
-            .toast {
+            /* Notification Modal */
+            .notif-overlay {
                 position: fixed;
-                bottom: 2rem;
-                left: 50%;
-                transform: translateX(-50%) translateY(100px);
-                padding: 0.75rem 1.25rem;
-                background: var(--bg-elevated);
-                border: 1px solid var(--border);
-                border-radius: 8px;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.6);
                 display: flex;
                 align-items: center;
-                gap: 0.75rem;
+                justify-content: center;
+                z-index: 2000;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.2s ease;
+            }
+
+            .notif-overlay.show {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .notif-box {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                width: 100%;
+                max-width: 380px;
+                transform: scale(0.92) translateY(10px);
+                transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                overflow: hidden;
+            }
+
+            .notif-overlay.show .notif-box {
+                transform: scale(1) translateY(0);
+            }
+
+            .notif-icon-area {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1.75rem 1.5rem 0.75rem;
+            }
+
+            .notif-icon-circle {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .notif-icon-circle svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .notif-icon-circle.success {
+                background: rgba(127, 176, 105, 0.15);
+                color: var(--accent-green);
+            }
+
+            .notif-icon-circle.error {
+                background: rgba(212, 106, 106, 0.15);
+                color: var(--accent-red);
+            }
+
+            .notif-content {
+                text-align: center;
+                padding: 0.75rem 1.75rem 1.25rem;
+            }
+
+            .notif-title {
+                font-size: 1.05rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 0.35rem;
+            }
+
+            .notif-message {
                 font-size: 0.875rem;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-                transition: transform 0.3s ease;
-                z-index: 1000;
+                color: var(--text-secondary);
+                line-height: 1.5;
+            }
+
+            .notif-actions {
+                padding: 0 1.5rem 1.5rem;
+                display: flex;
+                justify-content: center;
+            }
+
+            .notif-btn {
+                padding: 0.6rem 2rem;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                font-weight: 600;
+                font-family: inherit;
+                cursor: pointer;
+                border: none;
+                transition: all 0.15s ease;
+            }
+
+            .notif-btn.success {
+                background: var(--accent-green);
+                color: var(--bg-primary);
+            }
+
+            .notif-btn.success:hover {
+                box-shadow: 0 4px 16px rgba(127, 176, 105, 0.3);
+            }
+
+            .notif-btn.error {
+                background: var(--accent-red);
+                color: #fff;
+            }
+
+            .notif-btn.error:hover {
+                box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+            }
+
+            /* Confirmation Modal */
+            .confirm-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 2001;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.2s ease;
+            }
+
+            .confirm-overlay.show {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .confirm-box {
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                width: 100%;
+                max-width: 400px;
+                transform: scale(0.92) translateY(10px);
+                transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                overflow: hidden;
+            }
+
+            .confirm-overlay.show .confirm-box {
+                transform: scale(1) translateY(0);
+            }
+
+            .confirm-icon-area {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1.75rem 1.5rem 0.75rem;
+            }
+
+            .confirm-icon-circle {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(212, 165, 116, 0.15);
+                color: var(--accent-orange);
+            }
+
+            .confirm-icon-circle svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .confirm-content {
+                text-align: center;
+                padding: 0.75rem 1.75rem 1.25rem;
+            }
+
+            .confirm-title {
+                font-size: 1.05rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 0.35rem;
+            }
+
+            .confirm-message {
+                font-size: 0.875rem;
+                color: var(--text-secondary);
+                line-height: 1.5;
+            }
+
+            .confirm-actions {
+                padding: 0 1.5rem 1.5rem;
+                display: flex;
+                justify-content: center;
+                gap: 0.75rem;
+            }
+
+            .confirm-btn-cancel {
+                padding: 0.6rem 1.5rem;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                font-weight: 600;
+                font-family: inherit;
+                cursor: pointer;
+                border: 1px solid var(--border);
+                background: var(--bg-tertiary);
+                color: var(--text-secondary);
+                transition: all 0.15s ease;
+            }
+
+            .confirm-btn-cancel:hover {
+                background: var(--bg-elevated);
                 color: var(--text-primary);
             }
 
-            .toast.show {
-                transform: translateX(-50%) translateY(0);
+            .confirm-btn-confirm {
+                padding: 0.6rem 1.5rem;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                font-weight: 600;
+                font-family: inherit;
+                cursor: pointer;
+                border: none;
+                background: var(--accent-red);
+                color: #fff;
+                transition: all 0.15s ease;
             }
 
-            .toast.success {
-                border-color: var(--accent-green);
-            }
-
-            .toast.error {
-                border-color: var(--accent-red);
+            .confirm-btn-confirm:hover {
+                box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
             }
 
             @media (max-width: 900px) {
@@ -1482,8 +1694,51 @@
             </div>
         </div>
 
-        <div class="toast" id="toast">
-            <span id="toastMessage">Action completed</span>
+        <div class="notif-overlay" id="notifOverlay">
+            <div class="notif-box">
+                <div class="notif-icon-area">
+                    <div class="notif-icon-circle" id="notifIconCircle">
+                        <svg id="notifIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <svg id="notifIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-title" id="notifTitle"></div>
+                    <div class="notif-message" id="notifMessage"></div>
+                </div>
+                <div class="notif-actions">
+                    <button class="notif-btn" id="notifBtn" onclick="closeNotif()">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirm-overlay" id="confirmOverlay">
+            <div class="confirm-box">
+                <div class="confirm-icon-area">
+                    <div class="confirm-icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="confirm-content">
+                    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+                    <div class="confirm-message" id="confirmMessage"></div>
+                </div>
+                <div class="confirm-actions">
+                    <button class="confirm-btn-cancel" id="confirmBtnCancel">Cancel</button>
+                    <button class="confirm-btn-confirm" id="confirmBtnConfirm">Confirm</button>
+                </div>
+            </div>
         </div>
 
         <script>
@@ -1573,12 +1828,73 @@
                 return response;
             }
 
+            let notifTimer = null;
+
             function showToast(message, type = 'success') {
-                const toast = document.getElementById('toast');
-                const toastMessage = document.getElementById('toastMessage');
-                toastMessage.textContent = message;
-                toast.className = 'toast ' + type + ' show';
-                setTimeout(() => toast.classList.remove('show'), 3000);
+                const overlay = document.getElementById('notifOverlay');
+                const iconCircle = document.getElementById('notifIconCircle');
+                const successIcon = document.getElementById('notifIconSuccess');
+                const errorIcon = document.getElementById('notifIconError');
+                const title = document.getElementById('notifTitle');
+                const msg = document.getElementById('notifMessage');
+                const btn = document.getElementById('notifBtn');
+
+                // Set type
+                iconCircle.className = 'notif-icon-circle ' + type;
+                btn.className = 'notif-btn ' + type;
+                successIcon.style.display = type === 'success' ? 'block' : 'none';
+                errorIcon.style.display = type === 'error' ? 'block' : 'none';
+                title.textContent = type === 'success' ? 'Success' : 'Error';
+                msg.textContent = message;
+
+                // Show
+                overlay.classList.add('show');
+
+                // Clear previous auto-close
+                if (notifTimer) clearTimeout(notifTimer);
+
+                // Auto-close success after 2.5s, errors stay until dismissed
+                if (type === 'success') {
+                    notifTimer = setTimeout(() => closeNotif(), 2500);
+                }
+            }
+
+            function closeNotif() {
+                document.getElementById('notifOverlay').classList.remove('show');
+                if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
+            }
+
+            // Close on overlay click
+            document.getElementById('notifOverlay').addEventListener('click', function(e) {
+                if (e.target === this) closeNotif();
+            });
+
+            function showConfirm(message, confirmLabel = 'Confirm') {
+                return new Promise((resolve) => {
+                    const overlay = document.getElementById('confirmOverlay');
+                    const msgEl = document.getElementById('confirmMessage');
+                    const cancelBtn = document.getElementById('confirmBtnCancel');
+                    const confirmBtn = document.getElementById('confirmBtnConfirm');
+
+                    msgEl.textContent = message;
+                    confirmBtn.textContent = confirmLabel;
+                    overlay.classList.add('show');
+
+                    function cleanup() {
+                        overlay.classList.remove('show');
+                        cancelBtn.removeEventListener('click', onCancel);
+                        confirmBtn.removeEventListener('click', onConfirm);
+                        overlay.removeEventListener('click', onOverlay);
+                    }
+
+                    function onCancel() { cleanup(); resolve(false); }
+                    function onConfirm() { cleanup(); resolve(true); }
+                    function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
+
+                    cancelBtn.addEventListener('click', onCancel);
+                    confirmBtn.addEventListener('click', onConfirm);
+                    overlay.addEventListener('click', onOverlay);
+                });
             }
 
             function handleLogout() {
@@ -1595,7 +1911,13 @@
             }
 
             function closeModal(modalId) {
-                document.getElementById(modalId).classList.remove('show');
+                const modal = document.getElementById(modalId);
+                modal.classList.remove('show');
+                // Clean up focus trap listener
+                if (modal._focusTrapHandler) {
+                    modal.removeEventListener('keydown', modal._focusTrapHandler);
+                    modal._focusTrapHandler = null;
+                }
             }
 
             document.querySelectorAll('.modal-overlay').forEach(modal => {
@@ -1610,7 +1932,7 @@
             }
 
             async function deleteProject(projectId) {
-                if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
+                if (!await showConfirm('Are you sure you want to delete this project? This cannot be undone.', 'Delete')) return;
                 try {
                     const response = await authFetch('/deleteproject/', {
                         method: 'POST',
@@ -1682,7 +2004,7 @@
             }
 
             async function revertBackup(projectId, backupId) {
-                if (!confirm('Revert to this backup?')) return;
+                if (!await showConfirm('Revert to this backup? The current content will be replaced.', 'Revert')) return;
                 try {
                     const response = await authFetch('/revert/', {
                         method: 'POST',
@@ -1722,7 +2044,7 @@
             }
 
             async function deleteUser(projectId, contributorId) {
-                if (!confirm('Remove this collaborator?')) return;
+                if (!await showConfirm('Remove this collaborator from the project?', 'Remove')) return;
                 try {
                     const response = await authFetch('/deleteuser/', {
                         method: 'POST',
@@ -1813,7 +2135,52 @@
             function openCreateTeamModal(projectId) {
                 document.getElementById('createTeamProjectId').value = projectId;
                 document.getElementById('createTeamName').value = '';
-                document.getElementById('createTeamModal').classList.add('show');
+                const modal = document.getElementById('createTeamModal');
+                modal.classList.add('show');
+
+                // Focus the input after the modal transition
+                setTimeout(() => {
+                    document.getElementById('createTeamName').focus();
+                }, 100);
+
+                // Set up focus trap for the modal
+                setupFocusTrap(modal);
+            }
+
+            function setupFocusTrap(modal) {
+                // Remove any previous trap listener
+                if (modal._focusTrapHandler) {
+                    modal.removeEventListener('keydown', modal._focusTrapHandler);
+                }
+
+                modal._focusTrapHandler = function(e) {
+                    if (e.key === 'Escape') {
+                        closeModal(modal.id);
+                        return;
+                    }
+                    if (e.key !== 'Tab') return;
+
+                    const focusableEls = modal.querySelectorAll(
+                        'input:not([type="hidden"]):not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                    );
+                    if (!focusableEls.length) return;
+
+                    const firstEl = focusableEls[0];
+                    const lastEl = focusableEls[focusableEls.length - 1];
+
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstEl) {
+                            e.preventDefault();
+                            lastEl.focus();
+                        }
+                    } else {
+                        if (document.activeElement === lastEl) {
+                            e.preventDefault();
+                            firstEl.focus();
+                        }
+                    }
+                };
+                modal.addEventListener('keydown', modal._focusTrapHandler);
             }
 
             async function createTeam() {
@@ -1902,7 +2269,12 @@
                 document.getElementById('editTeamProjectId').value = projectId;
                 document.getElementById('editTeamId').value = teamId;
                 document.getElementById('editTeamName').value = teamName;
-                document.getElementById('editTeamModal').classList.add('show');
+                const modal = document.getElementById('editTeamModal');
+                modal.classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('editTeamName').focus();
+                }, 100);
+                setupFocusTrap(modal);
             }
 
             async function updateTeam() {
@@ -1935,7 +2307,7 @@
             }
 
             async function deleteTeam(projectId, teamId) {
-                if (!confirm('Delete this team?')) return;
+                if (!await showConfirm('Delete this team? All team members will lose access.', 'Delete')) return;
                 try {
                     const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/delete`, {
                         method: 'POST'
@@ -2014,7 +2386,7 @@
             }
 
             async function removeTeamMember(projectId, teamId, username) {
-                if (!confirm(`Remove ${username} from this team?`)) return;
+                if (!await showConfirm(`Remove ${username} from this team?`, 'Remove')) return;
 
                 try {
                     const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/remove`, {

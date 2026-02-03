@@ -54,14 +54,19 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.public_key = settings.STRIPE_PUBLIC_KEY
 
 TIER_LIMITS = {
-    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'backups': False, 'audit': False, 'pending': False},
-    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'backups': True, 'audit': False, 'pending': False},
-    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'backups': True, 'audit': True, 'pending': True},
-    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'backups': True, 'audit': True, 'pending': True},
+    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'collaborations': 2,
+             'backups': False, 'audit': False, 'pending': False},
+    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'collaborations': 5,
+                'backups': True, 'audit': False, 'pending': False},
+    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'collaborations': 8,
+             'backups': True, 'audit': True, 'pending': True},
+    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
+                   'backups': True, 'audit': True, 'pending': True},
 }
 
 
 @require_GET
+@ratelimit(key='ip', rate='10/m', block=True)
 def get_oauth_token(request):
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
@@ -119,55 +124,8 @@ def require_auth_token(view_func):
     return wrapper
 
 
-def generate_editor_token(user_id, project_id):
-    payload = {
-        'user_id': user_id,
-        'project_id': project_id,
-        'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS),
-        'iat': datetime.utcnow()
-    }
-    return jwt.encode(payload, JWT_PRIVATE_KEY, algorithm='RS384')
-
-
-def verify_editor_token(token, project_id):
-    try:
-        payload = jwt.decode(token, JWT_PUBLIC_KEY, algorithms=['RS384'])
-        if payload.get('project_id') != project_id:
-            return None
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-
-def require_editor_token(view_func):
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        token = request.headers.get('X-Editor-Token') or request.POST.get('editor_token')
-        if not token:
-            data = json.loads(request.body) if request.body else {}
-            token = data.get('editor_token')
-
-        project_id = kwargs.get('project_id') or (json.loads(request.body) if request.body else {}).get('project_id')
-
-        if not token or not project_id:
-            return JsonResponse({'success': False, 'error': 'Editor token required'}, status=401)
-
-        payload = verify_editor_token(token, project_id)
-        if not payload:
-            return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=401)
-
-        if payload['user_id'] != request.user.id:
-            return JsonResponse({'success': False, 'error': 'Token user mismatch'}, status=403)
-
-        request.editor_payload = payload
-        return view_func(request, *args, **kwargs)
-
-    return wrapper
-
-
 @require_GET
+@ratelimit(key='ip', rate='30/m', block=True)
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -177,6 +135,7 @@ def dashboard(request):
 
 @require_auth_token
 @login_required(login_url='/login')
+@ratelimit(key='ip', rate='10/m', block=True)
 def setup(request):
     if request.method == 'GET':
         user_tier = request.user.Tier
@@ -251,6 +210,20 @@ def setup(request):
             Contributor.objects.bulk_create(
                 [Contributor(project=project, username=p, role='VIEWER') for p in people]
             )
+
+        # Create default "Public" team visible to all project members
+        public_team = Teams.objects.create(
+            project=project,
+            team_name='Public',
+        )
+
+        # Create a default welcome document assigned to the Public team
+        Documents.objects.create(
+            project=project,
+            document_name='Getting Started',
+            content='',
+            team_assigned=public_team,
+        )
 
     return JsonResponse({'success': True, 'redirect': '/dashboard/'})
 
@@ -345,6 +318,22 @@ def add_people(request):
         Contributor.objects.filter(project_id=project_id, username__in=people).values_list('username', flat=True)
     )
     new_people = [p for p in people if p not in existing]
+
+    # Check each new user's collaboration limit based on THEIR tier
+    for username in new_people:
+        target_user = User.objects.filter(username=username).first()
+        if not target_user:
+            return JsonResponse({'success': False, 'error': f'User {username} not found'}, status=404)
+        target_tier = target_user.Tier.lower()
+        target_tier_config = TIER_LIMITS.get(target_tier, TIER_LIMITS['free'])
+        max_collaborations = target_tier_config.get('collaborations')
+        if max_collaborations is not None:
+            current_collaborations = Contributor.objects.filter(username=username).count()
+            if current_collaborations >= max_collaborations:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'{username} has reached their collaboration limit ({max_collaborations} projects) for their tier'
+                }, status=403)
 
     if new_people:
         Contributor.objects.bulk_create(
@@ -471,6 +460,7 @@ def register(request):
 
 
 @require_POST
+@ratelimit(key='ip', rate='10/m', block=True)
 def logout_view(request):
     auth_logout(request)
     return redirect('login')
@@ -479,7 +469,7 @@ def logout_view(request):
 @require_POST
 @require_auth_token
 @login_required
-@ratelimit(key='ip', rate='5/m', block=True)
+@ratelimit(key='ip', rate='10/m', block=True)
 def deleteuser(request):
     try:
         data = json.loads(request.body)
@@ -514,7 +504,7 @@ def deleteuser(request):
 
 @require_GET
 @require_auth_token
-# KEEP IN MIND FOR LATER VARIES LEAVE FOR NOW
+@ratelimit(key='ip', rate='30/m', block=True)
 def project_detail(request, project_id):
     try:
         project = Project.objects.get(id=project_id)
@@ -536,13 +526,10 @@ def project_detail(request, project_id):
 
         role = contributor['role']
 
-    editor_token = generate_editor_token(request.user.id, project_id)
-
     return render(request, 'edit.html', {
         'project': project,
         'is_owner': is_owner,
         'role': role,
-        'editor_token': editor_token
     })
 
 
@@ -576,7 +563,7 @@ def delete_project(request):
 
 @require_POST
 @require_auth_token
-# READ OVER AGAIN SEE SENSE GET BACK TO IT SOON
+@ratelimit(key='ip', rate='5/m', block=True)
 def revert(request):
     try:
         data = json.loads(request.body)
@@ -729,6 +716,7 @@ def handle_pending(request):
 
 @require_GET
 @require_auth_token
+@ratelimit(key='ip', rate='30/m', block=True)
 def collaborations(request):
     collaborated_projects = Contributor.objects.filter(
         username=request.user.username
@@ -738,11 +726,13 @@ def collaborations(request):
 
 
 @csrf_exempt
+@ratelimit(key='ip', rate='10/m', block=True)
 def logout(request):
     auth_logout(request)
     return redirect('login')
 
 
+@ratelimit(key='ip', rate='30/m', block=True)
 def home(request):
     return render(request, 'index.html')
 
@@ -936,6 +926,7 @@ def stripe_webhook(request):
 
 
 @login_required
+@ratelimit(key='ip', rate='30/m', block=True)
 def success(request):
     return render(request, 'success.html', {
         'plan_name': request.session.get('plan_name', 'Student'),
@@ -945,6 +936,7 @@ def success(request):
 
 
 
+@ratelimit(key='ip', rate='30/m', block=True)
 def buy(request):
     return render(request, 'buy.html')
 
@@ -983,14 +975,22 @@ def get_documents(request, project_id):
         if not is_contributor:
             return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-        user_team_ids = TeamMember.objects.filter(
+        user_team_ids = list(TeamMember.objects.filter(
             team__project_id=project_id,
             user=request.user
-        ).values_list('team_id', flat=True)
+        ).values_list('team_id', flat=True))
+
+        # Include documents from the "Public" team (visible to all contributors)
+        public_team_ids = list(Teams.objects.filter(
+            project_id=project_id,
+            team_name='Public'
+        ).values_list('id', flat=True))
+
+        visible_team_ids = list(set(user_team_ids + public_team_ids))
 
         documents = Documents.objects.filter(
             project_id=project_id,
-            team_assigned_id__in=user_team_ids
+            team_assigned_id__in=visible_team_ids
         ).select_related('team_assigned').order_by('-created_at')
 
     docs_data = [{
@@ -1047,13 +1047,17 @@ def get_document(request, project_id, doc_id):
     ).exists()
 
     if not is_owner and not is_admin:
-        is_team_member = TeamMember.objects.filter(
-            team_id=document.team_assigned_id,
-            user=request.user
-        ).exists()
+        # Allow access if document belongs to the "Public" team
+        is_public_team = document.team_assigned.team_name == 'Public'
 
-        if not is_team_member:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        if not is_public_team:
+            is_team_member = TeamMember.objects.filter(
+                team_id=document.team_assigned_id,
+                user=request.user
+            ).exists()
+
+            if not is_team_member:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
     return JsonResponse({
         'success': True,
@@ -1176,7 +1180,6 @@ def add_document(request, project_id):
 
 @require_POST
 @require_auth_token
-@require_editor_token
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def save_document(request, project_id, doc_id):
@@ -1229,25 +1232,25 @@ def save_document(request, project_id, doc_id):
             if is_owner:
                 can_direct_save = True
             else:
-                is_contributor = Contributor.objects.filter(
+                contributor = Contributor.objects.filter(
                     project_id=project_id,
                     username=request.user.username
-                ).exists()
+                ).first()
 
-                if not is_contributor:
+                if not contributor:
                     return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
                 # Check if project-level admin
-                is_project_admin = Contributor.objects.filter(
-                    project_id=project_id,
-                    username=request.user.username,
-                    role='ADMIN'
-                ).exists()
-
-                if is_project_admin:
+                if contributor.role == 'ADMIN':
                     can_direct_save = True
+                elif document.team_assigned.team_name == 'Public':
+                    # Public team: any EDITOR or ADMIN contributor can direct save
+                    if contributor.role == 'EDITOR':
+                        can_direct_save = True
+                    elif contributor.role == 'VIEWER':
+                        return JsonResponse({'success': False, 'error': 'Viewers cannot edit documents'}, status=403)
                 else:
-                    # Check team membership
+                    # Non-public team: check team membership
                     membership = TeamMember.objects.filter(
                         team_id=document.team_assigned_id,
                         user=request.user

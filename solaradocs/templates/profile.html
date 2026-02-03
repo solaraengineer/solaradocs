@@ -443,6 +443,128 @@
             .profile-container { padding: 24px 16px; }
             .info-row { flex-direction: column; align-items: flex-start; gap: 6px; }
         }
+
+        /* Notification Modal */
+        .notif-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .notif-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .notif-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 380px;
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .notif-overlay.show .notif-box {
+            transform: scale(1) translateY(0);
+        }
+
+        .notif-icon-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.75rem 1.5rem 0.75rem;
+        }
+
+        .notif-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notif-icon-circle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .notif-icon-circle.success {
+            background: rgba(127, 176, 105, 0.15);
+            color: var(--accent-green);
+        }
+
+        .notif-icon-circle.error {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+        }
+
+        .notif-content {
+            text-align: center;
+            padding: 0.75rem 1.75rem 1.25rem;
+        }
+
+        .notif-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .notif-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .notif-actions {
+            padding: 0 1.5rem 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .notif-btn {
+            padding: 0.6rem 2rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .notif-btn.success {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .notif-btn.success:hover {
+            box-shadow: 0 4px 16px rgba(127, 176, 105, 0.3);
+        }
+
+        .notif-btn.error {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .notif-btn.error:hover {
+            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -735,13 +857,13 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    alert('Subscription canceled. You will retain access until the end of your billing period.');
-                    location.reload();
+                    showToast('Subscription canceled. You will retain access until the end of your billing period.');
+                    setTimeout(() => location.reload(), 2600);
                 } else {
-                    alert(data.error || 'Failed to cancel subscription');
+                    showToast(data.error || 'Failed to cancel subscription', 'error');
                 }
             } catch (err) {
-                alert('Something went wrong');
+                showToast('Something went wrong', 'error');
             }
             closeCancelModal();
         }
@@ -770,10 +892,10 @@
                 if (data.success) {
                     window.location.href = '/';
                 } else {
-                    alert(data.error || 'Failed to delete account');
+                    showToast(data.error || 'Failed to delete account', 'error');
                 }
             } catch (err) {
-                alert('Something went wrong');
+                showToast('Something went wrong', 'error');
             }
             closeDeleteModal();
         }
@@ -785,6 +907,68 @@
                     overlay.classList.remove('active');
                 }
             });
+        });
+    </script>
+
+    <div class="notif-overlay" id="notifOverlay">
+        <div class="notif-box">
+            <div class="notif-icon-area">
+                <div class="notif-icon-circle" id="notifIconCircle">
+                    <svg id="notifIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <svg id="notifIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="notif-content">
+                <div class="notif-title" id="notifTitle"></div>
+                <div class="notif-message" id="notifMessage"></div>
+            </div>
+            <div class="notif-actions">
+                <button class="notif-btn" id="notifBtn" onclick="closeNotif()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let notifTimer = null;
+
+        function showToast(message, type = 'success') {
+            const overlay = document.getElementById('notifOverlay');
+            const iconCircle = document.getElementById('notifIconCircle');
+            const successIcon = document.getElementById('notifIconSuccess');
+            const errorIcon = document.getElementById('notifIconError');
+            const title = document.getElementById('notifTitle');
+            const msg = document.getElementById('notifMessage');
+            const btn = document.getElementById('notifBtn');
+
+            iconCircle.className = 'notif-icon-circle ' + type;
+            btn.className = 'notif-btn ' + type;
+            successIcon.style.display = type === 'success' ? 'block' : 'none';
+            errorIcon.style.display = type === 'error' ? 'block' : 'none';
+            title.textContent = type === 'success' ? 'Success' : 'Error';
+            msg.textContent = message;
+
+            overlay.classList.add('show');
+
+            if (notifTimer) clearTimeout(notifTimer);
+            if (type === 'success') {
+                notifTimer = setTimeout(() => closeNotif(), 2500);
+            }
+        }
+
+        function closeNotif() {
+            document.getElementById('notifOverlay').classList.remove('show');
+            if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
+        }
+
+        document.getElementById('notifOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeNotif();
         });
     </script>
 </body>
