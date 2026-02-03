@@ -1,4 +1,3 @@
-from wsgiref.util import request_uri
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -48,7 +47,6 @@ JWT_PRIVATE_KEY = settings.JWT_PRIVATE_KEY
 JWT_PUBLIC_KEY = settings.JWT_PUBLIC_KEY
 JWT_EXPIRY_HOURS = 1
 
-# Require RS384 with RSA keys - no fallback
 if not JWT_PRIVATE_KEY or not JWT_PUBLIC_KEY:
     raise ValueError("JWT_PRIVATE_KEY and JWT_PUBLIC_KEY are required for RS384 authentication")
 
@@ -56,14 +54,19 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.public_key = settings.STRIPE_PUBLIC_KEY
 
 TIER_LIMITS = {
-    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'backups': False, 'audit': False, 'pending': False},
-    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'backups': True, 'audit': False, 'pending': False},
-    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'backups': True, 'audit': True, 'pending': True},
-    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'backups': True, 'audit': True, 'pending': True},
+    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'collaborations': 2,
+             'backups': False, 'audit': False, 'pending': False},
+    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'collaborations': 5,
+                'backups': True, 'audit': False, 'pending': False},
+    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'collaborations': 8,
+             'backups': True, 'audit': True, 'pending': True},
+    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
+                   'backups': True, 'audit': True, 'pending': True},
 }
 
 
 @require_GET
+@ratelimit(key='ip', rate='10/m', block=True)
 def get_oauth_token(request):
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
@@ -121,55 +124,8 @@ def require_auth_token(view_func):
     return wrapper
 
 
-def generate_editor_token(user_id, project_id):
-    payload = {
-        'user_id': user_id,
-        'project_id': project_id,
-        'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS),
-        'iat': datetime.utcnow()
-    }
-    return jwt.encode(payload, JWT_PRIVATE_KEY, algorithm='RS384')
-
-
-def verify_editor_token(token, project_id):
-    try:
-        payload = jwt.decode(token, JWT_PUBLIC_KEY, algorithms=['RS384'])
-        if payload.get('project_id') != project_id:
-            return None
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-
-def require_editor_token(view_func):
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        token = request.headers.get('X-Editor-Token') or request.POST.get('editor_token')
-        if not token:
-            data = json.loads(request.body) if request.body else {}
-            token = data.get('editor_token')
-
-        project_id = kwargs.get('project_id') or (json.loads(request.body) if request.body else {}).get('project_id')
-
-        if not token or not project_id:
-            return JsonResponse({'success': False, 'error': 'Editor token required'}, status=401)
-
-        payload = verify_editor_token(token, project_id)
-        if not payload:
-            return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=401)
-
-        if payload['user_id'] != request.user.id:
-            return JsonResponse({'success': False, 'error': 'Token user mismatch'}, status=403)
-
-        request.editor_payload = payload
-        return view_func(request, *args, **kwargs)
-
-    return wrapper
-
-
 @require_GET
+@ratelimit(key='ip', rate='30/m', block=True)
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -179,6 +135,7 @@ def dashboard(request):
 
 @require_auth_token
 @login_required(login_url='/login')
+@ratelimit(key='ip', rate='10/m', block=True)
 def setup(request):
     if request.method == 'GET':
         user_tier = request.user.Tier
@@ -249,11 +206,24 @@ def setup(request):
             backups_enabled=backups_enabled,
             tier=user_tier,
         )
-
         if people:
             Contributor.objects.bulk_create(
                 [Contributor(project=project, username=p, role='VIEWER') for p in people]
             )
+
+        # Create default "Public" team visible to all project members
+        public_team = Teams.objects.create(
+            project=project,
+            team_name='Public',
+        )
+
+        # Create a default welcome document assigned to the Public team
+        Documents.objects.create(
+            project=project,
+            document_name='Getting Started',
+            content='',
+            team_assigned=public_team,
+        )
 
     return JsonResponse({'success': True, 'redirect': '/dashboard/'})
 
@@ -273,9 +243,6 @@ def change_roles(request):
 
     if not isinstance(project_id, int) or project_id < 1:
         return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
-
-    if not isinstance(contributor_id, int) or contributor_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid contributor ID'}, status=400)
 
     if not isinstance(new_role, str):
         return JsonResponse({'success': False, 'error': 'Invalid role type'}, status=400)
@@ -351,6 +318,22 @@ def add_people(request):
         Contributor.objects.filter(project_id=project_id, username__in=people).values_list('username', flat=True)
     )
     new_people = [p for p in people if p not in existing]
+
+    # Check each new user's collaboration limit based on THEIR tier
+    for username in new_people:
+        target_user = User.objects.filter(username=username).first()
+        if not target_user:
+            return JsonResponse({'success': False, 'error': f'User {username} not found'}, status=404)
+        target_tier = target_user.Tier.lower()
+        target_tier_config = TIER_LIMITS.get(target_tier, TIER_LIMITS['free'])
+        max_collaborations = target_tier_config.get('collaborations')
+        if max_collaborations is not None:
+            current_collaborations = Contributor.objects.filter(username=username).count()
+            if current_collaborations >= max_collaborations:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'{username} has reached their collaboration limit ({max_collaborations} projects) for their tier'
+                }, status=403)
 
     if new_people:
         Contributor.objects.bulk_create(
@@ -477,6 +460,7 @@ def register(request):
 
 
 @require_POST
+@ratelimit(key='ip', rate='10/m', block=True)
 def logout_view(request):
     auth_logout(request)
     return redirect('login')
@@ -485,7 +469,7 @@ def logout_view(request):
 @require_POST
 @require_auth_token
 @login_required
-@ratelimit(key='ip', rate='5/m', block=True)
+@ratelimit(key='ip', rate='10/m', block=True)
 def deleteuser(request):
     try:
         data = json.loads(request.body)
@@ -520,7 +504,7 @@ def deleteuser(request):
 
 @require_GET
 @require_auth_token
-# KEEP IN MIND FOR LATER VARIES LEAVE FOR NOW
+@ratelimit(key='ip', rate='30/m', block=True)
 def project_detail(request, project_id):
     try:
         project = Project.objects.get(id=project_id)
@@ -542,13 +526,10 @@ def project_detail(request, project_id):
 
         role = contributor['role']
 
-    editor_token = generate_editor_token(request.user.id, project_id)
-
     return render(request, 'edit.html', {
         'project': project,
         'is_owner': is_owner,
         'role': role,
-        'editor_token': editor_token
     })
 
 
@@ -582,7 +563,7 @@ def delete_project(request):
 
 @require_POST
 @require_auth_token
-# READ OVER AGAIN SEE SENSE GET BACK TO IT SOON
+@ratelimit(key='ip', rate='5/m', block=True)
 def revert(request):
     try:
         data = json.loads(request.body)
@@ -614,17 +595,6 @@ def revert(request):
 @login_required
 @ratelimit(key='ip', rate='10/m', block=True)
 def handle_pending(request):
-    """
-    Handle pending edits - accept or reject.
-
-    Authorization:
-    - Owner: Can handle all pending edits in the project
-    - Project Admin (Contributor with role='ADMIN'): Can handle all pending edits
-    - Team Admin: Can only handle pending edits from their team(s)
-
-    On accept: Updates the document content, creates backup, audit entry, and PendingAction record
-    On reject: Creates PendingAction record for audit trail, deletes pending
-    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -640,7 +610,6 @@ def handle_pending(request):
         return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
 
     with transaction.atomic():
-        # Fetch pending with all related objects for permission checks
         pending = Pending.objects.select_related(
             'project', 'document', 'team', 'user'
         ).filter(id=pending_id).first()
@@ -651,14 +620,11 @@ def handle_pending(request):
         project = pending.project
         is_owner = project.owner_id == request.user.id
 
-        # Check authorization
         can_handle = False
 
         if is_owner:
-            # Owner can handle all pending edits
             can_handle = True
         else:
-            # Check if user is a project-level admin
             is_project_admin = Contributor.objects.filter(
                 project_id=project.id,
                 username=request.user.username,
@@ -666,10 +632,8 @@ def handle_pending(request):
             ).exists()
 
             if is_project_admin:
-                # Project admin can handle all pending edits
                 can_handle = True
             else:
-                # Check if user is a team admin for this pending's team
                 is_team_admin = TeamMember.objects.filter(
                     team_id=pending.team_id,
                     user=request.user,
@@ -685,7 +649,6 @@ def handle_pending(request):
         tier = project.tier.lower()
         tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-        # Store data for PendingAction before potentially deleting pending
         document = pending.document
         pending_user = pending.user
         document_name = document.document_name if document else 'Unknown'
@@ -695,10 +658,9 @@ def handle_pending(request):
             if not document:
                 return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
 
-            # Lock document for update
+
             document = Documents.objects.select_for_update().get(id=document.id)
 
-            # Create backup if enabled
             if project.backups_enabled and tier_config.get('backups', False):
                 backup_count = Backup.objects.filter(document=document).count()
                 max_backups = 50
@@ -712,11 +674,9 @@ def handle_pending(request):
                     content=document.content
                 )
 
-            # Update document content
             document.content = pending.submitted_content
             document.save(update_fields=['content'])
 
-            # Create audit entry for the edit
             if tier_config.get('audit', False):
                 Audit.objects.create(
                     project=project,
@@ -725,7 +685,7 @@ def handle_pending(request):
                     action='edit'
                 )
 
-        # Create PendingAction for audit trail
+
         PendingAction.objects.create(
             project=project,
             document=document if document else None,
@@ -736,7 +696,7 @@ def handle_pending(request):
             pending_note=pending_note
         )
 
-        # Create audit entry for the accept/reject action
+
         if tier_config.get('audit', False):
             Audit.objects.create(
                 project=project,
@@ -745,7 +705,6 @@ def handle_pending(request):
                 action=f'pending_{action}'
             )
 
-        # Delete the pending entry
         pending.delete()
 
     return JsonResponse({
@@ -757,6 +716,7 @@ def handle_pending(request):
 
 @require_GET
 @require_auth_token
+@ratelimit(key='ip', rate='30/m', block=True)
 def collaborations(request):
     collaborated_projects = Contributor.objects.filter(
         username=request.user.username
@@ -766,17 +726,19 @@ def collaborations(request):
 
 
 @csrf_exempt
+@ratelimit(key='ip', rate='10/m', block=True)
 def logout(request):
     auth_logout(request)
     return redirect('login')
 
 
+@ratelimit(key='ip', rate='30/m', block=True)
 def home(request):
     return render(request, 'index.html')
 
 
 PRICE_IDS = {
-    'student': 'price_1SstN86RgjVGr3Dc9jG2YCip',
+    'student': 'price_1SspbqHVqJxZgWX0LLHVKyrq',
     'team': 'price_1SspcWHVqJxZgWX0bv4QsgrW',
     'enterprise': 'price_1SspdtHVqJxZgWX0J2ZR4dIU',
 }
@@ -814,7 +776,6 @@ def create_checkout_session(request):
 
 @csrf_exempt
 @require_POST
-@ratelimit(key='ip', rate='20/m', block=True)
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.headers.get('Stripe-Signature', '')
@@ -844,17 +805,66 @@ def stripe_webhook(request):
             except (User.DoesNotExist, ValueError):
                 pass
 
+    elif event['type'] == 'customer.subscription.created':
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+        tier = subscription.get('metadata', {}).get('tier')
+
+        if not tier:
+            items = subscription.get('items', {}).get('data', [])
+            if items:
+                price_id = items[0].get('price', {}).get('id')
+                tier = {
+                    'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
+                    'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
+                    'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                }.get(price_id)
+
+        if customer_id and tier:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                user.Tier = tier
+                user.subscription_status = 'active'
+                user.save(update_fields=['Tier', 'subscription_status'])
+            except User.DoesNotExist:
+                pass
+
     elif event['type'] == 'invoice.paid':
         invoice = event['data']['object']
         customer_id = invoice.get('customer')
+        subscription_id = invoice.get('subscription')
+
+        tier = None
+        if subscription_id:
+            sub = stripe.Subscription.retrieve(subscription_id)
+            tier = sub.metadata.get('tier')
+            if not tier:
+                items = sub.get('items', {}).get('data', [])
+                if items:
+                    price_id = items[0].get('price', {}).get('id')
+                    tier = {
+                        'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
+                        'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
+                        'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                    }.get(price_id)
 
         if customer_id:
             try:
                 user = User.objects.get(stripe_customer_id=customer_id)
+                if tier:
+                    user.Tier = tier
                 user.subscription_status = 'active'
-                user.save(update_fields=['subscription_status'])
+                user.save(update_fields=['Tier', 'subscription_status'])
             except User.DoesNotExist:
-                pass
+                if tier:
+                    try:
+                        user = User.objects.get(email=invoice.get('customer_email'))
+                        user.Tier = tier
+                        user.stripe_customer_id = customer_id
+                        user.subscription_status = 'active'
+                        user.save(update_fields=['Tier', 'stripe_customer_id', 'subscription_status'])
+                    except User.DoesNotExist:
+                        pass
 
     elif event['type'] == 'invoice.payment_failed':
         invoice = event['data']['object']
@@ -881,10 +891,42 @@ def stripe_webhook(request):
             except User.DoesNotExist:
                 pass
 
+    elif event['type'] == 'customer.subscription.updated':
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+        status = subscription.get('status')
+
+        items = subscription.get('items', {}).get('data', [])
+        tier = None
+        if items:
+            price_id = items[0].get('price', {}).get('id')
+            tier = {
+                'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
+                'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
+                'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+            }.get(price_id)
+
+        if customer_id:
+            try:
+                user = User.objects.get(stripe_customer_id=customer_id)
+                if tier:
+                    user.Tier = tier
+                if status == 'active':
+                    user.subscription_status = 'active'
+                elif status == 'past_due':
+                    user.subscription_status = 'past_due'
+                elif status in ('canceled', 'unpaid'):
+                    user.subscription_status = 'canceled'
+                    user.Tier = 'free'
+                user.save(update_fields=['Tier', 'subscription_status'])
+            except User.DoesNotExist:
+                pass
+
     return HttpResponse(status=200)
 
 
 @login_required
+@ratelimit(key='ip', rate='30/m', block=True)
 def success(request):
     return render(request, 'success.html', {
         'plan_name': request.session.get('plan_name', 'Student'),
@@ -894,6 +936,7 @@ def success(request):
 
 
 
+@ratelimit(key='ip', rate='30/m', block=True)
 def buy(request):
     return render(request, 'buy.html')
 
@@ -932,14 +975,22 @@ def get_documents(request, project_id):
         if not is_contributor:
             return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-        user_team_ids = TeamMember.objects.filter(
+        user_team_ids = list(TeamMember.objects.filter(
             team__project_id=project_id,
             user=request.user
-        ).values_list('team_id', flat=True)
+        ).values_list('team_id', flat=True))
+
+        # Include documents from the "Public" team (visible to all contributors)
+        public_team_ids = list(Teams.objects.filter(
+            project_id=project_id,
+            team_name='Public'
+        ).values_list('id', flat=True))
+
+        visible_team_ids = list(set(user_team_ids + public_team_ids))
 
         documents = Documents.objects.filter(
             project_id=project_id,
-            team_assigned_id__in=user_team_ids
+            team_assigned_id__in=visible_team_ids
         ).select_related('team_assigned').order_by('-created_at')
 
     docs_data = [{
@@ -996,13 +1047,17 @@ def get_document(request, project_id, doc_id):
     ).exists()
 
     if not is_owner and not is_admin:
-        is_team_member = TeamMember.objects.filter(
-            team_id=document.team_assigned_id,
-            user=request.user
-        ).exists()
+        # Allow access if document belongs to the "Public" team
+        is_public_team = document.team_assigned.team_name == 'Public'
 
-        if not is_team_member:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        if not is_public_team:
+            is_team_member = TeamMember.objects.filter(
+                team_id=document.team_assigned_id,
+                user=request.user
+            ).exists()
+
+            if not is_team_member:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
     return JsonResponse({
         'success': True,
@@ -1125,7 +1180,6 @@ def add_document(request, project_id):
 
 @require_POST
 @require_auth_token
-@require_editor_token
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def save_document(request, project_id, doc_id):
@@ -1178,25 +1232,25 @@ def save_document(request, project_id, doc_id):
             if is_owner:
                 can_direct_save = True
             else:
-                is_contributor = Contributor.objects.filter(
+                contributor = Contributor.objects.filter(
                     project_id=project_id,
                     username=request.user.username
-                ).exists()
+                ).first()
 
-                if not is_contributor:
+                if not contributor:
                     return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
                 # Check if project-level admin
-                is_project_admin = Contributor.objects.filter(
-                    project_id=project_id,
-                    username=request.user.username,
-                    role='ADMIN'
-                ).exists()
-
-                if is_project_admin:
+                if contributor.role == 'ADMIN':
                     can_direct_save = True
+                elif document.team_assigned.team_name == 'Public':
+                    # Public team: any EDITOR or ADMIN contributor can direct save
+                    if contributor.role == 'EDITOR':
+                        can_direct_save = True
+                    elif contributor.role == 'VIEWER':
+                        return JsonResponse({'success': False, 'error': 'Viewers cannot edit documents'}, status=403)
                 else:
-                    # Check team membership
+                    # Non-public team: check team membership
                     membership = TeamMember.objects.filter(
                         team_id=document.team_assigned_id,
                         user=request.user
@@ -1597,10 +1651,6 @@ def get_audits(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_pending_actions(request, project_id):
-    """
-    Get pending action history (accept/reject log).
-    Shows: "USER X ACCEPTED/REJECTED PENDING FROM Z AT {DATETIME}"
-    """
     if not isinstance(project_id, int) or project_id < 1:
         return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 

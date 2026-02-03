@@ -281,73 +281,6 @@
             margin-top: 0.5rem;
         }
 
-        /* Users Input */
-        .users-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            padding: 0.75rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            min-height: 50px;
-            transition: all 0.2s ease;
-        }
-
-        .users-container:focus-within {
-            border-color: var(--accent-orange);
-            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
-        }
-
-        .user-tag {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.375rem 0.625rem;
-            background: rgba(212, 165, 116, 0.15);
-            border: 1px solid rgba(212, 165, 116, 0.25);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: var(--accent-orange);
-        }
-
-        .user-tag-remove {
-            cursor: pointer;
-            opacity: 0.6;
-            transition: opacity 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .user-tag-remove:hover {
-            opacity: 1;
-        }
-
-        .user-tag-remove svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .users-input {
-            flex: 1;
-            min-width: 150px;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            font-size: 0.95rem;
-            font-family: inherit;
-            padding: 0.375rem;
-        }
-
-        .users-input:focus {
-            outline: none;
-        }
-
-        .users-input::placeholder {
-            color: var(--text-tertiary);
-        }
-
         /* Checkbox */
         .checkbox-wrapper {
             display: flex;
@@ -524,6 +457,128 @@
                 flex-direction: column;
             }
         }
+
+        /* Notification Modal */
+        .notif-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .notif-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .notif-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 380px;
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .notif-overlay.show .notif-box {
+            transform: scale(1) translateY(0);
+        }
+
+        .notif-icon-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.75rem 1.5rem 0.75rem;
+        }
+
+        .notif-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notif-icon-circle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .notif-icon-circle.success {
+            background: rgba(127, 176, 105, 0.15);
+            color: var(--accent-green);
+        }
+
+        .notif-icon-circle.error {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+        }
+
+        .notif-content {
+            text-align: center;
+            padding: 0.75rem 1.75rem 1.25rem;
+        }
+
+        .notif-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .notif-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .notif-actions {
+            padding: 0 1.5rem 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .notif-btn {
+            padding: 0.6rem 2rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .notif-btn.success {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .notif-btn.success:hover {
+            box-shadow: 0 4px 16px rgba(127, 176, 105, 0.3);
+        }
+
+        .notif-btn.error {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .notif-btn.error:hover {
+            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -628,22 +683,6 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">
-                            Add Team Members
-                            <span class="form-label-optional">(optional)</span>
-                        </label>
-                        <div class="users-container" id="usersContainer">
-                            <input
-                                type="text"
-                                class="users-input"
-                                id="userInput"
-                                placeholder="Enter username and press Enter..."
-                            >
-                        </div>
-                        <p class="form-hint">Add up to 10 team members. Press Enter to add.</p>
-                    </div>
-
-                    <div class="form-group">
                         <label class="checkbox-wrapper">
                             <input type="checkbox" class="checkbox-input" id="backupsCheckbox" name="backups" checked>
                             <div class="checkbox-box">
@@ -739,11 +778,6 @@
             }
         })();
 
-        // Users input
-        const userInput = document.getElementById('userInput');
-        const usersContainer = document.getElementById('usersContainer');
-        let users = [];
-
         // Authenticated fetch with auto token refresh
         async function authFetch(url, options = {}) {
             const token = TokenManager.getToken();
@@ -771,47 +805,13 @@
                         response = await fetch(url, { ...options, headers, credentials: 'include' });
                     } else {
                         TokenManager.clearToken();
-                        alert('Session expired. Please login again.');
-                        window.location.href = '/login/';
+                        showNotif('Session expired. Please login again.', 'error');
+                        setTimeout(() => { window.location.href = '/login/'; }, 2600);
                         return null;
                     }
                 }
             }
             return response;
-        }
-
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const username = userInput.value.trim();
-                if (username && !users.includes(username) && users.length < 10) {
-                    users.push(username);
-                    addUserTag(username);
-                    userInput.value = '';
-                }
-            }
-        });
-
-        function addUserTag(username) {
-            const tag = document.createElement('div');
-            tag.className = 'user-tag';
-            tag.innerHTML = `
-                <span>${username}</span>
-                <span class="user-tag-remove" onclick="removeUser('${username}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </span>
-            `;
-            usersContainer.insertBefore(tag, userInput);
-        }
-
-        function removeUser(username) {
-            users = users.filter(u => u !== username);
-            const tags = usersContainer.querySelectorAll('.user-tag');
-            tags.forEach(tag => tag.remove());
-            users.forEach(user => addUserTag(user));
         }
 
         // Form submission
@@ -823,8 +823,8 @@
                 // Try to refresh token from session
                 const newToken = await TokenManager.refreshToken();
                 if (!newToken) {
-                    showError('You must be logged in to create a project');
-                    window.location.href = '/login/';
+                    showNotif('You must be logged in to create a project', 'error');
+                    setTimeout(() => { window.location.href = '/login/'; }, 2600);
                     return;
                 }
             }
@@ -835,7 +835,6 @@
 
             const formData = new FormData();
             formData.append('project_name', document.getElementById('projectName').value);
-            formData.append('people', users.join(' '));
             if (document.getElementById('backupsCheckbox').checked) {
                 formData.append('backups', 'on');
             }
@@ -856,31 +855,51 @@
                     submitBtn.textContent = 'Success!';
                     window.location.href = data.redirect || '/dashboard/';
                 } else {
-                    showError(data.error || 'Failed to create project');
+                    showNotif(data.error || 'Failed to create project', 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Create Project';
                 }
             } catch (error) {
-                showError('Failed to create project');
+                showNotif('Failed to create project', 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Create Project';
             }
         });
 
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            if (errorDiv) {
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
-            } else {
-                const container = document.querySelector('.form-header');
-                const div = document.createElement('div');
-                div.id = 'errorMessage';
-                div.style.cssText = 'background: rgba(212,106,106,0.1); border: 1px solid rgba(212,106,106,0.3); color: var(--accent-red); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem;';
-                div.textContent = message;
-                container.after(div);
+        let notifTimer = null;
+
+        function showNotif(message, type = 'success') {
+            const overlay = document.getElementById('notifOverlay');
+            const iconCircle = document.getElementById('notifIconCircle');
+            const successIcon = document.getElementById('notifIconSuccess');
+            const errorIcon = document.getElementById('notifIconError');
+            const title = document.getElementById('notifTitle');
+            const msg = document.getElementById('notifMessage');
+            const btn = document.getElementById('notifBtn');
+
+            iconCircle.className = 'notif-icon-circle ' + type;
+            btn.className = 'notif-btn ' + type;
+            successIcon.style.display = type === 'success' ? 'block' : 'none';
+            errorIcon.style.display = type === 'error' ? 'block' : 'none';
+            title.textContent = type === 'success' ? 'Success' : 'Error';
+            msg.textContent = message;
+
+            overlay.classList.add('show');
+
+            if (notifTimer) clearTimeout(notifTimer);
+            if (type === 'success') {
+                notifTimer = setTimeout(() => closeNotif(), 2500);
             }
         }
+
+        function closeNotif() {
+            document.getElementById('notifOverlay').classList.remove('show');
+            if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
+        }
+
+        document.getElementById('notifOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeNotif();
+        });
 
         // Show back link on mobile
         if (window.innerWidth <= 1024) {
@@ -892,5 +911,30 @@
             backLink.style.display = window.innerWidth <= 1024 ? 'flex' : 'none';
         });
     </script>
+
+    <div class="notif-overlay" id="notifOverlay">
+        <div class="notif-box">
+            <div class="notif-icon-area">
+                <div class="notif-icon-circle" id="notifIconCircle">
+                    <svg id="notifIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <svg id="notifIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="notif-content">
+                <div class="notif-title" id="notifTitle"></div>
+                <div class="notif-message" id="notifMessage"></div>
+            </div>
+            <div class="notif-actions">
+                <button class="notif-btn" id="notifBtn" onclick="closeNotif()">OK</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

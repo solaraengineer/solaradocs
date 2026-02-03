@@ -27,7 +27,6 @@ urlpatterns = [
     path('success/', views.success, name='success'),
     path('buy/', views.buy, name='buy'),
     path('gen/token', views.get_oauth_token, name='generate_token'),
-    path('gen/editor/token', views.generate_editor_token, name='generate_token_editor'),
     path('webhook/stripe/', views.stripe_webhook, name='stripe_webhook'),
     path('api/project/<int:project_id>/documents', views.get_documents, name='get_documents'),
     path('api/project/<int:project_id>/documents/<int:doc_id>', views.get_document, name='get_document'),

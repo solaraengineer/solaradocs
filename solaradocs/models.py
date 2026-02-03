@@ -9,14 +9,14 @@ class User(AbstractUser):
 
 
 TIER_LIMITS = {
-    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'backups': False, 'audit': False,
-             'pending': False},
-    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'backups': True, 'audit': False,
-                'pending': False},
-    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'backups': True, 'audit': True,
-             'pending': True},
-    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'backups': True, 'audit': True,
-                   'pending': True},
+    'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'collaborations': 2,
+             'backups': False, 'audit': False, 'pending': False},
+    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'collaborations': 5,
+                'backups': True, 'audit': False, 'pending': False},
+    'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'collaborations': 8,
+             'backups': True, 'audit': True, 'pending': True},
+    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
+                   'backups': True, 'audit': True, 'pending': True},
 }
 
 TEAM_ROLES = [
@@ -127,10 +127,6 @@ class Backup(models.Model):
 
 
 class PendingAction(models.Model):
-    """
-    Tracks actions taken on pending edits (accept/reject).
-    Provides audit trail: "USER X ACCEPTED/REJECTED PENDING FROM Z AT {DATETIME}"
-    """
     ACTION_CHOICES = [
         ('accept', 'Accepted'),
         ('reject', 'Rejected'),
@@ -138,11 +134,11 @@ class PendingAction(models.Model):
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='pending_actions')
     document = models.ForeignKey(Documents, on_delete=models.SET_NULL, null=True, blank=True, related_name='pending_actions')
-    pending_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_pendings')  # User who submitted the pending edit
-    actioned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='actioned_pendings')  # User who accepted/rejected
+    pending_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submitted_pendings')
+    actioned_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='actioned_pendings')
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
-    document_name = models.CharField(max_length=255)  # Store document name in case document is deleted
-    pending_note = models.TextField(blank=True)  # The note from the original pending submission
+    document_name = models.CharField(max_length=255)
+    pending_note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
