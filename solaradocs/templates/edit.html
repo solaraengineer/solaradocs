@@ -2221,9 +2221,12 @@
                     if (data.success) {
                         // Invalidate pending cache
                         CacheManager.invalidate('pending');
-                        // If accepted, invalidate audits
                         if (action === 'accept') {
+                            // Invalidate audits and the accepted document's cache
                             CacheManager.invalidate('audits');
+                            if (data.document_id) {
+                                CacheManager.invalidate('document', data.document_id);
+                            }
                         }
                     }
                     return data;
@@ -2533,11 +2536,16 @@
         function openNewDocModal() {
             loadTeams();
             document.getElementById('newDocName').value = '';
+            quill.disable();
             modal.classList.add('show');
+            setTimeout(() => {
+                document.getElementById('newDocName').focus();
+            }, 350);
         }
 
         function closeNewDocModal() {
             modal.classList.remove('show');
+            quill.enable();
         }
 
         document.getElementById('newDocBtn').addEventListener('click', openNewDocModal);
@@ -2790,8 +2798,8 @@
                         showToast(action === 'accept' ? 'Changes accepted' : 'Changes rejected');
                         // Reload pending edits
                         await loadPendingEdits(true);
-                        // If accepted, reload current document to get updated content
-                        if (action === 'accept' && currentDocumentId) {
+                        // If accepted, refresh the affected document if it's currently open
+                        if (action === 'accept' && data.document_id && data.document_id === currentDocumentId) {
                             await selectDocument(currentDocumentId, true);
                         }
                     } else {
@@ -3006,8 +3014,12 @@
             document.getElementById('headingSelect').value = format.header || '';
         }
 
-        quill.on('selection-change', updateToolbarState);
+        quill.on('selection-change', (range) => {
+            if (!quill.isEnabled()) return;
+            updateToolbarState();
+        });
         quill.on('text-change', () => {
+            if (!quill.isEnabled()) return;
             updateToolbarState();
             updateWordCount();
         });
@@ -3023,43 +3035,6 @@
         }
 
         // ==================== SAVE ====================
-
-        document.getElementById('saveBtn').addEventListener('click', async () => {
-            if (!currentDocumentId) {
-                showToast('No document selected', 'error');
-                return;
-            }
-
-            const saveBtn = document.getElementById('saveBtn');
-            const content = quill.root.innerHTML;
-
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                </svg>
-                Saving...
-            `;
-
-            const data = await API.saveDocument(currentDocumentId, content);
-            if (data.success) {
-                showToast(data.pending ? 'Changes submitted for review' : 'Saved successfully');
-                document.getElementById('lastModified').textContent = 'Just now';
-            } else {
-                showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
-            }
-
-            // Reset button state
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                </svg>
-                Save
-            `;
-        });
 
         // ==================== EXPORT ====================
 
@@ -3208,16 +3183,22 @@
         });
 
         function showPendingNoteModal() {
-            pendingNoteInput.value = '';
-            pendingNoteCharCount.textContent = '0';
-            pendingNoteModal.classList.add('show');
-            pendingNoteInput.focus();
-        }
+    pendingNoteInput.value = '';
+    pendingNoteCharCount.textContent = '0';
+    quill.disable();
+    pendingNoteModal.classList.add('show');
+    setTimeout(() => {
+        pendingNoteInput.focus();
+        pendingNoteInput.click();
+    }, 350);
+}
 
-        function hidePendingNoteModal() {
-            pendingNoteModal.classList.remove('show');
-            pendingSaveContent = null;
-        }
+function hidePendingNoteModal() {
+    pendingNoteModal.classList.remove('show');
+    pendingSaveContent = null;
+    quill.enable();
+}
+
 
         document.getElementById('closePendingNoteModal').addEventListener('click', hidePendingNoteModal);
         document.getElementById('cancelPendingNote').addEventListener('click', hidePendingNoteModal);
@@ -3282,6 +3263,7 @@
                 // User needs to provide a note for pending review
                 pendingSaveContent = content;
                 showPendingNoteModal();
+                return;
             } else {
                 showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
             }
@@ -3322,7 +3304,10 @@
 
         // ==================== INIT ====================
 
-        loadDocuments();
+        // Clear document content caches on page load so we always get fresh data
+        CacheManager.invalidatePattern('document');
+
+        loadDocuments(true);
     function getCookie(name) {
 let cookieValue = null;
 if (document.cookie && document.cookie !== '') {

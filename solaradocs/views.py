@@ -710,6 +710,7 @@ def handle_pending(request):
     return JsonResponse({
         'success': True,
         'action': action,
+        'document_id': document.id if document else None,
         'document_name': document_name
     })
 
