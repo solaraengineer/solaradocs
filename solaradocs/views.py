@@ -1499,8 +1499,8 @@ def get_teams(request, project_id):
         ).values_list('team_id', flat=True)
 
         teams = Teams.objects.filter(id__in=user_team_ids).order_by('team_name')
-    else:
-        teams = Teams.objects.filter(project_id=project_id).order_by('team_name')
+    elif is_owner:
+        teams = Teams.objects.filter(project_id=project_id)
 
     teams_data = []
     for team in teams:
