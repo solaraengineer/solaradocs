@@ -1,0 +1,5 @@
+# k8s/templates/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: solaradocs
