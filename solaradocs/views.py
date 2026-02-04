@@ -1607,44 +1607,49 @@ def get_pending_edits(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_audits(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).exists()
+        if not is_owner:
+            contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username
+            ).exists()
 
-        if not contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            if not contributor:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-    if not tier_config.get('audit', False):
-        return JsonResponse({'success': False, 'error': 'Audit logs not available for your tier'}, status=403)
+        if not tier_config.get('audit', False):
+            return JsonResponse({'success': False, 'error': 'Audit logs not available for your tier'}, status=403)
 
-    audits = Audit.objects.filter(
-        project_id=project_id
-    ).select_related('document', 'user').order_by('-created_at')[:100]
+        audits = Audit.objects.filter(
+            project_id=project_id
+        ).select_related('document', 'user').order_by('-created_at')[:100]
 
-    audits_data = [{
-        'id': audit.id,
-        'username': audit.user.username,
-        'document_name': audit.document.document_name if audit.document else 'N/A',
-        'action': audit.action,
-        'created_at': audit.created_at.isoformat()
-    } for audit in audits]
+        audits_data = [{
+            'id': audit.id,
+            'username': audit.user.username,
+            'document_name': audit.document.document_name if audit.document else 'N/A',
+            'action': audit.action,
+            'created_at': audit.created_at.isoformat()
+        } for audit in audits]
 
-    return JsonResponse({'success': True, 'audits': audits_data})
+        return JsonResponse({'success': True, 'audits': audits_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 
 
 @require_GET
