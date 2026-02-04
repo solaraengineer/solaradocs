@@ -6,6 +6,8 @@
     <title>{{ project.project_name }} - Solara docs</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -654,22 +656,90 @@
         }
 
         .ql-editor pre {
-            background: var(--bg-primary);
+            background: #0d1117;
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 1rem;
+            padding: 0;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             overflow-x: auto;
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .ql-editor pre .ql-code-block-container {
+            background: transparent;
         }
 
         .ql-editor code {
             background: var(--bg-tertiary);
-            padding: 0.125rem 0.375rem;
+            padding: 0.2rem 0.45rem;
             border-radius: 4px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.875em;
+            font-size: 0.85em;
             color: var(--accent-orange);
+            border: 1px solid var(--border);
+        }
+
+        /* Code block with line numbers */
+        .ql-editor pre.ql-syntax {
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 1rem 1.25rem;
+            counter-reset: line;
+            line-height: 1.6;
+        }
+
+        .ql-snow .ql-editor pre.ql-syntax {
+            background: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+        }
+
+        .toolbar-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            border: none;
+            background: none;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .toolbar-dropdown-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Export dropdown */
+        .export-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem;
+            min-width: 180px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            display: none;
+        }
+
+        .export-dropdown.show {
+            display: block;
+        }
+
+        .export-btn-wrap {
+            position: relative;
         }
 
         .ql-editor ul, .ql-editor ol {
@@ -1422,14 +1492,41 @@
         </div>
 
         <div class="top-bar-right">
-            <button class="btn btn-ghost" id="exportBtn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Export
-            </button>
+            <div class="export-btn-wrap">
+                <button class="btn btn-ghost" id="exportBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Export
+                </button>
+                <div class="export-dropdown" id="exportDropdown">
+                    <button class="toolbar-dropdown-item" id="exportHtml">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                        Export as HTML
+                    </button>
+                    <button class="toolbar-dropdown-item" id="exportMarkdown">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Export as Markdown
+                    </button>
+                    <button class="toolbar-dropdown-item" id="exportText">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        Export as Plain Text
+                    </button>
+                </div>
+            </div>
             <button class="btn btn-primary" id="saveBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -1551,13 +1648,13 @@
                             <path d="M19 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/>
                         </svg>
                     </button>
-                    <button class="toolbar-btn" id="codeBtn" title="Code">
+                    <button class="toolbar-btn" id="codeBtn" title="Inline Code">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="16 18 22 12 16 6"/>
                             <polyline points="8 6 2 12 8 18"/>
                         </svg>
                     </button>
-                    <button class="toolbar-btn" id="codeBlockBtn" title="Code Block">
+                    <button class="toolbar-btn" id="codeBlockBtn" title="Code Block (Ctrl+Shift+C)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2"/>
                             <polyline points="8 10 6 12 8 14"/>
@@ -1568,7 +1665,7 @@
                 </div>
 
                 <div class="toolbar-group">
-                    <button class="toolbar-btn" id="linkBtn" title="Insert Link">
+                    <button class="toolbar-btn" id="linkBtn" title="Insert Link (Ctrl+K)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -1640,7 +1737,15 @@
                             </div>
                             <div class="count-item">
                                 <div class="count-number" id="charCount">0</div>
-                                <div class="count-label">Characters</div>
+                                <div class="count-label">Chars</div>
+                            </div>
+                            <div class="count-item">
+                                <div class="count-number" id="lineCount">0</div>
+                                <div class="count-label">Lines</div>
+                            </div>
+                            <div class="count-item">
+                                <div class="count-number" id="readTime">0m</div>
+                                <div class="count-label">Read</div>
                             </div>
                         </div>
                     </div>
@@ -2120,12 +2225,15 @@
             return response;
         }
 
-        // Initialize Quill
+        // Initialize Quill with syntax highlighting
         const quill = new Quill('#editor', {
             theme: 'snow',
             placeholder: 'Start writing your documentation...',
             modules: {
                 toolbar: false,
+                syntax: {
+                    highlight: text => hljs.highlightAuto(text).value
+                },
                 history: {
                     delay: 1000,
                     maxStack: 100,
@@ -2746,8 +2854,15 @@
         };
 
         document.getElementById('linkBtn').onclick = () => {
-            const url = prompt('Enter URL:');
-            if (url) quill.format('link', url);
+            const range = quill.getSelection();
+            const existing = range ? quill.getFormat(range).link : null;
+            const url = prompt('Enter URL:', existing || 'https://');
+            if (url === null) return;
+            if (url === '') {
+                quill.format('link', false);
+            } else {
+                quill.format('link', url);
+            }
         };
 
         document.getElementById('imageBtn').onclick = () => {
@@ -2771,17 +2886,18 @@
             quill.format('header', value ? parseInt(value) : false);
         };
 
+
         function updateToolbarState() {
             const format = quill.getFormat();
-            document.getElementById('boldBtn').classList.toggle('active', format.bold);
-            document.getElementById('italicBtn').classList.toggle('active', format.italic);
-            document.getElementById('underlineBtn').classList.toggle('active', format.underline);
-            document.getElementById('strikeBtn').classList.toggle('active', format.strike);
+            document.getElementById('boldBtn').classList.toggle('active', !!format.bold);
+            document.getElementById('italicBtn').classList.toggle('active', !!format.italic);
+            document.getElementById('underlineBtn').classList.toggle('active', !!format.underline);
+            document.getElementById('strikeBtn').classList.toggle('active', !!format.strike);
             document.getElementById('bulletListBtn').classList.toggle('active', format.list === 'bullet');
             document.getElementById('orderedListBtn').classList.toggle('active', format.list === 'ordered');
-            document.getElementById('quoteBtn').classList.toggle('active', format.blockquote);
-            document.getElementById('codeBtn').classList.toggle('active', format.code);
-            document.getElementById('codeBlockBtn').classList.toggle('active', format['code-block']);
+            document.getElementById('quoteBtn').classList.toggle('active', !!format.blockquote);
+            document.getElementById('codeBtn').classList.toggle('active', !!format.code);
+            document.getElementById('codeBlockBtn').classList.toggle('active', !!format['code-block']);
             document.getElementById('headingSelect').value = format.header || '';
         }
 
@@ -2801,35 +2917,51 @@
             const text = quill.getText().trim();
             const words = text ? text.split(/\s+/).length : 0;
             const chars = text.length;
+            const lines = text ? text.split('\n').length : 0;
+            const readMinutes = Math.max(1, Math.ceil(words / 200));
             document.getElementById('wordCount').textContent = words;
             document.getElementById('charCount').textContent = chars;
+            document.getElementById('lineCount').textContent = lines;
+            document.getElementById('readTime').textContent = words === 0 ? '0m' : `${readMinutes}m`;
         }
 
         // ==================== SAVE ====================
 
         // ==================== EXPORT ====================
 
-        document.getElementById('exportBtn').addEventListener('click', () => {
+        // Export dropdown toggle
+        document.getElementById('exportBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('exportDropdown').classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('exportDropdown').classList.remove('show');
+        });
+
+        // Export HTML
+        document.getElementById('exportHtml').addEventListener('click', () => {
             const content = quill.root.innerHTML;
-            const blob = new Blob([`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>{{ project.project_name }}</title>
-                    <style>
-                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
-                        h1 { font-size: 2rem; margin-bottom: 1rem; }
-                        h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
-                        h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
-                        blockquote { border-left: 3px solid #ccc; padding-left: 1rem; margin: 1rem 0; color: #666; }
-                        pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; }
-                        code { background: #f5f5f5; padding: 0.125rem 0.25rem; border-radius: 2px; }
-                    </style>
-                </head>
-                <body>${content}</body>
-                </html>
-            `], { type: 'text/html' });
+            const blob = new Blob([`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ project.project_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #1a1a1a; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+        h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+        blockquote { border-left: 3px solid #d4a574; padding-left: 1rem; margin: 1rem 0; color: #666; background: #faf8f5; padding: 0.75rem 1rem; border-radius: 0 4px 4px 0; }
+        pre { background: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; }
+        code { background: #f0f0f0; padding: 0.15rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+        pre code { background: transparent; padding: 0; }
+        hr { border: none; border-top: 2px solid #eee; margin: 1.5rem 0; }
+    </style>
+</head>
+<body>${content}</body>
+</html>`], { type: 'text/html' });
 
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2837,7 +2969,116 @@
             a.download = '{{ project.project_name }}.html';
             a.click();
             URL.revokeObjectURL(url);
-            showToast('Exported successfully');
+            showToast('Exported as HTML');
+        });
+
+        // HTML to Markdown converter
+        function htmlToMarkdown(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+
+            function walk(node) {
+                let md = '';
+                for (const child of node.childNodes) {
+                    if (child.nodeType === 3) { // text node
+                        md += child.textContent;
+                    } else if (child.nodeType === 1) { // element
+                        const tag = child.tagName.toLowerCase();
+                        switch (tag) {
+                            case 'h1': md += `# ${walk(child).trim()}\n\n`; break;
+                            case 'h2': md += `## ${walk(child).trim()}\n\n`; break;
+                            case 'h3': md += `### ${walk(child).trim()}\n\n`; break;
+                            case 'p': md += `${walk(child).trim()}\n\n`; break;
+                            case 'strong': case 'b': md += `**${walk(child)}**`; break;
+                            case 'em': case 'i': md += `*${walk(child)}*`; break;
+                            case 'u': md += `__${walk(child)}__`; break;
+                            case 's': md += `~~${walk(child)}~~`; break;
+                            case 'code': md += `\`${child.textContent}\``; break;
+                            case 'pre': {
+                                const codeEl = child.querySelector('code');
+                                const code = codeEl ? codeEl.textContent : child.textContent;
+                                const langClass = codeEl ? (codeEl.className.match(/language-(\w+)/) || []) : [];
+                                const lang = langClass[1] || '';
+                                md += `\`\`\`${lang}\n${code.trim()}\n\`\`\`\n\n`;
+                                break;
+                            }
+                            case 'blockquote': {
+                                const lines = walk(child).trim().split('\n');
+                                md += lines.map(l => `> ${l}`).join('\n') + '\n\n';
+                                break;
+                            }
+                            case 'ul': {
+                                for (const li of child.children) {
+                                    if (li.tagName === 'LI') {
+                                        const checked = child.getAttribute('data-checked');
+                                        if (checked === 'true') md += `- [x] ${walk(li).trim()}\n`;
+                                        else if (checked === 'false') md += `- [ ] ${walk(li).trim()}\n`;
+                                        else md += `- ${walk(li).trim()}\n`;
+                                    }
+                                }
+                                md += '\n';
+                                break;
+                            }
+                            case 'ol': {
+                                let i = 1;
+                                for (const li of child.children) {
+                                    if (li.tagName === 'LI') {
+                                        md += `${i}. ${walk(li).trim()}\n`;
+                                        i++;
+                                    }
+                                }
+                                md += '\n';
+                                break;
+                            }
+                            case 'a': {
+                                const href = child.getAttribute('href');
+                                md += `[${walk(child)}](${href})`;
+                                break;
+                            }
+                            case 'img': {
+                                const src = child.getAttribute('src');
+                                const alt = child.getAttribute('alt') || '';
+                                md += `![${alt}](${src})`;
+                                break;
+                            }
+                            case 'hr': md += `---\n\n`; break;
+                            case 'br': md += '\n'; break;
+                            case 'li': md += walk(child); break;
+                            default: md += walk(child); break;
+                        }
+                    }
+                }
+                return md;
+            }
+
+            return walk(div).trim() + '\n';
+        }
+
+        // Export Markdown
+        document.getElementById('exportMarkdown').addEventListener('click', () => {
+            const content = quill.root.innerHTML;
+            const markdown = htmlToMarkdown(content);
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ project.project_name }}.md';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported as Markdown');
+        });
+
+        // Export Plain Text
+        document.getElementById('exportText').addEventListener('click', () => {
+            const text = quill.getText();
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ project.project_name }}.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported as Plain Text');
         });
 
         // ==================== UTILS ====================
@@ -2866,6 +3107,14 @@
                     e.preventDefault();
                     document.getElementById('saveBtn').click();
                 }
+                if (e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('linkBtn').click();
+                }
+                if (e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+                    e.preventDefault();
+                    document.getElementById('codeBlockBtn').click();
+                }
             }
         });
 
@@ -2873,6 +3122,59 @@
         const style = document.createElement('style');
         style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
         document.head.appendChild(style);
+
+        // ==================== MARKDOWN SHORTCUTS ====================
+        // Type markdown-style prefixes and they auto-convert on space/enter
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^#{1,3}$/,
+            collapsed: true
+        }, function(range, context) {
+            const match = context.prefix.match(/^(#{1,3})$/);
+            if (!match) return true;
+            const level = match[1].length;
+            quill.deleteText(range.index - level, level);
+            quill.formatLine(range.index - level, 1, 'header', level);
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^[-*]$/,
+            collapsed: true
+        }, function(range, context) {
+            quill.deleteText(range.index - 1, 1);
+            quill.formatLine(range.index - 1, 1, 'list', 'bullet');
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^\d+\.$/,
+            collapsed: true
+        }, function(range, context) {
+            const len = context.prefix.length;
+            quill.deleteText(range.index - len, len);
+            quill.formatLine(range.index - len, 1, 'list', 'ordered');
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^>$/,
+            collapsed: true
+        }, function(range, context) {
+            quill.deleteText(range.index - 1, 1);
+            quill.formatLine(range.index - 1, 1, 'blockquote', true);
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^```$/,
+            collapsed: true
+        }, function(range, context) {
+            quill.deleteText(range.index - 3, 3);
+            quill.formatLine(range.index - 3, 1, 'code-block', true);
+            return false;
+        });
+
 
         // ==================== VISIBILITY & BACKGROUND SYNC ====================
 

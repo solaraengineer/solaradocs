@@ -2227,7 +2227,7 @@ def delete_account(request):
             for sub in subscriptions.data:
                 stripe.Subscription.cancel(sub.id)
         except stripe.error.StripeError:
-            pass
+            return JsonResponse({'success': False, 'error': 'Please contact support if your subscrption hasnt automaticaly cancelled' }, status=500)
 
     auth_logout(request)
     user.delete()

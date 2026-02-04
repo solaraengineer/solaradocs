@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: solaradocs-web
+  namespace: solaradocs
+spec:
+  selector:
+    app: solaradocs-web
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
