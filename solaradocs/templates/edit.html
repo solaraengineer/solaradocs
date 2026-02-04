@@ -1855,142 +1855,46 @@
         let currentDocumentId = null;
         let projectTeams = [];
 
-        // ==================== CACHE MANAGER ====================
-        const CacheManager = {
-            CACHE_PREFIX: `solara_${projectId}_`,
-            CACHE_TTL: 5 * 60 * 1000, // 5 minutes default TTL
-            CONTENT_TTL: 10 * 60 * 1000, // 10 minutes for document content
+        // ==================== DOCUMENT CONTENT CACHE ====================
+        // Only cache document content (expensive payload), everything else hits API fresh
+        const _docContentCache = {};
+        const DOC_CONTENT_TTL = 10 * 60 * 1000; // 10 minutes
 
-            _getKey(type, id = '') {
-                return `${this.CACHE_PREFIX}${type}${id ? '_' + id : ''}`;
-            },
+        function cacheDocContent(docId, doc) {
+            _docContentCache[docId] = { data: doc, timestamp: Date.now() };
+        }
 
-            set(type, data, id = '', ttl = this.CACHE_TTL) {
-                const key = this._getKey(type, id);
-                const entry = {
-                    data,
-                    timestamp: Date.now(),
-                    ttl
-                };
-                try {
-                    sessionStorage.setItem(key, JSON.stringify(entry));
-                } catch (e) {
-                    // Storage full - clear old cache
-                    this.clearAll();
-                    try {
-                        sessionStorage.setItem(key, JSON.stringify(entry));
-                    } catch (e2) {
-                        console.warn('Cache storage failed:', e2);
-                    }
-                }
-            },
-
-            get(type, id = '') {
-                const key = this._getKey(type, id);
-                try {
-                    const entry = JSON.parse(sessionStorage.getItem(key));
-                    if (!entry) return null;
-
-                    // Check if expired
-                    if (Date.now() - entry.timestamp > entry.ttl) {
-                        sessionStorage.removeItem(key);
-                        return null;
-                    }
-                    return entry.data;
-                } catch (e) {
-                    return null;
-                }
-            },
-
-            invalidate(type, id = '') {
-                const key = this._getKey(type, id);
-                sessionStorage.removeItem(key);
-            },
-
-            invalidatePattern(pattern) {
-                // Invalidate all keys matching pattern
-                const keys = Object.keys(sessionStorage);
-                keys.forEach(key => {
-                    if (key.startsWith(this.CACHE_PREFIX) && key.includes(pattern)) {
-                        sessionStorage.removeItem(key);
-                    }
-                });
-            },
-
-            clearAll() {
-                // Clear only this project's cache
-                const keys = Object.keys(sessionStorage);
-                keys.forEach(key => {
-                    if (key.startsWith(this.CACHE_PREFIX)) {
-                        sessionStorage.removeItem(key);
-                    }
-                });
-            },
-
-            // Update a single document in the documents list cache
-            updateDocumentInList(docId, updates) {
-                const docs = this.get('documents');
-                if (docs) {
-                    const idx = docs.findIndex(d => d.id === docId);
-                    if (idx !== -1) {
-                        docs[idx] = { ...docs[idx], ...updates };
-                        this.set('documents', docs);
-                    }
-                }
-            },
-
-            // Add a new document to the cache
-            addDocumentToList(doc) {
-                const docs = this.get('documents') || [];
-                docs.unshift(doc); // Add to beginning
-                this.set('documents', docs);
-            },
-
-            // Remove document from cache
-            removeDocumentFromList(docId) {
-                const docs = this.get('documents');
-                if (docs) {
-                    const filtered = docs.filter(d => d.id !== docId);
-                    this.set('documents', filtered);
-                }
-                this.invalidate('document', docId);
+        function getCachedDocContent(docId) {
+            const entry = _docContentCache[docId];
+            if (!entry) return null;
+            if (Date.now() - entry.timestamp > DOC_CONTENT_TTL) {
+                delete _docContentCache[docId];
+                return null;
             }
-        };
+            return entry.data;
+        }
 
-        // ==================== CACHED API LAYER ====================
+        function invalidateDocContent(docId) {
+            delete _docContentCache[docId];
+        }
+
+        // ==================== API LAYER ====================
         const API = {
-            // Load documents with cache
-            async getDocuments(forceRefresh = false) {
-                if (!forceRefresh) {
-                    const cached = CacheManager.get('documents');
-                    if (cached) {
-                        console.log('[Cache] Using cached documents');
-                        return { success: true, documents: cached, fromCache: true };
-                    }
-                }
-
+            async getDocuments() {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents`);
                     if (!response) return { success: false };
-
-                    const data = await response.json();
-                    if (data.success) {
-                        CacheManager.set('documents', data.documents);
-                        console.log('[Cache] Documents cached');
-                    }
-                    return data;
+                    return await response.json();
                 } catch (error) {
                     console.error('Failed to load documents:', error);
                     return { success: false, error };
                 }
             },
 
-            // Load single document with cache
             async getDocument(docId, forceRefresh = false) {
                 if (!forceRefresh) {
-                    const cached = CacheManager.get('document', docId);
+                    const cached = getCachedDocContent(docId);
                     if (cached) {
-                        console.log(`[Cache] Using cached document ${docId}`);
                         return { success: true, document: cached, fromCache: true };
                     }
                 }
@@ -2001,8 +1905,7 @@
 
                     const data = await response.json();
                     if (data.success) {
-                        CacheManager.set('document', data.document, docId, CacheManager.CONTENT_TTL);
-                        console.log(`[Cache] Document ${docId} cached`);
+                        cacheDocContent(docId, data.document);
                     }
                     return data;
                 } catch (error) {
@@ -2011,59 +1914,28 @@
                 }
             },
 
-            // Load teams with cache
-            async getTeams(forceRefresh = false) {
-                if (!forceRefresh) {
-                    const cached = CacheManager.get('teams');
-                    if (cached) {
-                        console.log('[Cache] Using cached teams');
-                        return { success: true, teams: cached, fromCache: true };
-                    }
-                }
-
+            async getTeams() {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/teams`);
                     if (!response) return { success: false };
-
-                    const data = await response.json();
-                    if (data.success) {
-                        CacheManager.set('teams', data.teams);
-                        console.log('[Cache] Teams cached');
-                    }
-                    return data;
+                    return await response.json();
                 } catch (error) {
                     console.error('Failed to load teams:', error);
                     return { success: false, error };
                 }
             },
 
-            // Load audits with cache (shorter TTL since it changes frequently)
-            async getAudits(forceRefresh = false) {
-                if (!forceRefresh) {
-                    const cached = CacheManager.get('audits');
-                    if (cached) {
-                        console.log('[Cache] Using cached audits');
-                        return { success: true, audits: cached, fromCache: true };
-                    }
-                }
-
+            async getAudits() {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/audits`);
                     if (!response) return { success: false };
-
-                    const data = await response.json();
-                    if (data.success) {
-                        CacheManager.set('audits', data.audits, '', 60 * 1000); // 1 minute TTL
-                        console.log('[Cache] Audits cached');
-                    }
-                    return data;
+                    return await response.json();
                 } catch (error) {
                     console.error('Failed to load audits:', error);
                     return { success: false, error };
                 }
             },
 
-            // Save document and update cache
             async saveDocument(docId, content, note = '') {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents/${docId}/save`, {
@@ -2073,20 +1945,11 @@
                     if (!response) return { success: false };
 
                     const data = await response.json();
-                    if (data.success) {
-                        // Update document content cache (only if not pending)
-                        if (!data.pending) {
-                            const cached = CacheManager.get('document', docId);
-                            if (cached) {
-                                cached.content = content;
-                                CacheManager.set('document', cached, docId, CacheManager.CONTENT_TTL);
-                            }
-                        }
-                        // Invalidate audits cache since we just edited
-                        CacheManager.invalidate('audits');
-                        // Invalidate pending cache if applicable
-                        if (data.pending) {
-                            CacheManager.invalidate('pending');
+                    if (data.success && !data.pending) {
+                        const cached = getCachedDocContent(docId);
+                        if (cached) {
+                            cached.content = content;
+                            cacheDocContent(docId, cached);
                         }
                     }
                     return data;
@@ -2096,7 +1959,6 @@
                 }
             },
 
-            // Create document and update cache
             async createDocument(name, teamId) {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents/add`, {
@@ -2107,31 +1969,13 @@
                         })
                     });
                     if (!response) return { success: false };
-
-                    const data = await response.json();
-                    if (data.success && data.document) {
-                        const teams = CacheManager.get('teams') || [];
-                        const team = teams.find(t => t.id === parseInt(teamId));
-
-                        const newDoc = {
-                            id: data.document.id,
-                            document_name: data.document.document_name,
-                            content: '',
-                            team_name: team ? team.team_name : data.document.team_name,
-                            team_id: parseInt(teamId),
-                            created_at: new Date().toISOString()
-                        };
-                        CacheManager.addDocumentToList(newDoc);
-                        CacheManager.invalidate('audits');
-                    }
-                    return data;
+                    return await response.json();
                 } catch (error) {
                     console.error('Failed to create document:', error);
                     return { success: false, error };
                 }
             },
 
-            // Rename document and update cache
             async renameDocument(docId, newName) {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents/${docId}/rename`, {
@@ -2142,16 +1986,11 @@
 
                     const data = await response.json();
                     if (data.success) {
-                        // Update documents list cache
-                        CacheManager.updateDocumentInList(docId, { document_name: newName });
-                        // Update single document cache
-                        const cached = CacheManager.get('document', docId);
+                        const cached = getCachedDocContent(docId);
                         if (cached) {
                             cached.document_name = newName;
-                            CacheManager.set('document', cached, docId, CacheManager.CONTENT_TTL);
+                            cacheDocContent(docId, cached);
                         }
-                        // Invalidate audits
-                        CacheManager.invalidate('audits');
                     }
                     return data;
                 } catch (error) {
@@ -2160,7 +1999,6 @@
                 }
             },
 
-            // Delete document and update cache
             async deleteDocument(docId) {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents/${docId}/delete`, {
@@ -2170,10 +2008,7 @@
 
                     const data = await response.json();
                     if (data.success) {
-                        // Remove from cache
-                        CacheManager.removeDocumentFromList(docId);
-                        // Invalidate audits
-                        CacheManager.invalidate('audits');
+                        invalidateDocContent(docId);
                     }
                     return data;
                 } catch (error) {
@@ -2182,33 +2017,17 @@
                 }
             },
 
-            // Get pending edits for admins
-            async getPendingEdits(forceRefresh = false) {
-                if (!forceRefresh) {
-                    const cached = CacheManager.get('pending');
-                    if (cached) {
-                        console.log('[Cache] Using cached pending edits');
-                        return { success: true, pending: cached, fromCache: true };
-                    }
-                }
-
+            async getPendingEdits() {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/pending`);
                     if (!response) return { success: false };
-
-                    const data = await response.json();
-                    if (data.success) {
-                        CacheManager.set('pending', data.pending, '', 60 * 1000); // 1 minute TTL
-                        console.log('[Cache] Pending edits cached');
-                    }
-                    return data;
+                    return await response.json();
                 } catch (error) {
                     console.error('Failed to load pending edits:', error);
                     return { success: false, error };
                 }
             },
 
-            // Handle pending edit (accept/reject)
             async handlePendingEdit(pendingId, action) {
                 try {
                     const response = await authFetch('/handlepending/', {
@@ -2218,16 +2037,8 @@
                     if (!response) return { success: false };
 
                     const data = await response.json();
-                    if (data.success) {
-                        // Invalidate pending cache
-                        CacheManager.invalidate('pending');
-                        if (action === 'accept') {
-                            // Invalidate audits and the accepted document's cache
-                            CacheManager.invalidate('audits');
-                            if (data.document_id) {
-                                CacheManager.invalidate('document', data.document_id);
-                            }
-                        }
+                    if (data.success && action === 'accept' && data.document_id) {
+                        invalidateDocContent(data.document_id);
                     }
                     return data;
                 } catch (error) {
@@ -2236,12 +2047,6 @@
                 }
             }
         };
-
-        // Prefetch teams on load for faster modal opening
-        (async function prefetchData() {
-            // Prefetch teams in background
-            API.getTeams();
-        })();
 
         // JWT Token Management
         const TokenManager = {
@@ -2396,8 +2201,8 @@
         // ==================== DOCUMENTS ====================
 
         // Load documents list (uses cache)
-        async function loadDocuments(forceRefresh = false) {
-            const data = await API.getDocuments(forceRefresh);
+        async function loadDocuments() {
+            const data = await API.getDocuments();
             if (data.success) {
                 renderDocumentsList(data.documents);
                 if (data.documents.length > 0 && !currentDocumentId) {
@@ -2508,7 +2313,7 @@
         document.getElementById('refreshDocsBtn').addEventListener('click', async () => {
             const btn = document.getElementById('refreshDocsBtn');
             btn.classList.add('refreshing');
-            await loadDocuments(true); // Force refresh
+            await loadDocuments();
             btn.classList.remove('refreshing');
             showToast('Documents refreshed');
         });
@@ -2517,8 +2322,8 @@
 
         const modal = document.getElementById('newDocModal');
 
-        async function loadTeams(forceRefresh = false) {
-            const data = await API.getTeams(forceRefresh);
+        async function loadTeams() {
+            const data = await API.getTeams();
             if (data.success) {
                 projectTeams = data.teams;
                 const select = document.getElementById('newDocTeam');
@@ -2574,13 +2379,7 @@
             if (data.success) {
                 showToast('Document created!');
                 closeNewDocModal();
-                // Re-render from cache (already updated by API.createDocument)
-                const cached = CacheManager.get('documents');
-                if (cached) {
-                    renderDocumentsList(cached);
-                } else {
-                    await loadDocuments();
-                }
+                await loadDocuments();
                 selectDocument(data.document.id);
             } else {
                 showToast(data.error || 'Failed to create document', 'error');
@@ -2643,13 +2442,7 @@
             if (data.success) {
                 showToast('Document renamed successfully');
                 closeRenameModal();
-                // Re-render from cache (already updated by API.renameDocument)
-                const cached = CacheManager.get('documents');
-                if (cached) {
-                    renderDocumentsList(cached);
-                } else {
-                    await loadDocuments();
-                }
+                await loadDocuments();
             } else {
                 showToast(data.error || 'Failed to rename document', 'error');
             }
@@ -2702,17 +2495,7 @@
                     quill.root.innerHTML = '';
                 }
 
-                // Re-render from cache
-                const cached = CacheManager.get('documents');
-                if (cached) {
-                    renderDocumentsList(cached);
-                    // Select first document if available
-                    if (cached.length > 0 && !currentDocumentId) {
-                        selectDocument(cached[0].id);
-                    }
-                } else {
-                    await loadDocuments();
-                }
+                await loadDocuments();
             } else {
                 showToast(data.error || 'Failed to delete document', 'error');
             }
@@ -2724,20 +2507,13 @@
         // ==================== PENDING EDITS ====================
 
         {% if is_owner or role == 'ADMIN' %}
-        async function loadPendingEdits(forceRefresh = false) {
+        async function loadPendingEdits() {
             const pendingList = document.getElementById('pendingList');
             const pendingBadge = document.getElementById('pendingBadge');
 
-            // Show cached data immediately if available
-            const cached = CacheManager.get('pending');
-            if (cached && !forceRefresh) {
-                renderPendingEdits(cached);
-                return;
-            }
-
             pendingList.innerHTML = '<div class="pending-empty">Loading pending edits...</div>';
 
-            const data = await API.getPendingEdits(forceRefresh);
+            const data = await API.getPendingEdits();
             if (data.success) {
                 renderPendingEdits(data.pending);
             } else if (data.error && data.error.includes('not available')) {
@@ -2797,7 +2573,7 @@
                     if (data.success) {
                         showToast(action === 'accept' ? 'Changes accepted' : 'Changes rejected');
                         // Reload pending edits
-                        await loadPendingEdits(true);
+                        await loadPendingEdits();
                         // If accepted, refresh the affected document if it's currently open
                         if (action === 'accept' && data.document_id && data.document_id === currentDocumentId) {
                             await selectDocument(currentDocumentId, true);
@@ -2826,17 +2602,12 @@
 
         // ==================== AUDIT HISTORY ====================
 
-        async function loadAuditHistory(forceRefresh = false) {
+        async function loadAuditHistory() {
             const auditList = document.getElementById('auditList');
-            const cached = CacheManager.get('audits');
-            if (cached && !forceRefresh) {
-                renderAuditHistory(cached);
-                return;
-            }
 
             auditList.innerHTML = '<div class="audit-loading">Loading history...</div>';
 
-            const data = await API.getAudits(forceRefresh);
+            const data = await API.getAudits();
             if (data.success) {
                 renderAuditHistory(data.audits);
             } else {
@@ -3115,7 +2886,7 @@
                 // If away for more than 2 minutes, refresh documents list
                 if (timeAway > 2 * 60 * 1000) {
                     console.log('[Cache] User returned after extended absence, refreshing data');
-                    loadDocuments(true); // Force refresh
+                    loadDocuments();
                 }
             } else {
                 lastActiveTime = Date.now();
@@ -3125,15 +2896,9 @@
         // Optional: Periodic background refresh every 5 minutes while active
         setInterval(() => {
             if (document.visibilityState === 'visible') {
-                // Silently refresh documents list in background
-                API.getDocuments(true).then(data => {
+                API.getDocuments().then(data => {
                     if (data.success && data.documents) {
-                        // Only re-render if there are changes
-                        const cached = CacheManager.get('documents');
-                        if (JSON.stringify(cached) !== JSON.stringify(data.documents)) {
-                            console.log('[Cache] Background refresh detected changes');
-                            renderDocumentsList(data.documents);
-                        }
+                        renderDocumentsList(data.documents);
                     }
                 });
             }
@@ -3304,10 +3069,7 @@ function hidePendingNoteModal() {
 
         // ==================== INIT ====================
 
-        // Clear document content caches on page load so we always get fresh data
-        CacheManager.invalidatePattern('document');
-
-        loadDocuments(true);
+        loadDocuments();
     function getCookie(name) {
 let cookieValue = null;
 if (document.cookie && document.cookie !== '') {
