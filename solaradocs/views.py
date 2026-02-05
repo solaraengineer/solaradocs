@@ -56,8 +56,8 @@ stripe.public_key = settings.STRIPE_PUBLIC_KEY
 TIER_LIMITS = {
     'free': {'projects': 1, 'documents': 2, 'teams': 1, 'members': 3, 'collaborations': 2,
              'backups': False, 'audit': False, 'pending': False},
-    'student': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'collaborations': 5,
-                'backups': True, 'audit': False, 'pending': False},
+    'personal': {'projects': 3, 'documents': 5, 'teams': 2, 'members': 6, 'collaborations': 5,
+                 'backups': True, 'audit': False, 'pending': False},
     'team': {'projects': 5, 'documents': 20, 'teams': 5, 'members': 20, 'collaborations': 8,
              'backups': True, 'audit': True, 'pending': True},
     'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
@@ -739,9 +739,9 @@ def home(request):
 
 
 PRICE_IDS = {
-    'student': 'price_1SspbqHVqJxZgWX0LLHVKyrq',
-    'team': 'price_1SspcWHVqJxZgWX0bv4QsgrW',
-    'enterprise': 'price_1SspdtHVqJxZgWX0J2ZR4dIU',
+    'personal': settings.STRIPE_PERSONAL_PRICE_ID,
+    'team': settings.STRIPE_TEAM_PRICE_ID,
+    'enterprise': settings.STRIPE_ENTERPRISE_PRICE_ID,
 }
 
 
@@ -816,9 +816,9 @@ def stripe_webhook(request):
             if items:
                 price_id = items[0].get('price', {}).get('id')
                 tier = {
-                    'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
-                    'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
-                    'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                    settings.STRIPE_PERSONAL_PRICE_ID: 'personal',
+                    settings.STRIPE_TEAM_PRICE_ID: 'team',
+                    settings.STRIPE_ENTERPRISE_PRICE_ID: 'enterprise',
                 }.get(price_id)
 
         if customer_id and tier:
@@ -844,9 +844,9 @@ def stripe_webhook(request):
                 if items:
                     price_id = items[0].get('price', {}).get('id')
                     tier = {
-                        'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
-                        'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
-                        'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                        settings.STRIPE_PERSONAL_PRICE_ID: 'personal',
+                        settings.STRIPE_TEAM_PRICE_ID: 'team',
+                        settings.STRIPE_ENTERPRISE_PRICE_ID: 'enterprise',
                     }.get(price_id)
 
         if customer_id:
@@ -902,9 +902,9 @@ def stripe_webhook(request):
         if items:
             price_id = items[0].get('price', {}).get('id')
             tier = {
-                'price_1SspbqHVqJxZgWX0LLHVKyrq': 'student',
-                'price_1SspcWHVqJxZgWX0bv4QsgrW': 'team',
-                'price_1SspdtHVqJxZgWX0J2ZR4dIU': 'enterprise',
+                settings.STRIPE_PERSONAL_PRICE_ID: 'personal',
+                settings.STRIPE_TEAM_PRICE_ID: 'team',
+                settings.STRIPE_ENTERPRISE_PRICE_ID: 'enterprise',
             }.get(price_id)
 
         if customer_id:

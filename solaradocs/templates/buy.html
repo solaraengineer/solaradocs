@@ -611,12 +611,12 @@
                 </div>
             </div>
 
-            <!-- Student Plan -->
+            <!-- Personal Plan -->
             <div class="plan-card">
-                <h3 class="plan-name">Student</h3>
+                <h3 class="plan-name">Personal</h3>
                 <p class="plan-desc">Perfect for personal projects.</p>
                 <div class="plan-price">
-                    <span class="price-amount">$5.50</span>
+                    <span class="price-amount">$6</span>
                     <span class="price-period">/ month</span>
                 </div>
                 <ul class="plan-features">
@@ -672,9 +672,8 @@
                 </ul>
                 <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
                     {% csrf_token %}
-                    <input type="hidden" name="plan_name" value="student">
-                    <input type="hidden" name="amount" value="500">
-                    <input type="hidden" name="tier" value="student">
+                    <input type="hidden" name="plan_name" value="personal">
+                    <input type="hidden" name="tier" value="personal">
                     <button type="submit">Get Started</button>
                 </form>
             </div>
@@ -685,7 +684,7 @@
                 <h3 class="plan-name">Team</h3>
                 <p class="plan-desc">For teams that need to ship fast.</p>
                 <div class="plan-price">
-                    <span class="price-amount">$15.50</span>
+                    <span class="price-amount">$16</span>
                     <span class="price-period">/ month</span>
                 </div>
                 <ul class="plan-features">
@@ -749,18 +748,17 @@
                 <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
                     {% csrf_token %}
                     <input type="hidden" name="plan_name" value="team">
-                    <input type="hidden" name="amount" value="1500">
                     <input type="hidden" name="tier" value="team">
                     <button type="submit">Get Started</button>
                 </form>
             </div>
 
-            <!-- Large Teams Plan -->
+            <!-- Enterprise Plan -->
             <div class="plan-card">
-                <h3 class="plan-name">Large Teams</h3>
+                <h3 class="plan-name">Enterprise</h3>
                 <p class="plan-desc">Unlimited everything. Scale it.</p>
                 <div class="plan-price">
-                    <span class="price-amount">$35.50</span>
+                    <span class="price-amount">$36</span>
                     <span class="price-period">/ month</span>
                 </div>
                 <ul class="plan-features">
@@ -832,7 +830,6 @@
                 <form class="plan-cta" action="{% url 'create-checkout-session' %}" method="POST">
                     {% csrf_token %}
                     <input type="hidden" name="plan_name" value="enterprise">
-                    <input type="hidden" name="amount" value="3500">
                     <input type="hidden" name="tier" value="enterprise">
                     <button type="submit">Get Started</button>
                 </form>
@@ -842,6 +839,17 @@
         <!-- FAQ -->
         <div class="faq-section">
             <h2 class="faq-title">Questions?</h2>
+            <div class="faq-item">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    What about fees?
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <div class="faq-answer">
+                    The price you see is the full price. No hidden fees, no transaction costs, no surprises.
+                </div>
+            </div>
             <div class="faq-item">
                 <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
                     Can I cancel anytime?
