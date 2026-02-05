@@ -54,7 +54,7 @@ def admin_update_user(request):
     if not user:
         return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
     tier = data.get('tier', '')
-    if tier not in ('free', 'student', 'team', 'enterprise'):
+    if tier not in ('free', 'personal', 'team', 'enterprise'):
         return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
     user.Tier = tier
     user.save(update_fields=['Tier'])
