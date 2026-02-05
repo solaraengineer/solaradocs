@@ -5,7 +5,7 @@ metadata:
   name: solaradocs-web
   namespace: solaradocs
 spec:
-  replicas: 2
+  replicas: 4
   selector:
     matchLabels:
       app: solaradocs-web
