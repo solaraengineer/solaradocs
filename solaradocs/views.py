@@ -56,9 +56,9 @@ stripe.public_key = settings.STRIPE_PUBLIC_KEY
 TIER_LIMITS = {
     'free': {'projects': 2, 'documents': 5, 'teams': 2, 'members': 3, 'collaborations': 2,
              'backups': False, 'audit': False, 'pending': False},
-    'personal': {'projects': 4, 'documents': 10, 'teams': 2, 'members': 6, 'collaborations': 5,
+    'personal': {'projects': 4, 'documents': 10, 'teams': 4, 'members': 6, 'collaborations': 5,
                  'backups': True, 'audit': False, 'pending': False},
-    'team': {'projects': 8, 'documents': 20, 'teams': 5, 'members': 20, 'collaborations': 8,
+    'team': {'projects': 8, 'documents': 20, 'teams': 6, 'members': 20, 'collaborations': 8,
              'backups': True, 'audit': True, 'pending': True},
     'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
                    'backups': True, 'audit': True, 'pending': True},
