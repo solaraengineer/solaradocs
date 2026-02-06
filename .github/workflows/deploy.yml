@@ -49,7 +49,8 @@ jobs:
           --exclude '.env' \
           --exclude 'staticfiles' \
           --exclude 'media' \
-          --exclude 'venv' \
+          --exclude '.venv' \
+          --exclude 'k8s' \
           . ubuntu@$SERVER_IP:/home/ubuntu/banking/
         
         ssh -i bank -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'ENDSSH'
