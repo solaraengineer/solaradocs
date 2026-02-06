@@ -15,7 +15,7 @@ urlpatterns = [
     path('collaborations/', views.collaborations, name='collaborations'),
     path('deleteproject/', views.delete_project, name='delete_project'),
     path('handlepending/', views.handle_pending, name='handle_pending'),
-    path('', include('django_prometheus.urls')),
+    path('', include('django_prometheus.urls'), name='django_prometheus'),
     path('docs/', views.docs, name='docs'),
     path('changelog/', views.changelog, name='changelog'),
     path('project/<int:project_id>/', views.project_detail, name='project_detail'),

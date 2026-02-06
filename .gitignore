@@ -37,3 +37,6 @@ Thumbs.db
 docker-compose.override.yml
 #K8s
 k8s
+#Clade
+.claude/skills
+.claude
