@@ -31,7 +31,7 @@ def sanitize_string(value, max_length, pattern, field_name):
         return None, f'{field_name} must be a string'
 
     value = value.strip()
-
+    
     if not value:
         return None, f'{field_name} is required'
 
@@ -744,7 +744,6 @@ PRICE_IDS = {
     'enterprise': settings.STRIPE_ENTERPRISE_PRICE_ID,
 }
 
-
 @login_required
 @require_POST
 @transaction.atomic
@@ -756,22 +755,35 @@ def create_checkout_session(request):
         return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
 
     try:
-        session = stripe.checkout.Session.create(
-            customer_email=request.user.email,
-            mode='subscription',
-            line_items=[{
-                'price': PRICE_IDS[tier],
-                'quantity': 1,
-            }],
+        if request.user.stripe_customer_id:
+            customer_id = request.user.stripe_customer_id
+        else:
+            customer = stripe.Customer.create(
+                email=request.user.email,
+                metadata={'user_id': str(request.user.id)},
+            )
+            customer_id = customer.id
+            request.user.stripe_customer_id = customer_id
+            request.user.save(update_fields=['stripe_customer_id'])
+
+        subscription = stripe.Subscription.create(
+            customer=customer_id,
+            items=[{'price': PRICE_IDS[tier]}],
+            payment_behavior='default_incomplete',
+            payment_settings={'save_default_payment_method': 'on_subscription'},
+            expand=['latest_invoice.confirmation_secret'],
             metadata={
                 'user_id': str(request.user.id),
                 'tier': tier,
             },
-            success_url=request.build_absolute_uri('/success/') + '?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=request.build_absolute_uri('/buy/'),
         )
-        return redirect(session.url)
-    except stripe.error.StripeError:
+
+        return JsonResponse({
+            'client_secret': subscription.latest_invoice.confirmation_secret.client_secret,
+            'subscription_id': subscription.id,
+        })
+
+    except stripe.error.StripeError as e:
         return JsonResponse({'success': False, 'error': 'Payment service unavailable'}, status=503)
 
 
@@ -936,11 +948,11 @@ def success(request):
     })
 
 
-
 @ratelimit(key='ip', rate='30/m', block=True)
 def buy(request):
-    return render(request, 'buy.html')
-
+    return render(request, 'buy.html', {
+        'stripe_publishable_key': settings.STRIPE_PUBLIC_KEY
+    })
 
 @require_GET
 @require_auth_token
