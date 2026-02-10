@@ -2,6 +2,7 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.account.utils import user_email, user_username
 from allauth.core.exceptions import ImmediateHttpResponse
 from django.contrib.auth import get_user_model
+from solaradocs.views_emails import send_welcome_email
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import redirect

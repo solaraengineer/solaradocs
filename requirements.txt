@@ -38,3 +38,4 @@ y-py==0.6.2
 ypy==0.2
 django-allauth==65.13.1
 cryptography
+celery==5.4.0
