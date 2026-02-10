@@ -110,32 +110,51 @@
         .checkout-overlay { display: none; position: fixed; inset: 0; z-index: 999; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
         .checkout-overlay.active { display: flex; }
 
-        .checkout-modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 420px; padding: 2rem; position: relative; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4); }
+        .checkout-modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 740px; position: relative; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4); overflow: hidden; }
 
-        .checkout-close { position: absolute; top: 16px; right: 16px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: all 0.15s ease; line-height: 1; }
+        .checkout-close { position: absolute; top: 16px; right: 16px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: all 0.15s ease; line-height: 1; z-index: 2; }
         .checkout-close:hover { background: var(--border); color: var(--text-primary); }
 
-        .checkout-header { margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); }
+        .checkout-layout { display: grid; grid-template-columns: 1fr 1fr; }
+
+        .checkout-left { background: var(--bg-primary); padding: 2rem; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid var(--border-subtle); }
+
+        .checkout-right { padding: 2rem; }
+
+        .checkout-header { margin-bottom: 1.5rem; }
         .checkout-plan-name { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-orange); margin-bottom: 0.35rem; }
         .checkout-price { display: flex; align-items: baseline; gap: 0.35rem; }
-        .checkout-price-amount { font-family: 'JetBrains Mono', monospace; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); }
+        .checkout-price-amount { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--text-primary); }
         .checkout-price-period { font-size: 0.8rem; color: var(--text-tertiary); }
 
-        .checkout-form-group { margin-bottom: 1rem; }
-        .checkout-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .checkout-input { width: 100%; padding: 0.7rem 0.85rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 0.875rem; transition: border-color 0.15s ease; outline: none; }
+        .checkout-user-info { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1rem 1.15rem; margin-bottom: 1.25rem; }
+        .checkout-user-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; }
+        .checkout-user-row:not(:last-child) { border-bottom: 1px solid var(--border-subtle); }
+        .checkout-user-label { font-size: 0.7rem; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .checkout-user-value { font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; font-weight: 500; color: var(--text-primary); }
+
+        .checkout-summary { display: flex; justify-content: space-between; align-items: center; background: rgba(212, 165, 116, 0.08); border: 1px solid rgba(212, 165, 116, 0.15); border-radius: 10px; padding: 0.85rem 1.15rem; }
+        .checkout-summary-label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
+        .checkout-summary-total { font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; font-weight: 700; color: var(--accent-orange); }
+
+        .checkout-left-footer { margin-top: auto; padding-top: 1.25rem; }
+        .checkout-left-footer .checkout-secure { justify-content: flex-start; margin-top: 0; margin-bottom: 0.5rem; }
+        .checkout-left-footer .checkout-payment-logos { justify-content: flex-start; margin-top: 0; margin-bottom: 0.65rem; }
+        .checkout-left-footer .checkout-legal { text-align: left; margin-top: 0; }
+
+        .checkout-form-group { margin-bottom: 0.85rem; }
+        .checkout-label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .checkout-input { width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 0.85rem; transition: border-color 0.15s ease; outline: none; }
         .checkout-input:focus { border-color: var(--accent-orange); }
         .checkout-input::placeholder { color: var(--text-tertiary); }
 
-        .checkout-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .checkout-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
 
-        .stripe-element-container { padding: 0.7rem 0.85rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; transition: border-color 0.15s ease; }
+        .stripe-element-container { padding: 0.6rem 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; transition: border-color 0.15s ease; }
         .stripe-element-container.focused { border-color: var(--accent-orange); }
         .stripe-element-container.invalid { border-color: var(--accent-red); }
 
-        .checkout-divider { height: 1px; background: var(--border-subtle); margin: 1.25rem 0; }
-
-        .checkout-submit { width: 100%; padding: 0.85rem 1.25rem; background: var(--accent-orange); color: var(--bg-primary); border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .checkout-submit { width: 100%; padding: 0.75rem 1.25rem; background: var(--accent-orange); color: var(--bg-primary); border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1.25rem; }
         .checkout-submit:hover:not(:disabled) { background: #e0b285; transform: translateY(-1px); }
         .checkout-submit:disabled { opacity: 0.6; cursor: not-allowed; }
         .checkout-submit .spinner { display: none; width: 16px; height: 16px; border: 2px solid var(--bg-primary); border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
@@ -143,13 +162,21 @@
         .checkout-submit.loading .btn-text { display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .checkout-error { display: none; padding: 0.65rem 0.85rem; background: rgba(212, 106, 106, 0.1); border: 1px solid rgba(212, 106, 106, 0.25); border-radius: 8px; color: var(--accent-red); font-size: 0.8rem; margin-bottom: 1rem; }
+        .checkout-error { display: none; padding: 0.6rem 0.75rem; background: rgba(212, 106, 106, 0.1); border: 1px solid rgba(212, 106, 106, 0.25); border-radius: 8px; color: var(--accent-red); font-size: 0.8rem; margin-bottom: 0.85rem; }
         .checkout-error.visible { display: block; }
 
-        .checkout-secure { display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1rem; color: var(--text-tertiary); font-size: 0.7rem; }
+        .checkout-secure { display: flex; align-items: center; gap: 0.4rem; color: var(--text-tertiary); font-size: 0.7rem; }
         .checkout-secure svg { width: 12px; height: 12px; }
 
-        .checkout-success { display: none; text-align: center; padding: 2rem 0; }
+        .checkout-cancel-note { text-align: center; font-size: 0.72rem; color: var(--accent-green); margin-top: 0.6rem; font-weight: 500; }
+
+        .checkout-payment-logos { display: flex; align-items: center; gap: 0.6rem; opacity: 0.6; }
+
+        .checkout-legal { font-size: 0.62rem; color: var(--text-tertiary); line-height: 1.5; }
+        .checkout-legal a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s ease; }
+        .checkout-legal a:hover { color: var(--accent-orange); }
+
+        .checkout-success { display: none; text-align: center; padding: 3rem 2rem; }
         .checkout-success.visible { display: block; }
         .checkout-success-icon { width: 48px; height: 48px; background: rgba(127, 176, 105, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
         .checkout-success-icon svg { width: 24px; height: 24px; color: var(--accent-green); }
@@ -173,7 +200,10 @@
         @media (max-width: 700px) {
             .plans-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
             .plan-card.recommended { order: -1; }
-            .checkout-modal { margin: 1rem; max-height: 90vh; overflow-y: auto; }
+            .checkout-modal { margin: 1rem; max-height: 90vh; overflow-y: auto; max-width: 420px; }
+            .checkout-layout { grid-template-columns: 1fr; }
+            .checkout-left { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+            .checkout-left-footer { display: none; }
         }
         @media (max-width: 600px) {
             .navbar { padding: 1rem; }
@@ -321,47 +351,86 @@
             <button class="checkout-close" onclick="closeCheckout()">&#10005;</button>
 
             <div id="checkout-form-container">
-                <div class="checkout-header">
-                    <div class="checkout-plan-name" id="checkout-plan-label">Personal</div>
-                    <div class="checkout-price">
-                        <span class="checkout-price-amount" id="checkout-price-display">$6.00</span>
-                        <span class="checkout-price-period">/ month</span>
+                <div class="checkout-layout">
+                    <!-- LEFT: Plan info, user info, summary -->
+                    <div class="checkout-left">
+                        <div>
+                            <div class="checkout-header">
+                                <div class="checkout-plan-name" id="checkout-plan-label">Personal</div>
+                                <div class="checkout-price">
+                                    <span class="checkout-price-amount" id="checkout-price-display">$6.00</span>
+                                    <span class="checkout-price-period">/ month</span>
+                                </div>
+                            </div>
+
+                            <div class="checkout-user-info">
+                                <div class="checkout-user-row">
+                                    <span class="checkout-user-label">Account</span>
+                                    <span class="checkout-user-value">{{ request.user.username }}</span>
+                                </div>
+                                <div class="checkout-user-row">
+                                    <span class="checkout-user-label">Email</span>
+                                    <span class="checkout-user-value">{{ request.user.email }}</span>
+                                </div>
+                                <div class="checkout-user-row">
+                                    <span class="checkout-user-label">Renews on</span>
+                                    <span class="checkout-user-value" id="checkout-expiry"></span>
+                                </div>
+                            </div>
+
+                            <div class="checkout-summary">
+                                <span class="checkout-summary-label">Total due today</span>
+                                <span class="checkout-summary-total" id="checkout-total-display">$6.00</span>
+                            </div>
+                        </div>
+
+                        <div class="checkout-left-footer">
+                            <div class="checkout-secure">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                Secured by Stripe
+                            </div>
+                            <div class="checkout-payment-logos">
+                                <svg viewBox="0 0 38 24" width="38" height="24" role="img" aria-labelledby="visa"><title id="visa">Visa</title><rect width="38" height="24" rx="3" fill="#1A1F71"/><path d="M15.3 16.2l1.6-9.4h2.5l-1.6 9.4h-2.5zm10.3-9.2c-.5-.2-1.3-.4-2.2-.4-2.5 0-4.2 1.3-4.2 3.1 0 1.4 1.2 2.1 2.2 2.6 1 .5 1.3.8 1.3 1.2 0 .6-.8 1-1.5 1-.1 0-2.1-.4-2.1-.4l-.3 1.5s1 .4 2.5.4c2.6 0 4.3-1.3 4.3-3.2 0-1.1-.6-1.9-2.1-2.6-.9-.4-1.4-.7-1.4-1.2 0-.4.5-.8 1.4-.8.8 0 1.5.2 2 .3l.3-1.5h-.2zm5.5 0h-1.9c-.6 0-1 .2-1.3.7l-3.6 8.5h2.5l.5-1.4h3.1l.3 1.4h2.2l-1.8-9.2zm-3.3 6l1.3-3.5.7 3.5h-2zM13.5 6.8l-2.3 6.4-.3-1.2-.8-4c-.1-.5-.5-.7-1-.7H5.8v.2c.9.2 2 .5 2.6.9l2.2 8.4h2.6l3.9-9.4h-2.6l-1 .4z" fill="#fff"/></svg>
+                                <svg viewBox="0 0 38 24" width="38" height="24" role="img" aria-labelledby="mc"><title id="mc">Mastercard</title><rect width="38" height="24" rx="3" fill="#252525"/><circle cx="15" cy="12" r="7" fill="#EB001B"/><circle cx="23" cy="12" r="7" fill="#F79E1B"/><path d="M19 7.3c1.7 1.2 2.8 3.2 2.8 5.4s-1.1 4.2-2.8 5.4c-1.7-1.2-2.8-3.2-2.8-5.4s1.1-4.2 2.8-5.4z" fill="#FF5F00"/></svg>
+                            </div>
+                            <div class="checkout-legal">
+                                By subscribing, you agree to our <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="checkout-error" id="checkout-error"></div>
+                    <!-- RIGHT: Payment form -->
+                    <div class="checkout-right">
+                        <div class="checkout-error" id="checkout-error"></div>
 
-                <div class="checkout-form-group">
-                    <label class="checkout-label">Cardholder name</label>
-                    <input type="text" class="checkout-input" id="cardholder-name" placeholder="Full name on card" autocomplete="name">
-                </div>
+                        <div class="checkout-form-group">
+                            <label class="checkout-label">Cardholder name</label>
+                            <input type="text" class="checkout-input" id="cardholder-name" placeholder="Full name on card" autocomplete="name">
+                        </div>
 
-                <div class="checkout-form-group">
-                    <label class="checkout-label">Card number</label>
-                    <div class="stripe-element-container" id="card-number-element"></div>
-                </div>
+                        <div class="checkout-form-group">
+                            <label class="checkout-label">Card number</label>
+                            <div class="stripe-element-container" id="card-number-element"></div>
+                        </div>
 
-                <div class="checkout-row">
-                    <div class="checkout-form-group">
-                        <label class="checkout-label">Expiry</label>
-                        <div class="stripe-element-container" id="card-expiry-element"></div>
+                        <div class="checkout-row">
+                            <div class="checkout-form-group">
+                                <label class="checkout-label">Expiry</label>
+                                <div class="stripe-element-container" id="card-expiry-element"></div>
+                            </div>
+                            <div class="checkout-form-group">
+                                <label class="checkout-label">CVC</label>
+                                <div class="stripe-element-container" id="card-cvc-element"></div>
+                            </div>
+                        </div>
+
+                        <button class="checkout-submit" id="checkout-submit" onclick="handleSubmit()">
+                            <span class="spinner"></span>
+                            <span class="btn-text">Pay and subscribe</span>
+                        </button>
+
+                        <p class="checkout-cancel-note">Cancel anytime. You'll keep access until your billing period ends.</p>
                     </div>
-                    <div class="checkout-form-group">
-                        <label class="checkout-label">CVC</label>
-                        <div class="stripe-element-container" id="card-cvc-element"></div>
-                    </div>
-                </div>
-
-                <div class="checkout-divider"></div>
-
-                <button class="checkout-submit" id="checkout-submit" onclick="handleSubmit()">
-                    <span class="spinner"></span>
-                    <span class="btn-text">Pay and subscribe</span>
-                </button>
-
-                <div class="checkout-secure">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    Secured by Stripe
                 </div>
             </div>
 
@@ -429,6 +498,17 @@
 
             document.getElementById('checkout-plan-label').textContent = planName;
             document.getElementById('checkout-price-display').textContent = price;
+            document.getElementById('checkout-total-display').textContent = price;
+
+            // Calculate expiry (now + 1 month)
+            var expiry = new Date();
+            expiry.setMonth(expiry.getMonth() + 1);
+            document.getElementById('checkout-expiry').textContent = expiry.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
             overlay.classList.add('active');
 
             try {

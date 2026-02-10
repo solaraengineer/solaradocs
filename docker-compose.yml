@@ -41,6 +41,24 @@ services:
       - redis
       - postgres
 
+  celery:
+    build: .
+    command: celery -A logic worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=False
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
+    networks:
+      - backend
+    depends_on:
+      - redis
+      - postgres
+
   prometheus:
     image: prom/prometheus:latest
     volumes:

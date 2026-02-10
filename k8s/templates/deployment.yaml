@@ -17,7 +17,7 @@ spec:
       containers:
         - name: web
           image: solaradocs-web:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           command: ["gunicorn", "logic.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

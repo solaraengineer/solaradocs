@@ -19,6 +19,7 @@ from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
 from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, PendingAction
+from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email
 import re
 
 PROJECT_NAME_REGEX = re.compile(r'^[a-zA-Z0-9\s@#$!]+$')
@@ -453,6 +454,7 @@ def register(request):
         user.backend = 'django.contrib.auth.backends.ModelBackend'
         auth_login(request, user)
         token = generate_auth_token(request.user.id)
+        send_welcome_email.delay(username, email)
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception:
@@ -839,6 +841,17 @@ def stripe_webhook(request):
                 user.Tier = tier
                 user.subscription_status = 'active'
                 user.save(update_fields=['Tier', 'subscription_status'])
+
+                price_map = {'personal': '$6.00/mo', 'team': '$16.00/mo', 'enterprise': '$36.00/mo'}
+                current_period_end = subscription.get('current_period_end')
+                renews_at = ''
+                if current_period_end:
+                    from datetime import datetime as dt
+                    renews_at = dt.utcfromtimestamp(current_period_end).strftime('%B %d, %Y')
+                send_subscription_email.delay(
+                    user.email, user.username, tier,
+                    price_map.get(tier, ''), renews_at,
+                )
             except User.DoesNotExist:
                 pass
 
@@ -951,8 +964,16 @@ def success(request):
 @ratelimit(key='ip', rate='30/m', block=True)
 def buy(request):
     return render(request, 'buy.html', {
-        'stripe_publishable_key': settings.STRIPE_PUBLIC_KEY
+        'stripe_publishable_key': settings.STRIPE_PUBLIC_KEY,
+        'user': request.user
     })
+@ratelimit(key='ip', rate='30/m', block=True)
+def terms(request):
+    return render(request, 'terms.html', {})
+
+@ratelimit(key='ip', rate='30/m', block=True)
+def privacy(request):
+    return render(request, 'privacy.html', {})
 
 @require_GET
 @require_auth_token
@@ -2215,8 +2236,11 @@ def cancel_subscription(request):
             cancel_at_period_end=True
         )
 
+        tier_before = request.user.Tier
         request.user.subscription_status = 'canceled'
         request.user.save(update_fields=['subscription_status'])
+
+        send_cancellation_email.delay(request.user.email, request.user.username, tier_before)
 
         return JsonResponse({'success': True})
 
