@@ -7,224 +7,374 @@
     <title>Admin Panel - Solara Docs</title>
     <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
     <link rel="apple-touch-icon" href="{% static 'assets/favicon-512.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg-primary: #1a1915;
-            --bg-secondary: #21201c;
-            --bg-tertiary: #2a2924;
-            --bg-elevated: #32312b;
-            --border: #3d3b35;
-            --border-subtle: #2e2d28;
-            --text-primary: #e8e4dd;
-            --text-secondary: #a8a59e;
-            --text-tertiary: #6b6963;
-            --accent-orange: #d4a574;
-            --accent-blue: #6b9ece;
-            --accent-purple: #9d7cd8;
-            --accent-teal: #5fb3a1;
-            --accent-green: #7fb069;
-            --accent-red: #d46a6a;
+            --bg-void: #111110;
+            --bg-base: #181814;
+            --bg-surface: #1e1d19;
+            --bg-raised: #26251f;
+            --bg-overlay: #2e2d26;
+            --bg-hover: #35332b;
+            --border-dim: #2a2922;
+            --border-mid: #3a3830;
+            --border-bright: #4a483e;
+            --text-primary: #ece8e0;
+            --text-secondary: #a8a49a;
+            --text-muted: #6e6b63;
+            --text-ghost: #4a4840;
+            --accent: #d4a574;
+            --accent-glow: #e0b888;
+            --accent-dim: rgba(212, 165, 116, 0.12);
+            --blue: #6b9ece;
+            --blue-dim: rgba(107, 158, 206, 0.15);
+            --purple: #a07de0;
+            --purple-dim: rgba(160, 125, 224, 0.15);
+            --teal: #5fb3a1;
+            --teal-dim: rgba(95, 179, 161, 0.15);
+            --green: #7fb069;
+            --green-dim: rgba(127, 176, 105, 0.15);
+            --red: #d46a6a;
+            --red-dim: rgba(212, 106, 106, 0.12);
+            --yellow: #d4c06a;
+            --yellow-dim: rgba(212, 192, 106, 0.15);
+            --sidebar-w: 232px;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
         }
 
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg-primary);
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-void);
             color: var(--text-primary);
-            line-height: 1.6;
+            line-height: 1.55;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        ::selection {
-            background: var(--accent-orange);
-            color: var(--bg-primary);
-        }
+        ::selection { background: var(--accent); color: var(--bg-void); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
 
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        /* ── Layout ─────────────────────────────── */
+        .app { display: flex; min-height: 100vh; }
 
-        .app {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
         .sidebar {
-            width: 240px;
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border-subtle);
+            width: var(--sidebar-w);
+            background: var(--bg-base);
+            border-right: 1px solid var(--border-dim);
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 0; left: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
+            z-index: 100;
         }
 
         .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-subtle);
+            padding: 20px 18px;
+            border-bottom: 1px solid var(--border-dim);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .logo {
-            width: 32px;
-            height: 32px;
-            background: var(--accent-red);
+            width: 30px; height: 30px;
+            background: linear-gradient(135deg, var(--red), #c55a5a);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
-            font-size: 0.9rem;
-            color: var(--bg-primary);
+            font-size: 0.8rem;
+            color: #fff;
+            flex-shrink: 0;
         }
 
-        .logo-text {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
+        .logo-text { font-weight: 700; font-size: 0.85rem; letter-spacing: -0.01em; }
 
         .logo-badge {
-            font-size: 0.65rem;
-            background: var(--accent-red);
-            color: var(--bg-primary);
+            font-size: 0.6rem;
+            background: var(--red);
+            color: #fff;
             padding: 2px 6px;
             border-radius: 4px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-left: auto;
         }
 
-        .sidebar-nav {
-            flex: 1;
-            padding: 16px 0;
+        .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+
+        .nav-section {
+            padding: 0 18px;
+            margin-bottom: 6px;
+            margin-top: 16px;
+        }
+
+        .nav-section:first-child { margin-top: 0; }
+
+        .nav-section-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-ghost);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0 0 8px 0;
         }
 
         .nav-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 20px;
-            color: var(--text-secondary);
+            padding: 8px 18px;
+            color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.875rem;
+            font-size: 0.82rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
             border-left: 2px solid transparent;
+            position: relative;
         }
 
-        .nav-item:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
+        .nav-item:hover { background: var(--bg-raised); color: var(--text-secondary); }
+        .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
+        .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7; }
+        .nav-item.active svg { opacity: 1; }
+
+        .nav-badge {
+            margin-left: auto;
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            background: var(--bg-overlay);
+            color: var(--text-muted);
+            padding: 2px 7px;
+            border-radius: 100px;
         }
 
-        .nav-item.active {
-            background: var(--bg-tertiary);
-            color: var(--accent-orange);
-            border-left-color: var(--accent-orange);
+        .sidebar-footer {
+            padding: 14px 18px;
+            border-top: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .nav-item svg {
-            width: 18px;
-            height: 18px;
+        .sidebar-footer-avatar {
+            width: 28px; height: 28px;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-mid);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--accent);
         }
 
-        /* Main */
+        .sidebar-footer-info { flex: 1; min-width: 0; }
+        .sidebar-footer-name { font-size: 0.78rem; font-weight: 600; }
+        .sidebar-footer-role { font-size: 0.65rem; color: var(--text-muted); }
+
+        /* ── Main ───────────────────────────────── */
         .main {
             flex: 1;
-            margin-left: 240px;
-            padding: 32px;
+            margin-left: var(--sidebar-w);
+            padding: 28px 32px 48px;
+            min-height: 100vh;
+            background: var(--bg-void);
         }
 
-        .page-header {
-            margin-bottom: 32px;
+        .page-header { margin-bottom: 28px; }
+
+        .page-header-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
         }
 
         .page-title {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
         }
 
-        .page-subtitle {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
+        .page-subtitle { color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; }
 
-        /* Stats Grid */
+        /* ── Stats Grid ─────────────────────────── */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 32px;
+            gap: 12px;
+            margin-bottom: 28px;
         }
 
         .stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 20px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            transition: border-color 0.15s ease;
         }
 
+        .stat-card:hover { border-color: var(--border-mid); }
+
         .stat-label {
-            font-size: 0.75rem;
-            color: var(--text-tertiary);
+            font-size: 0.7rem;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.04em;
+            font-weight: 600;
             margin-bottom: 8px;
         }
 
         .stat-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 2rem;
+            font-size: 1.7rem;
             font-weight: 700;
-            color: var(--accent-orange);
+            letter-spacing: -0.02em;
         }
 
-        /* Tabs */
-        .tabs {
-            display: flex;
+        .stat-value.orange { color: var(--accent); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.green { color: var(--green); }
+        .stat-value.purple { color: var(--purple); }
+        .stat-value.teal { color: var(--teal); }
+        .stat-value.red { color: var(--red); }
+
+        .stat-change {
+            display: inline-flex;
+            align-items: center;
             gap: 4px;
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 6px;
+            padding: 2px 8px;
+            border-radius: 100px;
         }
 
-        .tab {
-            padding: 12px 20px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-            transition: all 0.15s ease;
+        .stat-change.up { background: var(--green-dim); color: var(--green); }
+        .stat-change.neutral { background: var(--bg-overlay); color: var(--text-muted); }
+
+        /* ── Cards ──────────────────────────────── */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 28px;
         }
 
-        .tab:hover {
+        .card {
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .card-title { font-weight: 600; font-size: 0.85rem; }
+        .card-body { padding: 18px; }
+
+        /* ── Chart placeholder ──────────────────── */
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 120px;
+            padding-top: 8px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: var(--accent-dim);
+            border-radius: 3px 3px 0 0;
+            min-height: 4px;
+            transition: background 0.15s ease;
+            position: relative;
+        }
+
+        .chart-bar:hover { background: var(--accent); }
+
+        .chart-bar:hover::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
             color: var(--text-primary);
+            background: var(--bg-overlay);
+            padding: 3px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        .tab.active {
-            color: var(--accent-orange);
-            border-bottom-color: var(--accent-orange);
+        /* ── Tier breakdown ─────────────────────── */
+        .tier-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .tier-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        /* Table */
+        .tier-row-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            width: 80px;
+            text-transform: capitalize;
+        }
+
+        .tier-row-bar-bg {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-overlay);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .tier-row-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        .tier-row-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            width: 40px;
+            text-align: right;
+        }
+
+        /* ── Table ──────────────────────────────── */
         .table-container {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
             overflow: hidden;
         }
 
@@ -232,314 +382,188 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-subtle);
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-dim);
+            gap: 12px;
         }
 
-        .table-title {
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
+        .table-title { font-weight: 600; font-size: 0.85rem; white-space: nowrap; }
 
-        .table-actions {
-            display: flex;
-            gap: 8px;
-        }
+        .table-actions { display: flex; gap: 8px; align-items: center; }
 
         .search-input {
-            padding: 8px 12px;
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
+            padding: 7px 12px;
+            background: var(--bg-void);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-sm);
             color: var(--text-primary);
-            font-size: 0.8rem;
+            font-size: 0.78rem;
+            font-family: inherit;
             width: 200px;
+            transition: border-color 0.15s ease;
         }
 
-        .search-input::placeholder {
-            color: var(--text-tertiary);
-        }
+        .search-input:focus { outline: none; border-color: var(--accent); }
+        .search-input::placeholder { color: var(--text-ghost); }
 
         .btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 0.8rem;
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.78rem;
             font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
             border: none;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
         }
 
-        .btn-primary {
-            background: var(--accent-orange);
-            color: var(--bg-primary);
-        }
+        .btn-primary { background: var(--accent); color: var(--bg-void); }
+        .btn-primary:hover { background: var(--accent-glow); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-mid); }
+        .btn-ghost:hover { background: var(--bg-raised); color: var(--text-primary); }
+        .btn-danger { background: var(--red-dim); color: var(--red); }
+        .btn-danger:hover { background: rgba(212, 106, 106, 0.22); }
+        .btn-sm { padding: 5px 10px; font-size: 0.72rem; }
 
-        .btn-primary:hover {
-            background: #e0b385;
-        }
+        table { width: 100%; border-collapse: collapse; }
 
-        .btn-danger {
-            background: rgba(212, 106, 106, 0.15);
-            color: var(--accent-red);
-        }
-
-        .btn-danger:hover {
-            background: rgba(212, 106, 106, 0.25);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px 20px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-subtle);
-        }
+        th, td { padding: 10px 18px; text-align: left; border-bottom: 1px solid var(--border-dim); }
 
         th {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--text-tertiary);
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-ghost);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            background: var(--bg-tertiary);
+            letter-spacing: 0.06em;
+            background: var(--bg-surface);
         }
 
-        td {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
+        td { font-size: 0.82rem; color: var(--text-secondary); }
+        tr:hover td { background: var(--bg-surface); }
+        tr:last-child td { border-bottom: none; }
 
-        tr:hover {
-            background: var(--bg-tertiary);
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .user-cell {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .user-cell { display: flex; align-items: center; gap: 10px; }
 
         .user-avatar {
-            width: 32px;
-            height: 32px;
-            background: var(--accent-purple);
-            border-radius: 6px;
+            width: 30px; height: 30px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
-            font-size: 0.8rem;
-            color: var(--bg-primary);
+            font-weight: 700;
+            font-size: 0.72rem;
+            color: var(--bg-void);
+            flex-shrink: 0;
         }
 
-        .user-info {
-            display: flex;
-            flex-direction: column;
-        }
+        .user-info { display: flex; flex-direction: column; min-width: 0; }
+        .user-name { color: var(--text-primary); font-weight: 600; font-size: 0.82rem; }
+        .user-email { font-size: 0.7rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
 
-        .user-name {
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .user-email {
-            font-size: 0.75rem;
-            color: var(--text-tertiary);
-        }
-
-        .tier-badge {
-            padding: 4px 10px;
+        /* ── Badges ─────────────────────────────── */
+        .badge {
+            padding: 3px 9px;
             border-radius: 100px;
-            font-size: 0.7rem;
-            font-weight: 600;
+            font-size: 0.65rem;
+            font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
             text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: inline-block;
         }
 
-        .tier-free { background: var(--bg-tertiary); color: var(--text-secondary); }
-        .tier-student { background: rgba(107, 158, 206, 0.2); color: var(--accent-blue); }
-        .tier-team { background: rgba(157, 124, 216, 0.2); color: var(--accent-purple); }
-        .tier-enterprise { background: rgba(212, 165, 116, 0.2); color: var(--accent-orange); }
+        .badge-free { background: var(--bg-overlay); color: var(--text-muted); }
+        .badge-student { background: var(--blue-dim); color: var(--blue); }
+        .badge-team { background: var(--purple-dim); color: var(--purple); }
+        .badge-enterprise { background: var(--accent-dim); color: var(--accent); }
+        .badge-active { background: var(--green-dim); color: var(--green); }
+        .badge-inactive { background: var(--red-dim); color: var(--red); }
+        .badge-major { background: var(--red-dim); color: var(--red); }
+        .badge-minor { background: var(--blue-dim); color: var(--blue); }
+        .badge-patch { background: var(--green-dim); color: var(--green); }
+        .badge-superuser { background: var(--yellow-dim); color: var(--yellow); }
 
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 100px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .status-active { background: rgba(127, 176, 105, 0.2); color: var(--accent-green); }
-        .status-inactive { background: rgba(212, 106, 106, 0.2); color: var(--accent-red); }
-
-        .version-badge {
-            padding: 4px 10px;
-            border-radius: 100px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .version-major { background: rgba(212, 106, 106, 0.2); color: var(--accent-red); }
-        .version-minor { background: rgba(107, 158, 206, 0.2); color: var(--accent-blue); }
-        .version-patch { background: rgba(127, 176, 105, 0.2); color: var(--accent-green); }
-
-        .actions-cell {
-            display: flex;
-            gap: 8px;
-        }
+        .actions-cell { display: flex; gap: 6px; }
 
         .action-btn {
-            padding: 6px 10px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
+            padding: 5px 9px;
+            background: var(--bg-raised);
+            border: 1px solid var(--border-mid);
             border-radius: 4px;
-            color: var(--text-secondary);
-            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
         }
 
-        .action-btn:hover {
-            background: var(--border);
-            color: var(--text-primary);
-        }
+        .action-btn:hover { background: var(--bg-overlay); color: var(--text-primary); border-color: var(--border-bright); }
+        .action-btn.danger { color: var(--red); border-color: var(--red-dim); }
+        .action-btn.danger:hover { background: var(--red-dim); }
 
-        .action-btn.danger {
-            color: var(--accent-red);
-        }
-
-        .action-btn.danger:hover {
-            background: rgba(212, 106, 106, 0.2);
-        }
-
-        /* Modal */
+        /* ── Modal ──────────────────────────────── */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 1000;
         }
 
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
 
         .modal {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-lg);
             padding: 24px;
-            width: 500px;
-            max-width: 90%;
-            max-height: 80vh;
+            width: 480px;
+            max-width: 92%;
+            max-height: 82vh;
             overflow-y: auto;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
         }
 
-        .modal-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
+        .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 20px; }
 
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
 
         .form-input, .form-select, .form-textarea {
             width: 100%;
-            padding: 10px 14px;
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
+            padding: 9px 13px;
+            background: var(--bg-void);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-sm);
             color: var(--text-primary);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-family: inherit;
+            transition: border-color 0.15s ease;
         }
 
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--accent-orange);
-        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+        .form-textarea { min-height: 100px; resize: vertical; }
 
-        .form-textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 24px;
-        }
+        /* ── Tab Content ────────────────────────── */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        /* Tab Content */
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Responsive */
-        @media (max-width: 1100px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-            .main {
-                margin-left: 0;
-            }
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Confirmation Modal */
+        /* ── Confirm Dialog ─────────────────────── */
         .confirm-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -549,114 +573,186 @@
             transition: all 0.2s ease;
         }
 
-        .confirm-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
+        .confirm-overlay.show { opacity: 1; visibility: visible; }
 
         .confirm-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-lg);
             width: 100%;
-            max-width: 400px;
-            transform: scale(0.92) translateY(10px);
+            max-width: 380px;
+            transform: scale(0.94) translateY(8px);
             transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             overflow: hidden;
         }
 
-        .confirm-overlay.show .confirm-box {
-            transform: scale(1) translateY(0);
-        }
+        .confirm-overlay.show .confirm-box { transform: scale(1) translateY(0); }
 
         .confirm-icon-area {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.75rem 1.5rem 0.75rem;
+            padding: 1.5rem 1.5rem 0.5rem;
         }
 
         .confirm-icon-circle {
-            width: 48px;
-            height: 48px;
+            width: 44px; height: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(212, 165, 116, 0.15);
-            color: var(--accent-orange);
+            background: var(--red-dim);
+            color: var(--red);
         }
 
-        .confirm-icon-circle svg {
-            width: 24px;
-            height: 24px;
-        }
+        .confirm-icon-circle svg { width: 20px; height: 20px; }
 
-        .confirm-content {
-            text-align: center;
-            padding: 0.75rem 1.75rem 1.25rem;
-        }
+        .confirm-content { text-align: center; padding: 0.5rem 1.5rem 1rem; }
+        .confirm-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .confirm-message { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
 
-        .confirm-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.35rem;
-        }
-
-        .confirm-message {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .confirm-actions {
-            padding: 0 1.5rem 1.5rem;
-            display: flex;
-            justify-content: center;
-            gap: 0.75rem;
-        }
+        .confirm-actions { padding: 0 1.5rem 1.5rem; display: flex; justify-content: center; gap: 0.75rem; }
 
         .confirm-btn-cancel {
-            padding: 0.6rem 1.5rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
+            padding: 0.5rem 1.25rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
-            border: 1px solid var(--border);
-            background: var(--bg-tertiary);
+            border: 1px solid var(--border-mid);
+            background: var(--bg-raised);
             color: var(--text-secondary);
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
         }
 
-        .confirm-btn-cancel:hover {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-        }
+        .confirm-btn-cancel:hover { background: var(--bg-overlay); color: var(--text-primary); }
 
         .confirm-btn-confirm {
-            padding: 0.6rem 1.5rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
+            padding: 0.5rem 1.25rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
             border: none;
-            background: var(--accent-red);
+            background: var(--red);
             color: #fff;
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
         }
 
-        .confirm-btn-confirm:hover {
-            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        .confirm-btn-confirm:hover { box-shadow: 0 4px 16px rgba(212, 106, 106, 0.35); }
+
+        /* ── Quick Actions ──────────────────────── */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .quick-action {
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quick-action:hover { border-color: var(--border-mid); background: var(--bg-surface); }
+
+        .quick-action-icon {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quick-action-icon svg { width: 18px; height: 18px; }
+        .quick-action-label { font-size: 0.82rem; font-weight: 600; }
+        .quick-action-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+        /* ── System Info ────────────────────────── */
+        .sys-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .sys-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-dim);
+            font-size: 0.82rem;
+        }
+
+        .sys-row:last-child { border-bottom: none; }
+        .sys-key { color: var(--text-muted); }
+        .sys-val { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600; }
+
+        /* ── Toast ──────────────────────────────── */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-mid);
+            border-radius: var(--radius-sm);
+            padding: 10px 16px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: toastIn 0.25s ease;
+            max-width: 320px;
+        }
+
+        .toast.success { border-left: 3px solid var(--green); }
+        .toast.error { border-left: 3px solid var(--red); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Responsive ─────────────────────────── */
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .quick-actions { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 20px 16px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .quick-actions { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="app">
-        <!-- Sidebar -->
+        <!-- ── Sidebar ──────────────────────────── -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">S</div>
@@ -665,121 +761,208 @@
             </div>
 
             <nav class="sidebar-nav">
-                <div class="nav-item active" onclick="showTab('dashboard')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="7"/>
-                        <rect x="14" y="3" width="7" height="7"/>
-                        <rect x="14" y="14" width="7" height="7"/>
-                        <rect x="3" y="14" width="7" height="7"/>
-                    </svg>
+                <div class="nav-section">
+                    <div class="nav-section-label">Overview</div>
+                </div>
+                <div class="nav-item active" onclick="showTab('dashboard', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
                     Dashboard
                 </div>
-                <div class="nav-item" onclick="showTab('users')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
+
+                <div class="nav-section">
+                    <div class="nav-section-label">Management</div>
+                </div>
+                <div class="nav-item" onclick="showTab('users', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Users
+                    <span class="nav-badge">{{ users|length }}</span>
                 </div>
-                <div class="nav-item" onclick="showTab('projects')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                    </svg>
+                <div class="nav-item" onclick="showTab('projects', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                     Projects
+                    <span class="nav-badge">{{ projects|length }}</span>
                 </div>
-                <div class="nav-item" onclick="showTab('changelog')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                    </svg>
+                <div class="nav-item" onclick="showTab('documents', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Documents
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-label">Content</div>
+                </div>
+                <div class="nav-item" onclick="showTab('changelog', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="12 8 12 12 14 14"/><circle cx="12" cy="12" r="10"/></svg>
                     Changelog
+                    <span class="nav-badge">{{ changelogs|length }}</span>
+                </div>
+                <div class="nav-item" onclick="showTab('announcements', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
+                    Announcements
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-label">System</div>
+                </div>
+                <div class="nav-item" onclick="showTab('system', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    System
                 </div>
             </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-avatar">S</div>
+                <div class="sidebar-footer-info">
+                    <div class="sidebar-footer-name">Solara</div>
+                    <div class="sidebar-footer-role">Superadmin</div>
+                </div>
+            </div>
         </aside>
 
-        <!-- Main -->
+        <!-- ── Main Content ─────────────────────── -->
         <main class="main">
-            <!-- Dashboard Tab -->
+
+            <!-- ── Dashboard Tab ────────────────── -->
             <div id="dashboard-tab" class="tab-content active">
                 <div class="page-header">
                     <h1 class="page-title">Dashboard</h1>
-                    <p class="page-subtitle">Overview of your SolaraDocs instance</p>
+                    <p class="page-subtitle">SolaraDocs instance overview</p>
                 </div>
 
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Total Users</div>
-                        <div class="stat-value">{{ stats.total_users }}</div>
+                        <div class="stat-value orange">{{ stats.total_users }}</div>
+                        <div class="stat-change up">+{{ stats.new_users_week }} this week</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Total Projects</div>
-                        <div class="stat-value">{{ stats.total_projects }}</div>
+                        <div class="stat-label">Projects</div>
+                        <div class="stat-value blue">{{ stats.total_projects }}</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Total Documents</div>
-                        <div class="stat-value">{{ stats.total_documents }}</div>
+                        <div class="stat-label">Documents</div>
+                        <div class="stat-value teal">{{ stats.total_documents }}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Paid Users</div>
-                        <div class="stat-value">{{ stats.paid_users }}</div>
+                        <div class="stat-value green">{{ stats.paid_users }}</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <div class="quick-action" onclick="showTab('users', document.querySelectorAll('.nav-item')[1])">
+                        <div class="quick-action-icon" style="background: var(--accent-dim); color: var(--accent);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        </div>
+                        <div>
+                            <div class="quick-action-label">Manage Users</div>
+                            <div class="quick-action-desc">View, edit tiers, ban users</div>
+                        </div>
+                    </div>
+                    <div class="quick-action" onclick="openChangelogModal()">
+                        <div class="quick-action-icon" style="background: var(--green-dim); color: var(--green);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </div>
+                        <div>
+                            <div class="quick-action-label">New Release</div>
+                            <div class="quick-action-desc">Push a changelog entry</div>
+                        </div>
+                    </div>
+                    <div class="quick-action" onclick="openAnnouncementModal()">
+                        <div class="quick-action-icon" style="background: var(--purple-dim); color: var(--purple);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
+                        </div>
+                        <div>
+                            <div class="quick-action-label">Broadcast</div>
+                            <div class="quick-action-desc">Send announcement to all</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="content-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Signups (30 days)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-bars" id="signupsChart"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Tier Breakdown</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="tier-list" id="tierBreakdown"></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Users Tab -->
+            <!-- ── Users Tab ────────────────────── -->
             <div id="users-tab" class="tab-content">
                 <div class="page-header">
-                    <h1 class="page-title">Users</h1>
-                    <p class="page-subtitle">Manage all registered users</p>
+                    <div class="page-header-row">
+                        <div>
+                            <h1 class="page-title">Users</h1>
+                            <p class="page-subtitle">Manage all registered accounts</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="table-container">
                     <div class="table-header">
                         <span class="table-title">All Users ({{ users|length }})</span>
                         <div class="table-actions">
-                            <input type="text" class="search-input" placeholder="Search users..." id="user-search" onkeyup="filterUsers()">
+                            <input type="text" class="search-input" placeholder="Search by name or email..." id="user-search" onkeyup="filterTable('users')">
                         </div>
                     </div>
-                    <table id="users-table">
+                    <table>
                         <thead>
                             <tr>
                                 <th>User</th>
                                 <th>Tier</th>
                                 <th>Status</th>
+                                <th>Role</th>
                                 <th>Projects</th>
                                 <th>Joined</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="users-tbody">
                             {% for user in users %}
-                            <tr data-username="{{ user.username }}" data-email="{{ user.email }}">
+                            <tr data-search="{{ user.username|lower }} {{ user.email|lower }}">
                                 <td>
                                     <div class="user-cell">
-                                        <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+                                        <div class="user-avatar" style="background: {% cycle 'var(--purple)' 'var(--blue)' 'var(--teal)' 'var(--accent)' 'var(--green)' %};">{{ user.username|slice:":1"|upper }}</div>
                                         <div class="user-info">
                                             <span class="user-name">{{ user.username }}</span>
                                             <span class="user-email">{{ user.email }}</span>
                                         </div>
                                     </div>
                                 </td>
-                                <td><span class="tier-badge tier-{{ user.Tier }}">{{ user.Tier }}</span></td>
+                                <td><span class="badge badge-{{ user.Tier }}">{{ user.Tier }}</span></td>
                                 <td>
-                                    {% if user.subscription_status == 'active' %}
-                                    <span class="status-badge status-active">Active</span>
+                                    {% if user.is_active %}
+                                    <span class="badge badge-active">Active</span>
                                     {% else %}
-                                    <span class="status-badge status-inactive">{{ user.subscription_status|default:"None" }}</span>
+                                    <span class="badge badge-inactive">Disabled</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ user.owned_projects.count }}</td>
-                                <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if user.is_superuser %}
+                                    <span class="badge badge-superuser">Admin</span>
+                                    {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.78rem;">User</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">{{ user.owned_projects.count }}</td>
+                                <td style="font-size: 0.78rem;">{{ user.date_joined|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
-                                        <button class="action-btn" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.Tier }}')">Edit</button>
+                                        <button class="action-btn" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.Tier }}', {{ user.is_active|yesno:'true,false' }}, {{ user.is_superuser|yesno:'true,false' }})">Edit</button>
+                                        <button class="action-btn" onclick="toggleUserActive({{ user.id }}, '{{ user.username }}', {{ user.is_active|yesno:'true,false' }})">{% if user.is_active %}Disable{% else %}Enable{% endif %}</button>
                                         <button class="action-btn danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">Delete</button>
                                     </div>
                                 </td>
@@ -790,7 +973,7 @@
                 </div>
             </div>
 
-            <!-- Projects Tab -->
+            <!-- ── Projects Tab ─────────────────── -->
             <div id="projects-tab" class="tab-content">
                 <div class="page-header">
                     <h1 class="page-title">Projects</h1>
@@ -801,34 +984,33 @@
                     <div class="table-header">
                         <span class="table-title">All Projects ({{ projects|length }})</span>
                         <div class="table-actions">
-                            <input type="text" class="search-input" placeholder="Search projects..." id="project-search" onkeyup="filterProjects()">
+                            <input type="text" class="search-input" placeholder="Search projects..." id="project-search" onkeyup="filterTable('projects')">
                         </div>
                     </div>
-                    <table id="projects-table">
+                    <table>
                         <thead>
                             <tr>
                                 <th>Project</th>
                                 <th>Owner</th>
                                 <th>Tier</th>
-                                <th>Documents</th>
+                                <th>Docs</th>
                                 <th>Teams</th>
                                 <th>Created</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="projects-tbody">
                             {% for project in projects %}
-                            <tr data-name="{{ project.project_name }}">
-                                <td>
-                                    <span style="color: var(--text-primary); font-weight: 500;">{{ project.project_name }}</span>
-                                </td>
-                                <td>{{ project.owner.username }}</td>
-                                <td><span class="tier-badge tier-{{ project.tier }}">{{ project.tier }}</span></td>
-                                <td>{{ project.project_documents.count }}</td>
-                                <td>{{ project.project_teams.count }}</td>
-                                <td>{{ project.created_at|date:"M d, Y" }}</td>
+                            <tr data-search="{{ project.project_name|lower }} {{ project.owner.username|lower }}">
+                                <td><span style="color: var(--text-primary); font-weight: 600;">{{ project.project_name }}</span></td>
+                                <td style="font-size: 0.78rem;">{{ project.owner.username }}</td>
+                                <td><span class="badge badge-{{ project.tier }}">{{ project.tier }}</span></td>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">{{ project.project_documents.count }}</td>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">{{ project.project_teams.count }}</td>
+                                <td style="font-size: 0.78rem;">{{ project.created_at|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
+                                        <button class="action-btn" onclick="transferProject({{ project.id }}, '{{ project.project_name }}')">Transfer</button>
                                         <button class="action-btn danger" onclick="deleteProject({{ project.id }}, '{{ project.project_name }}')">Delete</button>
                                     </div>
                                 </td>
@@ -839,25 +1021,56 @@
                 </div>
             </div>
 
-            <!-- Changelog Tab -->
+            <!-- ── Documents Tab ────────────────── -->
+            <div id="documents-tab" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Documents</h1>
+                    <p class="page-subtitle">All documents across the platform</p>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Documents</div>
+                        <div class="stat-value teal">{{ stats.total_documents }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg per Project</div>
+                        <div class="stat-value blue">{% widthratio stats.total_documents stats.total_projects 1 %}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Projects</div>
+                        <div class="stat-value purple">{{ stats.total_projects }}</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Document stats are pulled from project data above</span>
+                    </div>
+                    <div class="card-body" style="color: var(--text-muted); font-size: 0.85rem;">
+                        View individual project documents by navigating to the Projects tab. Bulk document management coming soon.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Changelog Tab ────────────────── -->
             <div id="changelog-tab" class="tab-content">
                 <div class="page-header">
-                    <h1 class="page-title">Changelog</h1>
-                    <p class="page-subtitle">Manage version history and release notes</p>
+                    <div class="page-header-row">
+                        <div>
+                            <h1 class="page-title">Changelog</h1>
+                            <p class="page-subtitle">Version history and release notes</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openChangelogModal()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New Release
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-container">
                     <div class="table-header">
                         <span class="table-title">All Releases ({{ changelogs|length }})</span>
-                        <div class="table-actions">
-                            <button class="btn btn-primary" onclick="openChangelogModal()">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"/>
-                                    <line x1="5" y1="12" x2="19" y2="12"/>
-                                </svg>
-                                Add Release
-                            </button>
-                        </div>
                     </div>
                     <table>
                         <thead>
@@ -873,11 +1086,11 @@
                             {% for log in changelogs %}
                             <tr>
                                 <td>
-                                    <span style="font-family: 'JetBrains Mono', monospace; color: var(--accent-orange);">v{{ log.version }}</span>
+                                    <span style="font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 600;">v{{ log.version }}</span>
                                 </td>
-                                <td>{{ log.title }}</td>
-                                <td><span class="version-badge version-{{ log.version_type }}">{{ log.version_type }}</span></td>
-                                <td>{{ log.created_at|date:"M d, Y" }}</td>
+                                <td style="color: var(--text-primary); font-weight: 500;">{{ log.title }}</td>
+                                <td><span class="badge badge-{{ log.version_type }}">{{ log.version_type }}</span></td>
+                                <td style="font-size: 0.78rem;">{{ log.created_at|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
                                         <button class="action-btn" onclick="editChangelog({{ log.id }}, '{{ log.version }}', '{{ log.title }}', '{{ log.description|escapejs }}', '{{ log.version_type }}')">Edit</button>
@@ -890,10 +1103,108 @@
                     </table>
                 </div>
             </div>
+
+            <!-- ── Announcements Tab ────────────── -->
+            <div id="announcements-tab" class="tab-content">
+                <div class="page-header">
+                    <div class="page-header-row">
+                        <div>
+                            <h1 class="page-title">Announcements</h1>
+                            <p class="page-subtitle">Broadcast messages to all users</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openAnnouncementModal()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New Announcement
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.4;"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
+                        <div style="font-weight: 600; margin-bottom: 4px; color: var(--text-secondary);">No announcements yet</div>
+                        <div style="font-size: 0.82rem;">Broadcast a message to all users using the button above.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── System Tab ───────────────────── -->
+            <div id="system-tab" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">System</h1>
+                    <p class="page-subtitle">Instance configuration and health</p>
+                </div>
+
+                <div class="content-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Instance Info</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="sys-row">
+                                <span class="sys-key">Platform</span>
+                                <span class="sys-val">SolaraDocs</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Backend</span>
+                                <span class="sys-val">Django</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Database</span>
+                                <span class="sys-val">NeonDB (PostgreSQL)</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Cache</span>
+                                <span class="sys-val">Redis</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Task Queue</span>
+                                <span class="sys-val">Celery</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Email</span>
+                                <span class="sys-val">SendGrid SMTP</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Security</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="sys-row">
+                                <span class="sys-key">Auth Gate</span>
+                                <span class="sys-val" style="color: var(--green);">Cloudflare Access</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Rate Limiting</span>
+                                <span class="sys-val" style="color: var(--green);">Enabled</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">CSRF</span>
+                                <span class="sys-val" style="color: var(--text-muted);">Exempt (CF Access)</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Admin Auth</span>
+                                <span class="sys-val">Superuser Required</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Monitoring</span>
+                                <span class="sys-val">Grafana / Prometheus</span>
+                            </div>
+                            <div class="sys-row">
+                                <span class="sys-key">Hosting</span>
+                                <span class="sys-val">AWS EC2 t3.small</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- Edit User Modal -->
+    <!-- ── Edit User Modal ──────────────────────── -->
     <div class="modal-overlay" id="user-modal">
         <div class="modal">
             <h3 class="modal-title">Edit User</h3>
@@ -901,7 +1212,7 @@
                 <input type="hidden" name="user_id" id="edit-user-id">
                 <div class="form-group">
                     <label class="form-label">Username</label>
-                    <input type="text" class="form-input" id="edit-username" disabled>
+                    <input type="text" class="form-input" id="edit-username" disabled style="opacity: 0.6;">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Tier</label>
@@ -913,17 +1224,17 @@
                     </select>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('user-modal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Changelog Modal -->
+    <!-- ── Changelog Modal ──────────────────────── -->
     <div class="modal-overlay" id="changelog-modal">
         <div class="modal">
-            <h3 class="modal-title" id="changelog-modal-title">Add Release</h3>
+            <h3 class="modal-title" id="changelog-modal-title">New Release</h3>
             <form id="changelog-form">
                 <input type="hidden" name="changelog_id" id="edit-changelog-id">
                 <div class="form-group">
@@ -932,7 +1243,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Title</label>
-                    <input type="text" class="form-input" name="title" id="edit-title" placeholder="Release title" required>
+                    <input type="text" class="form-input" name="title" id="edit-title" placeholder="What's new" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Type</label>
@@ -944,16 +1255,59 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea class="form-textarea" name="description" id="edit-description" placeholder="What's new in this release..." required></textarea>
+                    <textarea class="form-textarea" name="description" id="edit-description" placeholder="What changed in this release..." required></textarea>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('changelog-modal')">Cancel</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('changelog-modal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- ── Transfer Project Modal ───────────────── -->
+    <div class="modal-overlay" id="transfer-modal">
+        <div class="modal">
+            <h3 class="modal-title">Transfer Project</h3>
+            <form id="transfer-form">
+                <input type="hidden" name="project_id" id="transfer-project-id">
+                <div class="form-group">
+                    <label class="form-label">Project</label>
+                    <input type="text" class="form-input" id="transfer-project-name" disabled style="opacity: 0.6;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Owner (User ID)</label>
+                    <input type="number" class="form-input" name="new_owner_id" id="transfer-owner-id" placeholder="Enter user ID" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('transfer-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Announcement Modal ───────────────────── -->
+    <div class="modal-overlay" id="announcement-modal">
+        <div class="modal">
+            <h3 class="modal-title">Broadcast Announcement</h3>
+            <form id="announcement-form">
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <textarea class="form-textarea" name="message" id="announcement-message" placeholder="Write your announcement..." required style="min-height: 140px;"></textarea>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
+                    This will be queued for delivery to <strong style="color: var(--accent);">{{ stats.total_users }}</strong> users.
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('announcement-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Confirm Dialog ───────────────────────── -->
     <div class="confirm-overlay" id="confirmOverlay">
         <div class="confirm-box">
             <div class="confirm-icon-area">
@@ -976,14 +1330,19 @@
         </div>
     </div>
 
+    <!-- ── Toast Container ──────────────────────── -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <script>
+        const BASE = '/admin-panel';
+
+        // ── Confirm Dialog ──────────────────────
         function showConfirm(message, confirmLabel = 'Confirm') {
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 const overlay = document.getElementById('confirmOverlay');
                 const msgEl = document.getElementById('confirmMessage');
                 const cancelBtn = document.getElementById('confirmBtnCancel');
                 const confirmBtn = document.getElementById('confirmBtnConfirm');
-
                 msgEl.textContent = message;
                 confirmBtn.textContent = confirmLabel;
                 overlay.classList.add('show');
@@ -994,7 +1353,6 @@
                     confirmBtn.removeEventListener('click', onConfirm);
                     overlay.removeEventListener('click', onOverlay);
                 }
-
                 function onCancel() { cleanup(); resolve(false); }
                 function onConfirm() { cleanup(); resolve(true); }
                 function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
@@ -1005,35 +1363,57 @@
             });
         }
 
-        // Tab switching
-        function showTab(tab) {
+        // ── Toast ───────────────────────────────
+        function toast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.textContent = message;
+            container.appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, 3000);
+        }
+
+        // ── API Helper ──────────────────────────
+        async function api(endpoint, data) {
+            try {
+                const res = await fetch(`${BASE}/${endpoint}/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const json = await res.json();
+                if (!json.success) { toast(json.error || 'Something went wrong', 'error'); return null; }
+                return json;
+            } catch (e) {
+                toast('Network error', 'error');
+                return null;
+            }
+        }
+
+        // ── Navigation ──────────────────────────
+        function showTab(tab, navEl) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById(tab + '-tab').classList.add('active');
-            event.currentTarget.classList.add('active');
+            if (navEl) navEl.classList.add('active');
         }
 
-        // Modal helpers
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
+        // ── Modals ──────────────────────────────
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.classList.remove('active');
-            });
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
         });
 
-        // User functions
-        function filterUsers() {
-            const search = document.getElementById('user-search').value.toLowerCase();
-            document.querySelectorAll('#users-table tbody tr').forEach(row => {
-                const username = row.dataset.username.toLowerCase();
-                const email = row.dataset.email.toLowerCase();
-                row.style.display = (username.includes(search) || email.includes(search)) ? '' : 'none';
+        // ── Search / Filter ─────────────────────
+        function filterTable(type) {
+            const search = document.getElementById(type === 'users' ? 'user-search' : 'project-search').value.toLowerCase();
+            document.querySelectorAll(`#${type}-tbody tr`).forEach(row => {
+                row.style.display = row.dataset.search.includes(search) ? '' : 'none';
             });
         }
 
+        // ── User Actions ────────────────────────
         function editUser(id, username, tier) {
             document.getElementById('edit-user-id').value = id;
             document.getElementById('edit-username').value = username;
@@ -1042,51 +1422,52 @@
         }
 
         async function deleteUser(id, username) {
-            if (await showConfirm(`Delete user "${username}"? This cannot be undone.`, 'Delete')) {
-                fetch('/admin-panel/delete-user/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: id })
-                }).then(() => location.reload());
+            if (await showConfirm(`Delete user "${username}"? This is permanent and removes all their data.`, 'Delete')) {
+                const res = await api('delete-user', { user_id: id });
+                if (res) { toast(`Deleted ${username}`); location.reload(); }
             }
         }
 
-        document.getElementById('user-form').addEventListener('submit', async (e) => {
+        async function toggleUserActive(id, username, isActive) {
+            const action = isActive ? 'disable' : 'enable';
+            if (await showConfirm(`${isActive ? 'Disable' : 'Enable'} user "${username}"?`, isActive ? 'Disable' : 'Enable')) {
+                const res = await api('toggle-user-active', { user_id: id });
+                if (res) { toast(`${username} ${action}d`); location.reload(); }
+            }
+        }
+
+        document.getElementById('user-form').addEventListener('submit', async e => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            await fetch('/admin-panel/update-user/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: formData.get('user_id'),
-                    tier: formData.get('tier')
-                })
-            });
-            location.reload();
+            const fd = new FormData(e.target);
+            const res = await api('update-user', { user_id: fd.get('user_id'), tier: fd.get('tier') });
+            if (res) { toast('User updated'); location.reload(); }
         });
 
-        // Project functions
-        function filterProjects() {
-            const search = document.getElementById('project-search').value.toLowerCase();
-            document.querySelectorAll('#projects-table tbody tr').forEach(row => {
-                const name = row.dataset.name.toLowerCase();
-                row.style.display = name.includes(search) ? '' : 'none';
-            });
-        }
-
+        // ── Project Actions ─────────────────────
         async function deleteProject(id, name) {
-            if (await showConfirm(`Delete project "${name}"? This cannot be undone.`, 'Delete')) {
-                fetch('/admin-panel/delete-project/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ project_id: id })
-                }).then(() => location.reload());
+            if (await showConfirm(`Delete project "${name}"? All documents and teams will be removed.`, 'Delete')) {
+                const res = await api('delete-project', { project_id: id });
+                if (res) { toast(`Deleted ${name}`); location.reload(); }
             }
         }
 
-        // Changelog functions
+        function transferProject(id, name) {
+            document.getElementById('transfer-project-id').value = id;
+            document.getElementById('transfer-project-name').value = name;
+            document.getElementById('transfer-owner-id').value = '';
+            document.getElementById('transfer-modal').classList.add('active');
+        }
+
+        document.getElementById('transfer-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const res = await api('transfer-project', { project_id: fd.get('project_id'), new_owner_id: fd.get('new_owner_id') });
+            if (res) { toast('Project transferred'); location.reload(); }
+        });
+
+        // ── Changelog Actions ───────────────────
         function openChangelogModal() {
-            document.getElementById('changelog-modal-title').textContent = 'Add Release';
+            document.getElementById('changelog-modal-title').textContent = 'New Release';
             document.getElementById('changelog-form').reset();
             document.getElementById('edit-changelog-id').value = '';
             document.getElementById('changelog-modal').classList.add('active');
@@ -1104,33 +1485,76 @@
 
         async function deleteChangelog(id) {
             if (await showConfirm('Delete this changelog entry?', 'Delete')) {
-                fetch('/admin-panel/delete-changelog/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ changelog_id: id })
-                }).then(() => location.reload());
+                const res = await api('delete-changelog', { changelog_id: id });
+                if (res) { toast('Changelog deleted'); location.reload(); }
             }
         }
 
-        document.getElementById('changelog-form').addEventListener('submit', async (e) => {
+        document.getElementById('changelog-form').addEventListener('submit', async e => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const id = formData.get('changelog_id');
-            const url = id ? '/admin-panel/update-changelog/' : '/admin-panel/add-changelog/';
-
-            await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    changelog_id: id || null,
-                    version: formData.get('version'),
-                    title: formData.get('title'),
-                    description: formData.get('description'),
-                    version_type: formData.get('version_type')
-                })
+            const fd = new FormData(e.target);
+            const id = fd.get('changelog_id');
+            const endpoint = id ? 'update-changelog' : 'add-changelog';
+            const res = await api(endpoint, {
+                changelog_id: id || null,
+                version: fd.get('version'),
+                title: fd.get('title'),
+                description: fd.get('description'),
+                version_type: fd.get('version_type')
             });
-            location.reload();
+            if (res) { toast(id ? 'Release updated' : 'Release created'); location.reload(); }
         });
+
+        // ── Announcement Actions ────────────────
+        function openAnnouncementModal() {
+            document.getElementById('announcement-form').reset();
+            document.getElementById('announcement-modal').classList.add('active');
+        }
+
+        document.getElementById('announcement-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const res = await api('broadcast-announcement', { message: fd.get('message') });
+            if (res) {
+                toast(`Announcement queued for ${res.recipients} users`);
+                closeModal('announcement-modal');
+            }
+        });
+
+        // ── Charts ──────────────────────────────
+        (function renderSignupsChart() {
+            const raw = JSON.parse('{{ signups_by_day|escapejs }}');
+            const container = document.getElementById('signupsChart');
+            if (!raw.length) { container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;display:flex;align-items:center;height:100%;">No signup data</div>'; return; }
+            const max = Math.max(...raw.map(d => d.count), 1);
+            raw.forEach(d => {
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = `${(d.count / max) * 100}%`;
+                bar.dataset.label = `${d.day.slice(5)}: ${d.count}`;
+                container.appendChild(bar);
+            });
+        })();
+
+        (function renderTierBreakdown() {
+            const raw = JSON.parse('{{ tier_breakdown|escapejs }}');
+            const container = document.getElementById('tierBreakdown');
+            if (!raw.length) { container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">No data</div>'; return; }
+            const max = Math.max(...raw.map(t => t.count), 1);
+            const colors = { free: 'var(--text-muted)', student: 'var(--blue)', team: 'var(--purple)', enterprise: 'var(--accent)' };
+            raw.forEach(t => {
+                const row = document.createElement('div');
+                row.className = 'tier-row';
+                row.innerHTML = `
+                    <span class="tier-row-label" style="color: ${colors[t.tier] || 'var(--text-muted)'}">${t.tier}</span>
+                    <div class="tier-row-bar-bg">
+                        <div class="tier-row-bar" style="width: ${(t.count / max) * 100}%; background: ${colors[t.tier] || 'var(--text-muted)'}"></div>
+                    </div>
+                    <span class="tier-row-count">${t.count}</span>
+                `;
+                container.appendChild(row);
+            });
+        })();
     </script>
 </body>
 </html>
