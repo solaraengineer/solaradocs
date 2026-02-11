@@ -52,7 +52,7 @@ class TeamMember(models.Model):
     team = models.ForeignKey(Teams, on_delete=models.CASCADE, related_name='team_members')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_teams')
     role = models.CharField(max_length=10, choices=TEAM_ROLES, default='EDITOR')
-    can_direct_save = models.BooleanField(default=False)  # If True, saves directly; if False, changes go to pending review
+    can_direct_save = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -119,11 +119,20 @@ class Contributor(models.Model):
 class Backup(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='backups')
     document = models.ForeignKey(Documents, on_delete=models.CASCADE, related_name='document_backups')
-    content = models.TextField()
+    r2_key = models.CharField(max_length=512)
+    version = models.PositiveIntegerField(default=1)
+    size_bytes = models.PositiveIntegerField(default=0)
+    checksum = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['document', '-created_at']),
+        ]
+
     def __str__(self):
-        return f"{self.project.project_name} - {self.created_at}"
+        return f"{self.project.project_name} - v{self.version} - {self.created_at}"
 
 
 class PendingAction(models.Model):
