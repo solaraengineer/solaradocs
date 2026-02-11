@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 import base64
+import boto3
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -110,10 +111,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-# Email bs
-EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
-SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
-SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+# Email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM', 'support@solaradocs.net')
 
 # Celery
@@ -125,7 +129,19 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
+# Cloudflare R2 Backups
+R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID')
+R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY')
+R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'solaradocsbackups')
+R2_ENDPOINT_URL = os.getenv('R2_ENDPOINT_URL')
 
+R2_CLIENT = boto3.client(
+    's3',
+    endpoint_url=R2_ENDPOINT_URL,
+    aws_access_key_id=R2_ACCESS_KEY_ID,
+    aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+    region_name='auto',
+)
 
 
 SESSION_COOKIE_AGE = 1209600

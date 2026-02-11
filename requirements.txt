@@ -39,3 +39,4 @@ ypy==0.2
 django-allauth==65.13.1
 cryptography
 celery==5.4.0
+django-sendgrid

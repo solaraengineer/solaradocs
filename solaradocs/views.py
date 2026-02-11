@@ -1,4 +1,3 @@
-
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -18,8 +17,10 @@ from functools import wraps
 from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
-from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, PendingAction
+from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, \
+    PendingAction
 from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email
+from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
 
 PROJECT_NAME_REGEX = re.compile(r'^[a-zA-Z0-9\s@#$!]+$')
@@ -32,7 +33,7 @@ def sanitize_string(value, max_length, pattern, field_name):
         return None, f'{field_name} must be a string'
 
     value = value.strip()
-    
+
     if not value:
         return None, f'{field_name} is required'
 
@@ -43,6 +44,7 @@ def sanitize_string(value, max_length, pattern, field_name):
         return None, f'{field_name} contains invalid characters'
 
     return value, None
+
 
 JWT_PRIVATE_KEY = settings.JWT_PRIVATE_KEY
 JWT_PUBLIC_KEY = settings.JWT_PUBLIC_KEY
@@ -122,6 +124,7 @@ def require_auth_token(view_func):
             return view_func(request, *args, **kwargs)
         except jwt.PyJWTError as e:
             return JsonResponse({'success': False, 'error': 'Please try again later'}, status=401)
+
     return wrapper
 
 
@@ -133,6 +136,7 @@ def dashboard(request):
 
     projects = Project.objects.filter(owner_id=request.user.id).order_by('-created_at')
     return render(request, 'dashboard.html', {'projects': projects})
+
 
 @require_auth_token
 @login_required(login_url='/login')
@@ -212,13 +216,11 @@ def setup(request):
                 [Contributor(project=project, username=p, role='VIEWER') for p in people]
             )
 
-        # Create default "Public" team visible to all project members
         public_team = Teams.objects.create(
             project=project,
             team_name='Public',
         )
 
-        # Create a default welcome document assigned to the Public team
         Documents.objects.create(
             project=project,
             document_name='Getting Started',
@@ -320,7 +322,6 @@ def add_people(request):
     )
     new_people = [p for p in people if p not in existing]
 
-    # Check each new user's collaboration limit based on THEIR tier
     for username in new_people:
         target_user = User.objects.filter(username=username).first()
         if not target_user:
@@ -354,6 +355,7 @@ def about(request):
 @cache_page(60 * 15)
 def docs(request):
     return render(request, 'docs.html')
+
 
 @require_GET
 @cache_page(60 * 15)
@@ -398,6 +400,7 @@ def login(request):
 
     except Exception:
         return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
+
 
 @ratelimit(key='ip', rate='5/m', block=True)
 def register(request):
@@ -504,6 +507,7 @@ def deleteuser(request):
 
     return JsonResponse({'success': True})
 
+
 @require_GET
 @require_auth_token
 @ratelimit(key='ip', rate='30/m', block=True)
@@ -578,16 +582,17 @@ def revert(request):
     if not all([project_id, backup_id]):
         return JsonResponse({'success': False, 'error': 'Missing required fields'})
 
-    with transaction.atomic():
-        backup = Backup.objects.filter(
-            Q(id=backup_id) & Q(project_id=project_id) & Q(project__owner_id=request.user.id)
-        ).values('content').first()
+    backup = Backup.objects.filter(
+        id=backup_id, project_id=project_id, project__owner_id=request.user.id
+    ).first()
 
-        if not backup:
-            return JsonResponse({'success': False, 'error': 'Backup not found'}, status=404)
+    if not backup:
+        return JsonResponse({'success': False, 'error': 'Backup not found'}, status=404)
 
-        Project.objects.filter(id=project_id).update(content=backup['content'])
-        Backup.objects.filter(id=backup_id).delete()
+    try:
+        restore_document_from_backup(backup.id)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Failed to restore backup'}, status=500)
 
     return JsonResponse({'success': True})
 
@@ -660,21 +665,10 @@ def handle_pending(request):
             if not document:
                 return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
 
-
             document = Documents.objects.select_for_update().get(id=document.id)
 
             if project.backups_enabled and tier_config.get('backups', False):
-                backup_count = Backup.objects.filter(document=document).count()
-                max_backups = 50
-
-                if backup_count >= max_backups:
-                    Backup.objects.filter(document=document).order_by('created_at').first().delete()
-
-                Backup.objects.create(
-                    project=project,
-                    document=document,
-                    content=document.content
-                )
+                backup_document_to_r2.delay(document.id)
 
             document.content = pending.submitted_content
             document.save(update_fields=['content'])
@@ -687,7 +681,6 @@ def handle_pending(request):
                     action='edit'
                 )
 
-
         PendingAction.objects.create(
             project=project,
             document=document if document else None,
@@ -697,7 +690,6 @@ def handle_pending(request):
             document_name=document_name,
             pending_note=pending_note
         )
-
 
         if tier_config.get('audit', False):
             Audit.objects.create(
@@ -746,6 +738,7 @@ PRICE_IDS = {
     'enterprise': settings.STRIPE_ENTERPRISE_PRICE_ID,
 }
 
+
 @login_required
 @require_POST
 @transaction.atomic
@@ -786,7 +779,8 @@ def create_checkout_session(request):
         })
 
     except stripe.error.StripeError as e:
-        return JsonResponse({'success': False, 'error': 'Payment service unavailable'}, status=503)
+        print(str(e))
+        return JsonResponse({'success': False, 'error': str(e)}, status=503)
 
 
 @csrf_exempt
@@ -804,23 +798,7 @@ def stripe_webhook(request):
     except stripe.error.SignatureVerificationError:
         return HttpResponse(status=400)
 
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        user_id = session.get('metadata', {}).get('user_id')
-        tier = session.get('metadata', {}).get('tier')
-        customer_id = session.get('customer')
-
-        if user_id and tier:
-            try:
-                user = User.objects.get(id=int(user_id))
-                user.Tier = tier
-                user.stripe_customer_id = customer_id
-                user.subscription_status = 'active'
-                user.save(update_fields=['Tier', 'stripe_customer_id', 'subscription_status'])
-            except (User.DoesNotExist, ValueError):
-                pass
-
-    elif event['type'] == 'customer.subscription.created':
+    if event['type'] == 'customer.subscription.created':
         subscription = event['data']['object']
         customer_id = subscription.get('customer')
         tier = subscription.get('metadata', {}).get('tier')
@@ -967,13 +945,17 @@ def buy(request):
         'stripe_publishable_key': settings.STRIPE_PUBLIC_KEY,
         'user': request.user
     })
+
+
 @ratelimit(key='ip', rate='30/m', block=True)
 def terms(request):
     return render(request, 'terms.html', {})
 
+
 @ratelimit(key='ip', rate='30/m', block=True)
 def privacy(request):
     return render(request, 'privacy.html', {})
+
 
 @require_GET
 @require_auth_token
@@ -1014,7 +996,6 @@ def get_documents(request, project_id):
             user=request.user
         ).values_list('team_id', flat=True))
 
-        # Include documents from the "Public" team (visible to all contributors)
         public_team_ids = list(Teams.objects.filter(
             project_id=project_id,
             team_name='Public'
@@ -1081,7 +1062,6 @@ def get_document(request, project_id, doc_id):
     ).exists()
 
     if not is_owner and not is_admin:
-        # Allow access if document belongs to the "Public" team
         is_public_team = document.team_assigned.team_name == 'Public'
 
         if not is_public_team:
@@ -1171,10 +1151,12 @@ def add_document(request, project_id):
             ).first()
 
             if not team_admin_membership:
-                return JsonResponse({'success': False, 'error': 'Only owners, admins and team admins can create documents'}, status=403)
+                return JsonResponse(
+                    {'success': False, 'error': 'Only owners, admins and team admins can create documents'}, status=403)
 
             if team_admin_membership.team_id != team_id:
-                return JsonResponse({'success': False, 'error': 'You can only create documents for your own team'}, status=403)
+                return JsonResponse({'success': False, 'error': 'You can only create documents for your own team'},
+                                    status=403)
 
     tier = project.tier.lower()
     tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
@@ -1183,7 +1165,8 @@ def add_document(request, project_id):
     if max_docs is not None:
         current_doc_count = Documents.objects.filter(project_id=project_id).count()
         if current_doc_count >= max_docs:
-            return JsonResponse({'success': False, 'error': f'Document limit ({max_docs}) reached for your tier'}, status=403)
+            return JsonResponse({'success': False, 'error': f'Document limit ({max_docs}) reached for your tier'},
+                                status=403)
 
     with transaction.atomic():
         document = Documents.objects.create(
@@ -1217,16 +1200,6 @@ def add_document(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def save_document(request, project_id, doc_id):
-    """
-    Save document content.
-
-    Authorization:
-    - Owner: Can save any document directly
-    - Project Admin: Can save any document directly
-    - Team Admin: Can save documents in their team directly
-    - Team Editor with can_direct_save=True: Can save directly
-    - Team Editor with can_direct_save=False: Changes go to pending review (requires note)
-    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -1259,7 +1232,6 @@ def save_document(request, project_id, doc_id):
             tier = project.tier.lower()
             tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-            # Determine if user can direct save
             can_direct_save = False
             requires_pending = False
 
@@ -1274,24 +1246,22 @@ def save_document(request, project_id, doc_id):
                 if not contributor:
                     return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-                # Check if project-level admin
                 if contributor.role == 'ADMIN':
                     can_direct_save = True
                 elif document.team_assigned.team_name == 'Public':
-                    # Public team: any EDITOR or ADMIN contributor can direct save
                     if contributor.role == 'EDITOR':
                         can_direct_save = True
                     elif contributor.role == 'VIEWER':
                         return JsonResponse({'success': False, 'error': 'Viewers cannot edit documents'}, status=403)
                 else:
-                    # Non-public team: check team membership
                     membership = TeamMember.objects.filter(
                         team_id=document.team_assigned_id,
                         user=request.user
                     ).first()
 
                     if not membership:
-                        return JsonResponse({'success': False, 'error': 'Not a team member for this document'}, status=403)
+                        return JsonResponse({'success': False, 'error': 'Not a team member for this document'},
+                                            status=403)
 
                     if membership.role == 'ADMIN':
                         can_direct_save = True
@@ -1301,12 +1271,10 @@ def save_document(request, project_id, doc_id):
                         elif tier_config.get('pending', False):
                             requires_pending = True
                         else:
-                            # Pending feature not available for this tier, allow direct save
                             can_direct_save = True
                     else:
                         return JsonResponse({'success': False, 'error': 'Invalid role'}, status=403)
 
-            # If requires pending, validate note is provided
             if requires_pending:
                 if not change_note:
                     return JsonResponse({
@@ -1315,7 +1283,6 @@ def save_document(request, project_id, doc_id):
                         'requires_note': True
                     }, status=400)
 
-                # Check if content actually changed
                 if document.content == content:
                     return JsonResponse({'success': True, 'message': 'No changes to submit'})
 
@@ -1329,22 +1296,11 @@ def save_document(request, project_id, doc_id):
                 )
                 return JsonResponse({'success': True, 'pending': True})
 
-            # Direct save path
             if document.content == content:
                 return JsonResponse({'success': True, 'message': 'No changes'})
 
             if project.backups_enabled and tier_config.get('backups', False):
-                backup_count = Backup.objects.filter(document=document).count()
-                max_backups = 50
-
-                if backup_count >= max_backups:
-                    Backup.objects.filter(document=document).order_by('created_at').first().delete()
-
-                Backup.objects.create(
-                    project=project,
-                    document=document,
-                    content=document.content
-                )
+                backup_document_to_r2.delay(document.id)
 
             if tier_config.get('audit', False):
                 Audit.objects.create(
@@ -1396,7 +1352,6 @@ def rename_document(request, project_id, doc_id):
     is_owner = project.owner_id == request.user.id
 
     if not is_owner:
-        # Check if user is a project-level admin
         is_project_admin = Contributor.objects.filter(
             project_id=project_id,
             username=request.user.username,
@@ -1404,7 +1359,6 @@ def rename_document(request, project_id, doc_id):
         ).exists()
 
         if not is_project_admin:
-            # Check if user is a team admin for this document's team
             is_team_admin = TeamMember.objects.filter(
                 team_id=document.team_assigned_id,
                 user=request.user,
@@ -1412,7 +1366,9 @@ def rename_document(request, project_id, doc_id):
             ).exists()
 
             if not is_team_admin:
-                return JsonResponse({'success': False, 'error': 'Only project owner, project admin, or team admin can rename documents'}, status=403)
+                return JsonResponse({'success': False,
+                                     'error': 'Only project owner, project admin, or team admin can rename documents'},
+                                    status=403)
 
     old_name = document.document_name
 
@@ -1459,7 +1415,6 @@ def delete_document(request, project_id, doc_id):
     is_owner = project.owner_id == request.user.id
 
     if not is_owner:
-        # Check if user is a project-level admin
         is_project_admin = Contributor.objects.filter(
             project_id=project_id,
             username=request.user.username,
@@ -1467,7 +1422,6 @@ def delete_document(request, project_id, doc_id):
         ).exists()
 
         if not is_project_admin:
-            # Check if user is a team admin for this document's team
             is_team_admin = TeamMember.objects.filter(
                 team_id=document.team_assigned_id,
                 user=request.user,
@@ -1475,7 +1429,9 @@ def delete_document(request, project_id, doc_id):
             ).exists()
 
             if not is_team_admin:
-                return JsonResponse({'success': False, 'error': 'Only project owner, project admin, or team admin can delete documents'}, status=403)
+                return JsonResponse({'success': False,
+                                     'error': 'Only project owner, project admin, or team admin can delete documents'},
+                                    status=403)
 
     document_name = document.document_name
     document_id = document.id
@@ -1501,6 +1457,7 @@ def delete_document(request, project_id, doc_id):
             'document_name': document_name
         }
     })
+
 
 @require_GET
 @require_auth_token
@@ -1558,14 +1515,6 @@ def get_teams(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_pending_edits(request, project_id):
-    """
-    Get pending edits for review.
-
-    Authorization:
-    - Owner: Sees ALL pending edits in the project
-    - Project Admin (Contributor with role='ADMIN'): Sees ALL pending edits
-    - Team Admin: Sees only pending edits from their team(s)
-    """
     if not isinstance(project_id, int) or project_id < 1:
         return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
@@ -1576,14 +1525,12 @@ def get_pending_edits(request, project_id):
 
     is_owner = project.owner_id == request.user.id
 
-    # Determine user's access level
     can_see_all = False
     team_admin_team_ids = []
 
     if is_owner:
         can_see_all = True
     else:
-        # Check if project-level admin
         is_project_admin = Contributor.objects.filter(
             project_id=project_id,
             username=request.user.username,
@@ -1593,7 +1540,6 @@ def get_pending_edits(request, project_id):
         if is_project_admin:
             can_see_all = True
         else:
-            # Check if team admin
             team_admin_team_ids = list(TeamMember.objects.filter(
                 team__project_id=project_id,
                 user=request.user,
@@ -1614,7 +1560,6 @@ def get_pending_edits(request, project_id):
             project_id=project_id
         ).select_related('document', 'user', 'team').order_by('-created_at')
     else:
-        # Team admin: only see pending from their teams
         pending_edits = Pending.objects.filter(
             project_id=project_id,
             team_id__in=team_admin_team_ids
@@ -1681,8 +1626,6 @@ def get_audits(request, project_id):
         return JsonResponse({'success': True, 'audits': audits_data})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
 
 
 @require_GET
@@ -1776,7 +1719,8 @@ def create_team(request, project_id):
     if max_teams is not None:
         current_team_count = Teams.objects.filter(project_id=project_id).count()
         if current_team_count >= max_teams:
-            return JsonResponse({'success': False, 'error': f'Team limit ({max_teams}) reached for your tier'}, status=403)
+            return JsonResponse({'success': False, 'error': f'Team limit ({max_teams}) reached for your tier'},
+                                status=403)
 
     if Teams.objects.filter(project_id=project_id, team_name=team_name).exists():
         return JsonResponse({'success': False, 'error': 'Team name already exists in this project'}, status=400)
@@ -1963,7 +1907,8 @@ def add_team_member(request, project_id, team_id):
     if max_members is not None:
         current_count = TeamMember.objects.filter(team=team).count()
         if current_count >= max_members:
-            return JsonResponse({'success': False, 'error': f'Member limit ({max_members}) reached for your tier'}, status=403)
+            return JsonResponse({'success': False, 'error': f'Member limit ({max_members}) reached for your tier'},
+                                status=403)
 
     TeamMember.objects.create(team=team, user=user, role=role)
 
@@ -2263,7 +2208,9 @@ def delete_account(request):
             for sub in subscriptions.data:
                 stripe.Subscription.cancel(sub.id)
         except stripe.error.StripeError:
-            return JsonResponse({'success': False, 'error': 'Please contact support if your subscrption hasnt automaticaly cancelled' }, status=500)
+            return JsonResponse(
+                {'success': False, 'error': 'Please contact support if your subscrption hasnt automaticaly cancelled'},
+                status=500)
 
     auth_logout(request)
     user.delete()
