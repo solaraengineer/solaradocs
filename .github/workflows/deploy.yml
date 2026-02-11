@@ -25,7 +25,7 @@ jobs:
         SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
         SERVER_IP: ${{ secrets.SERVER_IP_1 }}
       run: |
-        echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
+        echo "$SSH_PRIVATE_KEY_BASE64" > SOLARA
         chmod 600 SOLARA
         
         echo "Deploying to Server 1 ($SERVER_IP)..."
