@@ -260,8 +260,27 @@ def change_roles(request):
     if not project:
         return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if request.user.id != project.owner.id:
+    is_owner = request.user.id == project.owner_id
+    is_admin_contributor = False
+
+    if not is_owner:
+        is_admin_contributor = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='ADMIN'
+        ).exists()
+
+    if not is_owner and not is_admin_contributor:
         return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+
+    if is_admin_contributor and not is_owner:
+        target = Contributor.objects.filter(id=contributor_id, project_id=project_id).first()
+        if not target:
+            return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
+        if target.role == 'ADMIN':
+            return JsonResponse({'success': False, 'error': 'Only project owner can change admin roles'}, status=403)
+        if new_role == 'ADMIN':
+            return JsonResponse({'success': False, 'error': 'Only project owner can assign admin role'}, status=403)
 
     updated = Contributor.objects.filter(id=contributor_id, project_id=project_id).update(role=new_role)
 
@@ -567,34 +586,175 @@ def delete_project(request):
     return JsonResponse({'success': True})
 
 
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def list_project_backups(request, project_id):
+    if not isinstance(project_id, int) or project_id < 1:
+        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+    project = Project.objects.filter(id=project_id).first()
+    if not project:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+    tier = project.tier.lower()
+    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+    if not tier_config.get('backups', False):
+        return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
+
+    is_owner = project.owner_id == request.user.id
+    can_see_all = False
+    allowed_team_ids = []
+
+    if is_owner:
+        can_see_all = True
+    else:
+        is_project_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='ADMIN'
+        ).exists()
+
+        if is_project_admin:
+            can_see_all = True
+        else:
+            admin_teams = TeamMember.objects.filter(
+                team__project_id=project_id,
+                user=request.user,
+                role='ADMIN'
+            ).values_list('team_id', flat=True)
+
+            allowed_team_ids = list(admin_teams)
+            if not allowed_team_ids:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+    if can_see_all:
+        backups = Backup.objects.filter(
+            project_id=project_id
+        ).select_related('document').order_by('-created_at')
+    else:
+        backups = Backup.objects.filter(
+            project_id=project_id,
+            document__team_assigned_id__in=allowed_team_ids
+        ).select_related('document').order_by('-created_at')
+
+    data = [{
+        'id': b.id,
+        'document_id': b.document_id,
+        'document_name': b.document.document_name,
+        'version': b.version,
+        'created_at': b.created_at.isoformat(),
+    } for b in backups[:100]]
+
+    return JsonResponse({'success': True, 'backups': data})
+
+
 @require_POST
 @require_auth_token
+@login_required
+@csrf_protect
 @ratelimit(key='ip', rate='5/m', block=True)
-def revert(request):
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+def revert_backup(request, project_id, backup_id):
+    if not isinstance(project_id, int) or project_id < 1:
+        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    if not isinstance(backup_id, int) or backup_id < 1:
+        return JsonResponse({'success': False, 'error': 'Invalid backup ID'}, status=400)
 
-    project_id = data.get('project_id')
-    backup_id = data.get('backup_id')
+    project = Project.objects.filter(id=project_id).first()
+    if not project:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if not all([project_id, backup_id]):
-        return JsonResponse({'success': False, 'error': 'Missing required fields'})
+    tier = project.tier.lower()
+    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+    if not tier_config.get('backups', False):
+        return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
 
     backup = Backup.objects.filter(
-        id=backup_id, project_id=project_id, project__owner_id=request.user.id
-    ).first()
+        id=backup_id, project_id=project_id
+    ).select_related('document', 'document__team_assigned').first()
 
     if not backup:
         return JsonResponse({'success': False, 'error': 'Backup not found'}, status=404)
+
+    is_owner = project.owner_id == request.user.id
+    can_revert = False
+
+    if is_owner:
+        can_revert = True
+    else:
+        is_project_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='ADMIN'
+        ).exists()
+
+        if is_project_admin:
+            can_revert = True
+        else:
+            is_team_admin = TeamMember.objects.filter(
+                team_id=backup.document.team_assigned_id,
+                user=request.user,
+                role='ADMIN'
+            ).exists()
+
+            if is_team_admin:
+                can_revert = True
+
+    if not can_revert:
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
     try:
         restore_document_from_backup(backup.id)
     except Exception:
         return JsonResponse({'success': False, 'error': 'Failed to restore backup'}, status=500)
 
-    return JsonResponse({'success': True})
+    if tier_config.get('audit', False):
+        Audit.objects.create(
+            project=project,
+            document=backup.document,
+            user=request.user,
+            action=f'revert:v{backup.version}'
+        )
+
+    return JsonResponse({
+        'success': True,
+        'document_id': backup.document_id,
+        'version': backup.version
+    })
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_collaborators(request, project_id):
+    if not isinstance(project_id, int) or project_id < 1:
+        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+    project = Project.objects.filter(id=project_id).first()
+    if not project:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+    is_owner = project.owner_id == request.user.id
+    if not is_owner:
+        is_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='ADMIN'
+        ).exists()
+        if not is_admin:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+    contributors = Contributor.objects.filter(project_id=project_id).order_by('added_at')
+    data = [{
+        'id': c.id,
+        'username': c.username,
+        'role': c.role,
+        'added_at': c.added_at.isoformat(),
+    } for c in contributors]
+
+    return JsonResponse({'success': True, 'collaborators': data})
 
 
 @require_POST

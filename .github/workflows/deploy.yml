@@ -18,21 +18,20 @@ jobs:
         echo "SERVER_1_IP: ${{ secrets.SERVER_IP_1 }}"
         echo "SSH key length: ${#SSH_PRIVATE_KEY_BASE64}"
       env:
-        SSH_PRIVATE_KEY_BASE64: ${{ secrets.BANK_BASE64 }}
+        SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
 
     - name: Deploy to Server 1
       env:
-        SSH_PRIVATE_KEY_BASE64: ${{ secrets.BANK_BASE64 }}
+        SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
         SERVER_IP: ${{ secrets.SERVER_IP_1 }}
       run: |
-        echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > bank
-        chmod 600 bank
+        echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
+        chmod 600 SOLARA
         
         echo "Deploying to Server 1 ($SERVER_IP)..."
         
-        # Wait for server to be ready
         for i in {1..10}; do
-          if ssh -i bank -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
+          if ssh -i SOLARA -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
             break
           fi
           echo "Waiting for server... ($i/10)"
@@ -40,7 +39,7 @@ jobs:
         done
         
         rsync -avz --delete \
-          -e "ssh -i bank -o StrictHostKeyChecking=no" \
+          -e "ssh -i SOLARA -o StrictHostKeyChecking=no" \
           --exclude '.git' \
           --exclude '.github' \
           --exclude 'terraform' \
@@ -51,10 +50,10 @@ jobs:
           --exclude 'media' \
           --exclude '.venv' \
           --exclude 'k8s' \
-          . ubuntu@$SERVER_IP:/home/ubuntu/banking/
+          . ubuntu@$SERVER_IP:/home/ubuntu/solaradocs/
         
-        ssh -i bank -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'ENDSSH'
-        cd /home/ubuntu/banking
+        ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'ENDSSH'
+        cd /home/ubuntu/solaradocs
         docker-compose down || true
         docker-compose up -d --build
         docker ps
