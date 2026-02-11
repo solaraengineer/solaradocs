@@ -1417,6 +1417,81 @@
             margin-left: 0.5rem;
         }
 
+        /* Backup items */
+        .backup-doc-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .backup-doc-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.375rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .backup-item {
+            padding: 0.625rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            margin-bottom: 0.375rem;
+        }
+
+        .backup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .backup-version {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .backup-time {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+        }
+
+        .backup-revert-btn {
+            width: 100%;
+            padding: 0.375rem;
+            margin-top: 0.375rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--accent-orange);
+            font-size: 0.65rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .backup-revert-btn:hover {
+            background: rgba(212, 165, 116, 0.15);
+            border-color: var(--accent-orange);
+        }
+
+        .backup-revert-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .backup-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
         /* Delete confirmation modal */
         .delete-warning {
             color: var(--accent-red);
@@ -1727,6 +1802,9 @@
                 {% if is_owner or role == 'ADMIN' %}
                 <button class="panel-tab" data-tab="pending">Pending<span id="pendingBadge" class="pending-badge" style="display: none;">0</span></button>
                 {% endif %}
+                {% if is_owner or role == 'ADMIN' %}
+                <button class="panel-tab" data-tab="backups">Backups</button>
+                {% endif %}
             </div>
             <div class="panel-content">
                 <!-- Info Section -->
@@ -1787,6 +1865,17 @@
                         <div class="panel-section-title">Pending Edits</div>
                         <div id="pendingList">
                             <div class="pending-empty">Loading pending edits...</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if is_owner or role == 'ADMIN' %}
+                <div id="backupsSection" style="display: none;">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Document Backups</div>
+                        <div id="backupsList">
+                            <div class="backup-empty">Loading backups...</div>
                         </div>
                     </div>
                 </div>
@@ -2151,6 +2240,35 @@
                     return data;
                 } catch (error) {
                     console.error('Failed to handle pending edit:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getBackups() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/backups`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to load backups:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async revertBackup(backupId) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/backups/${backupId}/revert`, {
+                        method: 'POST'
+                    });
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success && data.document_id) {
+                        invalidateDocContent(data.document_id);
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to revert backup:', error);
                     return { success: false, error };
                 }
             }
@@ -2711,6 +2829,102 @@
         })();
         {% endif %}
 
+        // ==================== BACKUPS ====================
+
+        {% if is_owner or role == 'ADMIN' %}
+        async function loadBackups() {
+            const backupsList = document.getElementById('backupsList');
+            if (!backupsList) return;
+
+            backupsList.innerHTML = '<div class="backup-empty">Loading backups...</div>';
+
+            const data = await API.getBackups();
+            if (data.success) {
+                renderBackups(data.backups);
+            } else if (data.error && data.error.includes('not available')) {
+                backupsList.innerHTML = '<div class="backup-empty">Backups not available for this tier</div>';
+            } else {
+                backupsList.innerHTML = '<div class="backup-empty">Failed to load backups</div>';
+            }
+        }
+
+        function renderBackups(backups) {
+            const backupsList = document.getElementById('backupsList');
+
+            if (!backups || backups.length === 0) {
+                backupsList.innerHTML = '<div class="backup-empty">No backups yet</div>';
+                return;
+            }
+
+            const grouped = {};
+            backups.forEach(b => {
+                if (!grouped[b.document_id]) {
+                    grouped[b.document_id] = { document_name: b.document_name, backups: [] };
+                }
+                grouped[b.document_id].backups.push(b);
+            });
+
+            let html = '';
+            for (const [docId, group] of Object.entries(grouped)) {
+                html += `<div class="backup-doc-group">`;
+                html += `<div class="backup-doc-name">${escapeHtml(group.document_name)}</div>`;
+                group.backups.forEach(b => {
+                    const time = new Date(b.created_at).toLocaleString();
+                    html += `
+                        <div class="backup-item">
+                            <div class="backup-header">
+                                <span class="backup-version">v${b.version}</span>
+                                <span class="backup-time">${time}</span>
+                            </div>
+                            <button class="backup-revert-btn"
+                                    data-backup-id="${b.id}"
+                                    data-version="${b.version}"
+                                    data-doc-name="${escapeHtml(b.document_name)}"
+                                    data-doc-id="${b.document_id}"
+                                    data-time="${time}">
+                                REVERT TO BACKUP AT ${time}, VERSION: v${b.version}
+                            </button>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            backupsList.innerHTML = html;
+
+            backupsList.querySelectorAll('.backup-revert-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const backupId = parseInt(btn.dataset.backupId);
+                    const version = btn.dataset.version;
+                    const docName = btn.dataset.docName;
+                    const docId = parseInt(btn.dataset.docId);
+
+                    const confirmed = await showConfirm(
+                        `Revert "${docName}" to v${version}? This will replace the current content.`,
+                        'Revert'
+                    );
+                    if (!confirmed) return;
+
+                    btn.disabled = true;
+                    btn.textContent = 'Reverting...';
+
+                    const data = await API.revertBackup(backupId);
+                    if (data.success) {
+                        showToast(`Reverted "${docName}" to v${data.version}`);
+                        if (currentDocumentId === docId) {
+                            await selectDocument(currentDocumentId, true);
+                        }
+                        await loadBackups();
+                    } else {
+                        showToast(data.error || 'Revert failed', 'error');
+                        btn.disabled = false;
+                        btn.textContent = `REVERT TO BACKUP AT ${btn.dataset.time}, VERSION: v${version}`;
+                    }
+                });
+            });
+        }
+        {% endif %}
+
         // ==================== AUDIT HISTORY ====================
 
         async function loadAuditHistory() {
@@ -2796,12 +3010,20 @@
                     pendingSection.style.display = tabName === 'pending' ? 'block' : 'none';
                 }
 
+                const backupsSection = document.getElementById('backupsSection');
+                if (backupsSection) {
+                    backupsSection.style.display = tabName === 'backups' ? 'block' : 'none';
+                }
+
                 if (tabName === 'history') {
                     loadAuditHistory();
                 }
                 {% if is_owner or role == 'ADMIN' %}
                 if (tabName === 'pending') {
                     loadPendingEdits();
+                }
+                if (tabName === 'backups') {
+                    loadBackups();
                 }
                 {% endif %}
             });
