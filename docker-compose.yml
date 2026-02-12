@@ -35,11 +35,14 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - SECRET_KEY=${DJANGO_SECRET_KEY}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=solaradocs-web
     networks:
       - backend
     depends_on:
       - redis
       - postgres
+      - otel-collector
 
   celery:
     build: .
@@ -53,11 +56,38 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - SECRET_KEY=${DJANGO_SECRET_KEY}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=solaradocs-celery
     networks:
       - backend
     depends_on:
       - redis
       - postgres
+      - otel-collector
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config", "/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    networks:
+      - backend
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:latest
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+      - tempo_data:/var/tempo
+    ports:
+      - "127.0.0.1:3200:3200"
+    networks:
+      - backend
 
   prometheus:
     image: prom/prometheus:latest
@@ -91,3 +121,4 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  tempo_data:
