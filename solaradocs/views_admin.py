@@ -25,7 +25,7 @@ def admin_required(view_func):
 
 
 # ─── Dashboard ───────────────────────────────────────────────
-
+@admin_required
 @csrf_exempt
 @ratelimit(key='ip', rate='30/m', block=True)
 def admin_panel(request):
@@ -83,7 +83,7 @@ def admin_panel(request):
 
 @csrf_exempt
 @require_POST
-#@admin_required
+@admin_required
 @ratelimit(key='ip', rate='5/m', block=True)
 def admin_update_user(request):
     try:

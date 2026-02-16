@@ -336,7 +336,11 @@
         }
 
         .checkbox-input {
-            display: none;
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
         }
 
         .checkbox-content {
@@ -678,7 +682,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="checkbox-wrapper">
+                        <div class="checkbox-wrapper" id="backupToggle">
                             <input type="checkbox" class="checkbox-input" id="backupsCheckbox" name="backups" checked>
                             <div class="checkbox-box">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -689,7 +693,7 @@
                                 <div class="checkbox-title">Enable Backups</div>
                                 <div class="checkbox-desc">Automatically save versions of your project for rollback</div>
                             </div>
-                        </label>
+                        </div>
                     </div>
 
                     <div class="button-group">
@@ -710,7 +714,7 @@
         const tierConfig = {
             maxProjects: {{ tier_config.max_projects|default:"null" }},
             maxCollaborators: {{ tier_config.max_collaborators|default:"null" }},
-            backupsEnabled: {{ tier_config.backups_enabled|yesno:"true,false" }}
+            backupsEnabled: {{ tier_config.backups|yesno:"true,false" }}
         };
         const userTier = "{{ tier|default:'Free' }}";
 
@@ -762,14 +766,18 @@
             if (tierConfig.maxCollaborators !== null) {
                 limitsInfo.push('Max ' + tierConfig.maxCollaborators + ' collaborators');
             }
+            const backupCheckbox = document.getElementById('backupsCheckbox');
+            const backupToggle = document.getElementById('backupToggle');
             if (!tierConfig.backupsEnabled) {
-                const backupCheckbox = document.getElementById('backupsCheckbox');
                 if (backupCheckbox) {
                     backupCheckbox.checked = false;
-                    backupCheckbox.disabled = true;
-                    backupCheckbox.closest('.checkbox-wrapper').style.opacity = '0.5';
-                    backupCheckbox.closest('.checkbox-wrapper').style.cursor = 'not-allowed';
+                    backupToggle.style.opacity = '0.5';
+                    backupToggle.style.cursor = 'not-allowed';
                 }
+            } else {
+                backupToggle.addEventListener('click', function() {
+                    backupCheckbox.checked = !backupCheckbox.checked;
+                });
             }
         })();
 
