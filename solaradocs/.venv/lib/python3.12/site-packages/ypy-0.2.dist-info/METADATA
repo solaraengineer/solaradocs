@@ -1,0 +1,15 @@
+Metadata-Version: 2.2
+Name: ypy
+Version: 0.2
+Summary: Python utility functions used in yakirr repos
+Home-page: https://github.com/yakirr/ypy
+Author: Yakir Reshef
+Author-email: yreshef@broadinstitute.org
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3
+Description-Content-Type: text/markdown
+
+# pyutils
+Utility functions for python

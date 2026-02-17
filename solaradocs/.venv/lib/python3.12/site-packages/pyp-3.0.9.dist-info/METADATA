@@ -1,0 +1,23 @@
+Metadata-Version: 2.1
+Name: pyp
+Version: 3.0.9
+Summary: Python Power at the Prompt
+Home-page: https://thepyedpiper.github.io/pyp/
+Author: Toby Rosen
+Author-email: thepyedpiper@gmail.com
+Project-URL: Bug Tracker, https://github.com/thepyedpiper/pyp/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.0
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+![pyp logo](https://opensource.imageworks.com/images/large/pyp.jpg)
+
+# pyp
+The Pyed Piper: Python Power At the Prompt
+
+This is the original pyp developed at Sony Pictures Imageworks that effectively replaces awk, sed, and other legacy command line tools with intuitive python syntax.
+
+Please check out all of our [Documentation](https://thepyedpiper.github.io/pyp/)
