@@ -1,0 +1,3849 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.project_name }} - Solara docs</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'assets/favicon-512.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--accent-orange);
+        }
+
+        .back-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .project-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .project-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .project-status {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-green);
+        }
+
+        .status-dot.connecting {
+            background: var(--accent-orange);
+            animation: pulse 1s ease infinite;
+        }
+
+        .status-dot.disconnected {
+            background: var(--accent-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .top-bar-center {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .users-online {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--bg-primary);
+            border: 2px solid var(--bg-secondary);
+            margin-left: -8px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .user-avatar:first-child {
+            margin-left: 0;
+        }
+
+        .user-avatar:hover {
+            transform: translateY(-2px);
+            z-index: 10;
+        }
+
+        .user-avatar.you {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-orange);
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #e0b285;
+            box-shadow: 0 4px 15px rgba(212, 165, 116, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            margin-bottom: 0.75rem;
+        }
+
+        .sidebar-search {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .sidebar-search svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text-tertiary);
+        }
+
+        .sidebar-search input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .sidebar-search input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .sidebar-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.625rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .doc-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .doc-item.active {
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-orange);
+        }
+
+        .doc-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .doc-item-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .doc-item:hover .doc-item-name,
+        .doc-item.active .doc-item-name {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: unset;
+            word-break: break-word;
+        }
+
+        .doc-item-team {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            background: var(--bg-elevated);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+        }
+
+        .doc-rename-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            opacity: 0;
+            flex-shrink: 0;
+        }
+
+        .doc-item:hover .doc-rename-btn {
+            opacity: 1;
+        }
+
+        .doc-rename-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--accent-orange);
+        }
+
+        .doc-rename-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .doc-delete-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            opacity: 0;
+            flex-shrink: 0;
+        }
+
+        .doc-item:hover .doc-delete-btn {
+            opacity: 1;
+        }
+
+        .doc-delete-btn:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .doc-delete-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .sidebar-refresh-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .sidebar-refresh-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+        }
+
+        .sidebar-refresh-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .sidebar-refresh-btn.refreshing svg {
+            animation: spin 1s linear infinite;
+        }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .new-doc-btn {
+            width: 100%;
+            padding: 0.625rem;
+            background: var(--bg-tertiary);
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .new-doc-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-orange);
+            color: var(--text-primary);
+        }
+
+        .new-doc-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Editor Area */
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 0.125rem;
+            padding-right: 0.75rem;
+            margin-right: 0.75rem;
+            border-right: 1px solid var(--border);
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+            margin-right: 0;
+            padding-right: 0;
+        }
+
+        .toolbar-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .toolbar-btn.active {
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-orange);
+        }
+
+        .toolbar-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .toolbar-select {
+            padding: 0.375rem 0.625rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .toolbar-select:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .toolbar-select option {
+            background: var(--bg-secondary);
+        }
+
+        /* Editor Container */
+        .editor-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            background: var(--bg-primary);
+        }
+
+        .editor-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .editor-container::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        .editor-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .editor-wrapper {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Quill Overrides */
+        .ql-toolbar.ql-snow {
+            display: none;
+        }
+
+        .ql-container.ql-snow {
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+        }
+
+        .ql-editor {
+            min-height: 500px;
+            padding: 2rem;
+            color: var(--text-primary);
+            line-height: 1.8;
+        }
+
+        .ql-editor.ql-blank::before {
+            color: var(--text-tertiary);
+            font-style: normal;
+        }
+
+        .ql-editor h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .ql-editor h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .ql-editor h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .ql-editor p {
+            margin-bottom: 1rem;
+        }
+
+        .ql-editor a {
+            color: var(--accent-blue);
+        }
+
+        .ql-editor a:hover {
+            color: var(--accent-orange);
+        }
+
+        .ql-editor blockquote {
+            border-left: 3px solid var(--accent-orange);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+        }
+
+        .ql-editor pre {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .ql-editor pre .ql-code-block-container {
+            background: transparent;
+        }
+
+        .ql-editor code {
+            background: var(--bg-tertiary);
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: var(--accent-orange);
+            border: 1px solid var(--border);
+        }
+
+        /* Code block with line numbers */
+        .ql-editor pre.ql-syntax {
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 1rem 1.25rem;
+            counter-reset: line;
+            line-height: 1.6;
+        }
+
+        .ql-snow .ql-editor pre.ql-syntax {
+            background: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+        }
+
+        .toolbar-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            border: none;
+            background: none;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .toolbar-dropdown-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Export dropdown */
+        .export-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem;
+            min-width: 180px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            display: none;
+        }
+
+        .export-dropdown.show {
+            display: block;
+        }
+
+        .export-btn-wrap {
+            position: relative;
+        }
+
+        .ql-editor ul, .ql-editor ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .ql-editor li {
+            margin-bottom: 0.375rem;
+        }
+
+        .ql-editor img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-tab {
+            flex: 1;
+            padding: 0.875rem;
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .panel-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .panel-tab.active {
+            color: var(--accent-orange);
+        }
+
+        .panel-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent-orange);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .panel-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            margin-bottom: 0.75rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.85rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-tertiary);
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Audit History */
+        .audit-item {
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .audit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .audit-user {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .audit-time {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+        }
+
+        .audit-action {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .audit-loading, .audit-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
+        /* Word Count */
+        .word-count {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .count-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .count-number {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .count-label {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 420px;
+            transform: translateY(-20px);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-close svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-select:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .form-select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .modal-footer .btn {
+            padding: 0.625rem 1.25rem;
+        }
+
+        /* Toast */
+        /* Notification Modal */
+        .notif-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .notif-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .notif-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 380px;
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .notif-overlay.show .notif-box {
+            transform: scale(1) translateY(0);
+        }
+
+        .notif-icon-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.75rem 1.5rem 0.75rem;
+        }
+
+        .notif-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notif-icon-circle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .notif-icon-circle.success {
+            background: rgba(127, 176, 105, 0.15);
+            color: var(--accent-green);
+        }
+
+        .notif-icon-circle.error {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+        }
+
+        .notif-content {
+            text-align: center;
+            padding: 0.75rem 1.75rem 1.25rem;
+        }
+
+        .notif-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .notif-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .notif-actions {
+            padding: 0 1.5rem 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .notif-btn {
+            padding: 0.6rem 2rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .notif-btn.success {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .notif-btn.success:hover {
+            box-shadow: 0 4px 16px rgba(127, 176, 105, 0.3);
+        }
+
+        .notif-btn.error {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .notif-btn.error:hover {
+            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        }
+
+        /* Confirmation Modal */
+        .confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .confirm-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .confirm-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 400px;
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .confirm-overlay.show .confirm-box {
+            transform: scale(1) translateY(0);
+        }
+
+        .confirm-icon-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.75rem 1.5rem 0.75rem;
+        }
+
+        .confirm-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-orange);
+        }
+
+        .confirm-icon-circle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .confirm-content {
+            text-align: center;
+            padding: 0.75rem 1.75rem 1.25rem;
+        }
+
+        .confirm-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .confirm-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            padding: 0 1.5rem 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .confirm-btn-cancel {
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+
+        .confirm-btn-cancel:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .confirm-btn-confirm {
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            background: var(--accent-red);
+            color: #fff;
+            transition: all 0.15s ease;
+        }
+
+        .confirm-btn-confirm:hover {
+            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        }
+
+        /* Pending edits styles */
+        .pending-item {
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .pending-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .pending-info {
+            flex: 1;
+        }
+
+        .pending-user {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .pending-doc {
+            font-size: 0.75rem;
+            color: var(--accent-orange);
+            margin-top: 0.125rem;
+        }
+
+        .pending-time {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+        }
+
+        .pending-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .pending-btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pending-btn-accept {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .pending-btn-accept:hover {
+            opacity: 0.9;
+        }
+
+        .pending-btn-reject {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .pending-btn-reject:hover {
+            opacity: 0.9;
+        }
+
+        .pending-btn-preview {
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .pending-btn-preview:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .pending-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
+        .pending-badge {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+            font-size: 0.65rem;
+            font-weight: 600;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            margin-left: 0.5rem;
+        }
+
+        /* Backup items */
+        .backup-doc-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .backup-doc-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.375rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .backup-item {
+            padding: 0.625rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            margin-bottom: 0.375rem;
+        }
+
+        .backup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .backup-version {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .backup-time {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+        }
+
+        .backup-revert-btn {
+            width: 100%;
+            padding: 0.375rem;
+            margin-top: 0.375rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--accent-orange);
+            font-size: 0.65rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .backup-revert-btn:hover {
+            background: rgba(212, 165, 116, 0.15);
+            border-color: var(--accent-orange);
+        }
+
+        .backup-revert-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .backup-empty {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
+        /* Delete confirmation modal */
+        .delete-warning {
+            color: var(--accent-red);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Mobile sidebar toggle */
+        .mobile-sidebar-toggle {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar-toggle:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--accent-orange);
+        }
+
+        .mobile-sidebar-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .sidebar-overlay.show {
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .right-panel {
+                display: none;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .mobile-sidebar-toggle {
+                display: flex;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 501;
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: none;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+            }
+
+            .sidebar-overlay {
+                display: block;
+                pointer-events: none;
+            }
+
+            .sidebar-overlay.show {
+                pointer-events: auto;
+            }
+
+            .doc-item {
+                padding: 0.75rem;
+            }
+
+            .doc-item-name {
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .top-bar {
+                padding: 0.5rem 0.75rem;
+                gap: 0.5rem;
+            }
+
+            .top-bar-center {
+                display: none;
+            }
+
+            .project-name {
+                font-size: 0.875rem;
+            }
+
+            .btn {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .btn span.btn-label {
+                display: none;
+            }
+
+            .toolbar {
+                padding: 0.375rem 0.5rem;
+                gap: 0.125rem;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+
+            .toolbar::-webkit-scrollbar {
+                display: none;
+            }
+
+            .toolbar-group {
+                padding-right: 0.375rem;
+                margin-right: 0.375rem;
+                flex-shrink: 0;
+            }
+
+            .toolbar-btn {
+                width: 28px;
+                height: 28px;
+            }
+
+            .toolbar-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .toolbar-select {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.75rem;
+            }
+
+            .editor-container {
+                padding: 0.5rem;
+            }
+
+            .editor-wrapper {
+                border-radius: 8px;
+            }
+
+            .ql-editor {
+                padding: 1rem;
+                min-height: 300px;
+                font-size: 0.95rem;
+            }
+
+            .ql-editor h1 {
+                font-size: 1.5rem;
+            }
+
+            .ql-editor h2 {
+                font-size: 1.25rem;
+            }
+
+            .ql-editor h3 {
+                font-size: 1.1rem;
+            }
+
+            .modal {
+                margin: 0.75rem;
+                max-width: none;
+            }
+
+            .modal-header {
+                padding: 1rem;
+            }
+
+            .modal-body {
+                padding: 1rem;
+            }
+
+            .modal-footer {
+                padding: 1rem;
+            }
+
+            .notif-box, .confirm-box {
+                margin: 0.75rem;
+                max-width: none;
+            }
+
+            .export-dropdown {
+                right: -0.5rem;
+                min-width: 160px;
+            }
+
+            .top-bar-right {
+                gap: 0.5rem;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .top-bar {
+                padding: 0.4rem 0.5rem;
+            }
+
+            .back-btn {
+                width: 32px;
+                height: 32px;
+            }
+
+            .project-name {
+                font-size: 0.8rem;
+            }
+
+            .project-status {
+                font-size: 0.65rem;
+            }
+
+            .top-bar-left {
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% csrf_token %}
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" title="Documents">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+            <a href="/dashboard" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <div class="project-info">
+                <div class="project-name">
+                    {{ project.project_name }}
+                </div>
+                <div class="project-status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="top-bar-center">
+            <div class="users-online" id="usersOnline">
+                <div class="user-avatar you" title="You">{{ request.user.username|slice:":1"|upper }}</div>
+            </div>
+        </div>
+
+        <div class="top-bar-right">
+            <div class="export-btn-wrap">
+                <button class="btn btn-ghost" id="exportBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span class="btn-label">Export</span>
+                </button>
+                <div class="export-dropdown" id="exportDropdown">
+                    <button class="toolbar-dropdown-item" id="exportHtml">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                        Export as HTML
+                    </button>
+                    <button class="toolbar-dropdown-item" id="exportMarkdown">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Export as Markdown
+                    </button>
+                    <button class="toolbar-dropdown-item" id="exportText">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        Export as Plain Text
+                    </button>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="saveBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span class="btn-label">Save</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Documents</span>
+                    <button class="sidebar-refresh-btn" id="refreshDocsBtn" title="Refresh documents">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                            <path d="M16 21h5v-5"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" placeholder="Search docs..." id="docSearch">
+                </div>
+            </div>
+            <div class="sidebar-content" id="documentsList">
+                <!-- Documents loaded dynamically -->
+            </div>
+            <div class="sidebar-footer">
+                <button class="new-doc-btn" id="newDocBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Document
+                </button>
+            </div>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="editor-area">
+            <!-- Custom Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <select class="toolbar-select" id="headingSelect">
+                        <option value="">Normal</option>
+                        <option value="1">Heading 1</option>
+                        <option value="2">Heading 2</option>
+                        <option value="3">Heading 3</option>
+                    </select>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="boldBtn" title="Bold (Ctrl+B)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="italicBtn" title="Italic (Ctrl+I)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="19" y1="4" x2="10" y2="4"/>
+                            <line x1="14" y1="20" x2="5" y2="20"/>
+                            <line x1="15" y1="4" x2="9" y2="20"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="underlineBtn" title="Underline (Ctrl+U)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
+                            <line x1="4" y1="21" x2="20" y2="21"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="strikeBtn" title="Strikethrough">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <path d="M16 6a4 4 0 0 0-4-4 4 4 0 0 0-4 4"/>
+                            <path d="M8 18a4 4 0 0 0 4 4 4 4 0 0 0 4-4"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="bulletListBtn" title="Bullet List">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <circle cx="4" cy="6" r="1" fill="currentColor"/>
+                            <circle cx="4" cy="12" r="1" fill="currentColor"/>
+                            <circle cx="4" cy="18" r="1" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="orderedListBtn" title="Numbered List">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="10" y1="6" x2="21" y2="6"/>
+                            <line x1="10" y1="12" x2="21" y2="12"/>
+                            <line x1="10" y1="18" x2="21" y2="18"/>
+                            <text x="3" y="8" font-size="8" fill="currentColor">1</text>
+                            <text x="3" y="14" font-size="8" fill="currentColor">2</text>
+                            <text x="3" y="20" font-size="8" fill="currentColor">3</text>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="quoteBtn" title="Quote">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/>
+                            <path d="M19 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="codeBtn" title="Inline Code">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="codeBlockBtn" title="Code Block (Ctrl+Shift+C)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <polyline points="8 10 6 12 8 14"/>
+                            <polyline points="16 10 18 12 16 14"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="linkBtn" title="Insert Link (Ctrl+K)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="imageBtn" title="Insert Image">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v6h6"/>
+                            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 7v6h-6"/>
+                            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="clearBtn" title="Clear Formatting">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 7h16"/>
+                            <path d="M10 4v3"/>
+                            <path d="M14 4v3"/>
+                            <path d="M8 20l4-9 4 9"/>
+                            <path d="M3 3l18 18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor -->
+            <div class="editor-container">
+                <div class="editor-wrapper">
+                    <div id="editor"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="panel-tabs">
+                <button class="panel-tab active" data-tab="info">Info</button>
+                <button class="panel-tab" data-tab="history">Audit logs</button>
+                {% if is_owner or role == 'ADMIN' %}
+                <button class="panel-tab" data-tab="pending">Pending<span id="pendingBadge" class="pending-badge" style="display: none;">0</span></button>
+                {% endif %}
+                {% if is_owner or role == 'ADMIN' %}
+                <button class="panel-tab" data-tab="backups">Backups</button>
+                {% endif %}
+            </div>
+            <div class="panel-content">
+                <!-- Info Section -->
+                <div id="infoSection">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Word Count</div>
+                        <div class="word-count">
+                            <div class="count-item">
+                                <div class="count-number" id="wordCount">0</div>
+                                <div class="count-label">Words</div>
+                            </div>
+                            <div class="count-item">
+                                <div class="count-number" id="charCount">0</div>
+                                <div class="count-label">Chars</div>
+                            </div>
+                            <div class="count-item">
+                                <div class="count-number" id="lineCount">0</div>
+                                <div class="count-label">Lines</div>
+                            </div>
+                            <div class="count-item">
+                                <div class="count-number" id="readTime">0m</div>
+                                <div class="count-label">Read</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <div class="panel-section-title">Document Info</div>
+                        <div class="info-row">
+                            <span class="info-label">Created</span>
+                            <span class="info-value">Today</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Modified</span>
+                            <span class="info-value" id="lastModified">Just now</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Owner</span>
+                            <span class="info-value">{{ request.user.username }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Section (hidden by default) -->
+                <div id="historySection" style="display: none;">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Audit Log</div>
+                        <div id="auditList">
+                            <div class="audit-loading">Loading history...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Edits Section (hidden by default, owner/admin only) -->
+                {% if is_owner or role == 'ADMIN' %}
+                <div id="pendingSection" style="display: none;">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Pending Edits</div>
+                        <div id="pendingList">
+                            <div class="pending-empty">Loading pending edits...</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if is_owner or role == 'ADMIN' %}
+                <div id="backupsSection" style="display: none;">
+                    <div class="panel-section">
+                        <div class="panel-section-title">Document Backups</div>
+                        <div id="backupsList">
+                            <div class="backup-empty">Loading backups...</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- New Document Modal -->
+    <div class="modal-overlay" id="newDocModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Document</h3>
+                <button class="modal-close" id="closeModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Document Name</label>
+                    <input type="text" class="form-input" id="newDocName" placeholder="Enter document name...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assign to Team</label>
+                    <select class="form-select" id="newDocTeam">
+                        <option value="">Loading teams...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelNewDoc">Cancel</button>
+                <button class="btn btn-primary" id="createDocBtn">Create Document</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Document Modal -->
+    <div class="modal-overlay" id="renameDocModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Rename Document</h3>
+                <button class="modal-close" id="closeRenameModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Document Name</label>
+                    <input type="text" class="form-input" id="renameDocName" placeholder="Enter new document name...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelRenameDoc">Cancel</button>
+                <button class="btn btn-primary" id="confirmRenameBtn">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Document Modal -->
+    <div class="modal-overlay" id="deleteDocModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Delete Document</h3>
+                <button class="modal-close" id="closeDeleteModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete "<span id="deleteDocNameDisplay"></span>"?</p>
+                <p class="delete-warning">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelDeleteDoc">Cancel</button>
+                <button class="btn" style="background: var(--accent-red); color: white;" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Note Modal (for editors submitting changes for review) -->
+    <div class="modal-overlay" id="pendingNoteModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Submit Changes for Review</h3>
+                <button class="modal-close" id="closePendingNoteModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Your changes require admin approval. Please describe what you changed.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="pendingNoteInput">Change Note <span style="color: var(--accent-red);">*</span></label>
+                    <textarea class="form-input" id="pendingNoteInput" rows="4" placeholder="Describe your changes (e.g., Fixed typo in section 2, Updated pricing info...)" maxlength="500" style="resize: vertical;"></textarea>
+                    <div style="text-align: right; font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.25rem;">
+                        <span id="pendingNoteCharCount">0</span>/500
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelPendingNote">Cancel</button>
+                <button class="btn btn-primary" id="confirmPendingNote">Submit for Review</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div class="notif-overlay" id="notifOverlay">
+        <div class="notif-box">
+            <div class="notif-icon-area">
+                <div class="notif-icon-circle" id="notifIconCircle">
+                    <svg id="notifIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <svg id="notifIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="notif-content">
+                <div class="notif-title" id="notifTitle"></div>
+                <div class="notif-message" id="notifMessage"></div>
+            </div>
+            <div class="notif-actions">
+                <button class="notif-btn" id="notifBtn" onclick="closeNotif()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-box">
+            <div class="confirm-icon-area">
+                <div class="confirm-icon-circle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="confirm-content">
+                <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+                <div class="confirm-message" id="confirmMessage"></div>
+            </div>
+            <div class="confirm-actions">
+                <button class="confirm-btn-cancel" id="confirmBtnCancel">Cancel</button>
+                <button class="confirm-btn-confirm" id="confirmBtnConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <script>
+        const projectId = {{ project.id }};
+        const currentUser = "{{ request.user.username }}";
+        const isOwner = {{ is_owner|yesno:"true,false" }};
+        const userRole = "{{ role }}";
+
+        let currentDocumentId = null;
+        let projectTeams = [];
+
+        // ==================== DOCUMENT CONTENT CACHE ====================
+        // Only cache document content (expensive payload), everything else hits API fresh
+        const _docContentCache = {};
+        const DOC_CONTENT_TTL = 10 * 60 * 1000; // 10 minutes
+
+        function cacheDocContent(docId, doc) {
+            _docContentCache[docId] = { data: doc, timestamp: Date.now() };
+        }
+
+        function getCachedDocContent(docId) {
+            const entry = _docContentCache[docId];
+            if (!entry) return null;
+            if (Date.now() - entry.timestamp > DOC_CONTENT_TTL) {
+                delete _docContentCache[docId];
+                return null;
+            }
+            return entry.data;
+        }
+
+        function invalidateDocContent(docId) {
+            delete _docContentCache[docId];
+        }
+
+        // ==================== API LAYER ====================
+        const API = {
+            async getDocuments() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/documents`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to load documents:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getDocument(docId, forceRefresh = false) {
+                if (!forceRefresh) {
+                    const cached = getCachedDocContent(docId);
+                    if (cached) {
+                        return { success: true, document: cached, fromCache: true };
+                    }
+                }
+
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/documents/${docId}`);
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success) {
+                        cacheDocContent(docId, data.document);
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to load document:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getTeams() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/teams`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to load teams:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getAudits() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/audits`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to load audits:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async saveDocument(docId, content, note = '') {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/documents/${docId}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({ content, note })
+                    });
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success && !data.pending) {
+                        const cached = getCachedDocContent(docId);
+                        if (cached) {
+                            cached.content = content;
+                            cacheDocContent(docId, cached);
+                        }
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to save document:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async createDocument(name, teamId) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/documents/add`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            document_name: name,
+                            team_id: parseInt(teamId)
+                        })
+                    });
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to create document:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async renameDocument(docId, newName) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/documents/${docId}/rename`, {
+                        method: 'POST',
+                        body: JSON.stringify({ document_name: newName })
+                    });
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success) {
+                        const cached = getCachedDocContent(docId);
+                        if (cached) {
+                            cached.document_name = newName;
+                            cacheDocContent(docId, cached);
+                        }
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to rename document:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async deleteDocument(docId) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/documents/${docId}/delete`, {
+                        method: 'POST'
+                    });
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success) {
+                        invalidateDocContent(docId);
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to delete document:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getPendingEdits() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/pending`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to load pending edits:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async handlePendingEdit(pendingId, action) {
+                try {
+                    const response = await authFetch('/handlepending/', {
+                        method: 'POST',
+                        body: JSON.stringify({ pending_id: pendingId, action })
+                    });
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success && action === 'accept' && data.document_id) {
+                        invalidateDocContent(data.document_id);
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to handle pending edit:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getBackups() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/backups`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to load backups:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async revertBackup(backupId) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/backups/${backupId}/revert`, {
+                        method: 'POST'
+                    });
+                    if (!response) return { success: false };
+
+                    const data = await response.json();
+                    if (data.success && data.document_id) {
+                        invalidateDocContent(data.document_id);
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Failed to revert backup:', error);
+                    return { success: false, error };
+                }
+            }
+        };
+
+        // JWT Token Management
+        const TokenManager = {
+            getToken() {
+                return localStorage.getItem('token');
+            },
+            setToken(token) {
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+            },
+            clearToken() {
+                localStorage.removeItem('token');
+            },
+            async refreshToken() {
+                try {
+                    const res = await fetch('/gen/token', { credentials: 'include' });
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        this.setToken(data.token);
+                        return data.token;
+                    }
+                } catch (e) {
+                    console.error('Token refresh failed:', e);
+                }
+                return null;
+            }
+        };
+
+        // Authenticated fetch
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = TokenManager.getToken();
+            const csrfToken = getCsrfToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                ...(options.headers || {})
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            let response = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                const data = await response.json();
+                if (data.new_token) {
+                    TokenManager.setToken(data.new_token);
+                    headers['Authorization'] = `Bearer ${data.new_token}`;
+                    response = await fetch(url, { ...options, headers, credentials: 'include' });
+                } else {
+                    const newToken = await TokenManager.refreshToken();
+                    if (newToken) {
+                        headers['Authorization'] = `Bearer ${newToken}`;
+                        response = await fetch(url, { ...options, headers, credentials: 'include' });
+                    } else {
+                        TokenManager.clearToken();
+                        window.location.href = '/login/';
+                        return null;
+                    }
+                }
+            }
+            return response;
+        }
+
+        // Initialize Quill with syntax highlighting
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            placeholder: 'Start writing your documentation...',
+            modules: {
+                toolbar: false,
+                syntax: {
+                    highlight: text => hljs.highlightAuto(text).value
+                },
+                history: {
+                    delay: 1000,
+                    maxStack: 100,
+                    userOnly: true
+                }
+            }
+        });
+
+        // Toast
+        let notifTimer = null;
+
+        function showToast(message, type = 'success') {
+            const overlay = document.getElementById('notifOverlay');
+            const iconCircle = document.getElementById('notifIconCircle');
+            const successIcon = document.getElementById('notifIconSuccess');
+            const errorIcon = document.getElementById('notifIconError');
+            const title = document.getElementById('notifTitle');
+            const msg = document.getElementById('notifMessage');
+            const btn = document.getElementById('notifBtn');
+
+            iconCircle.className = 'notif-icon-circle ' + type;
+            btn.className = 'notif-btn ' + type;
+            successIcon.style.display = type === 'success' ? 'block' : 'none';
+            errorIcon.style.display = type === 'error' ? 'block' : 'none';
+            title.textContent = type === 'success' ? 'Success' : 'Error';
+            msg.textContent = message;
+
+            overlay.classList.add('show');
+
+            if (notifTimer) clearTimeout(notifTimer);
+            if (type === 'success') {
+                notifTimer = setTimeout(() => closeNotif(), 2500);
+            }
+        }
+
+        function closeNotif() {
+            document.getElementById('notifOverlay').classList.remove('show');
+            if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
+        }
+
+        document.getElementById('notifOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeNotif();
+        });
+
+        function showConfirm(message, confirmLabel = 'Confirm') {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('confirmOverlay');
+                const msgEl = document.getElementById('confirmMessage');
+                const cancelBtn = document.getElementById('confirmBtnCancel');
+                const confirmBtn = document.getElementById('confirmBtnConfirm');
+
+                msgEl.textContent = message;
+                confirmBtn.textContent = confirmLabel;
+                overlay.classList.add('show');
+
+                function cleanup() {
+                    overlay.classList.remove('show');
+                    cancelBtn.removeEventListener('click', onCancel);
+                    confirmBtn.removeEventListener('click', onConfirm);
+                    overlay.removeEventListener('click', onOverlay);
+                }
+
+                function onCancel() { cleanup(); resolve(false); }
+                function onConfirm() { cleanup(); resolve(true); }
+                function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
+
+                cancelBtn.addEventListener('click', onCancel);
+                confirmBtn.addEventListener('click', onConfirm);
+                overlay.addEventListener('click', onOverlay);
+            });
+        }
+
+        // ==================== DOCUMENTS ====================
+
+        // Load documents list (uses cache)
+        async function loadDocuments() {
+            const data = await API.getDocuments();
+            if (data.success) {
+                renderDocumentsList(data.documents);
+                if (data.documents.length > 0 && !currentDocumentId) {
+                    selectDocument(data.documents[0].id);
+                }
+            }
+        }
+
+        let documentsCache = [];
+
+        function renderDocumentsList(documents) {
+            documentsCache = documents;
+            const container = document.getElementById('documentsList');
+
+            if (documents.length === 0) {
+                container.innerHTML = `
+                    <div style="padding: 1rem; text-align: center; color: var(--text-tertiary); font-size: 0.85rem;">
+                        No documents yet. Create one!
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = documents.map(doc => {
+                const canManage = isOwner || userRole === 'ADMIN';
+                return `
+                <div class="doc-item ${doc.id === currentDocumentId ? 'active' : ''}" data-doc-id="${doc.id}" data-doc-name="${escapeHtml(doc.document_name)}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span class="doc-item-name">${escapeHtml(doc.document_name)}</span>
+                    <span class="doc-item-team">${escapeHtml(doc.team_name)}</span>
+                    ${canManage ? `
+                        <button class="doc-delete-btn" data-doc-id="${doc.id}" data-doc-name="${escapeHtml(doc.document_name)}" title="Delete document">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                        <button class="doc-rename-btn" data-doc-id="${doc.id}" data-doc-name="${escapeHtml(doc.document_name)}" title="Rename document">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                    ` : ''}
+                </div>
+            `}).join('');
+
+            // Add click handlers for document selection
+            container.querySelectorAll('.doc-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    // Don't select document if clicking rename or delete button
+                    if (e.target.closest('.doc-rename-btn') || e.target.closest('.doc-delete-btn')) return;
+                    selectDocument(parseInt(item.dataset.docId));
+                });
+            });
+
+            // Add click handlers for rename buttons
+            container.querySelectorAll('.doc-rename-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openRenameModal(parseInt(btn.dataset.docId), btn.dataset.docName);
+                });
+            });
+
+            // Add click handlers for delete buttons
+            container.querySelectorAll('.doc-delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDeleteModal(parseInt(btn.dataset.docId), btn.dataset.docName);
+                });
+            });
+        }
+
+        async function selectDocument(docId, forceRefresh = false) {
+            currentDocumentId = docId;
+
+            // Update active state in sidebar
+            document.querySelectorAll('.doc-item').forEach(item => {
+                item.classList.toggle('active', parseInt(item.dataset.docId) === docId);
+            });
+
+            // Load document content (uses cache)
+            const data = await API.getDocument(docId, forceRefresh);
+            if (data.success) {
+                quill.root.innerHTML = data.document.content || '';
+                updateWordCount();
+                if (data.fromCache) {
+                    console.log(`[Cache] Loaded document ${docId} from cache`);
+                }
+            } else {
+                showToast('Failed to load document', 'error');
+            }
+        }
+
+        // Search documents
+        document.getElementById('docSearch').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            document.querySelectorAll('.doc-item').forEach(item => {
+                const name = item.querySelector('.doc-item-name').textContent.toLowerCase();
+                item.style.display = name.includes(query) ? 'flex' : 'none';
+            });
+        });
+
+        // Refresh documents button
+        document.getElementById('refreshDocsBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('refreshDocsBtn');
+            btn.classList.add('refreshing');
+            await loadDocuments();
+            btn.classList.remove('refreshing');
+            showToast('Documents refreshed');
+        });
+
+        // ==================== NEW DOCUMENT MODAL ====================
+
+        const modal = document.getElementById('newDocModal');
+
+        async function loadTeams() {
+            const data = await API.getTeams();
+            if (data.success) {
+                projectTeams = data.teams;
+                const select = document.getElementById('newDocTeam');
+
+                if (projectTeams.length === 0) {
+                    select.innerHTML = '<option value="">No teams available</option>';
+                } else {
+                    select.innerHTML = projectTeams.map(team =>
+                        `<option value="${team.id}">${escapeHtml(team.team_name)}</option>`
+                    ).join('');
+                }
+            }
+        }
+
+        function openNewDocModal() {
+            loadTeams();
+            document.getElementById('newDocName').value = '';
+            quill.disable();
+            modal.classList.add('show');
+            setTimeout(() => {
+                document.getElementById('newDocName').focus();
+            }, 350);
+        }
+
+        function closeNewDocModal() {
+            modal.classList.remove('show');
+            quill.enable();
+        }
+
+        document.getElementById('newDocBtn').addEventListener('click', openNewDocModal);
+        document.getElementById('closeModal').addEventListener('click', closeNewDocModal);
+        document.getElementById('cancelNewDoc').addEventListener('click', closeNewDocModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeNewDocModal();
+        });
+
+        document.getElementById('createDocBtn').addEventListener('click', async () => {
+            const name = document.getElementById('newDocName').value.trim();
+            const teamId = document.getElementById('newDocTeam').value;
+
+            if (!name) {
+                showToast('Please enter a document name', 'error');
+                return;
+            }
+
+            if (!teamId) {
+                showToast('Please select a team', 'error');
+                return;
+            }
+
+            const data = await API.createDocument(name, teamId);
+            if (data.success) {
+                showToast('Document created!');
+                closeNewDocModal();
+                await loadDocuments();
+                selectDocument(data.document.id);
+            } else {
+                showToast(data.error || 'Failed to create document', 'error');
+            }
+        });
+
+        // ==================== RENAME DOCUMENT MODAL ====================
+
+        const renameModal = document.getElementById('renameDocModal');
+        let renameDocId = null;
+
+        function openRenameModal(docId, docName) {
+            renameDocId = docId;
+            document.getElementById('renameDocName').value = docName;
+            renameModal.classList.add('show');
+            document.getElementById('renameDocName').focus();
+            document.getElementById('renameDocName').select();
+        }
+
+        function closeRenameModal() {
+            renameModal.classList.remove('show');
+            renameDocId = null;
+        }
+
+        document.getElementById('closeRenameModal').addEventListener('click', closeRenameModal);
+        document.getElementById('cancelRenameDoc').addEventListener('click', closeRenameModal);
+
+        renameModal.addEventListener('click', (e) => {
+            if (e.target === renameModal) closeRenameModal();
+        });
+
+        document.getElementById('renameDocName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('confirmRenameBtn').click();
+            }
+            if (e.key === 'Escape') {
+                closeRenameModal();
+            }
+        });
+
+        document.getElementById('confirmRenameBtn').addEventListener('click', async () => {
+            const newName = document.getElementById('renameDocName').value.trim();
+
+            if (!newName) {
+                showToast('Please enter a document name', 'error');
+                return;
+            }
+
+            if (!renameDocId) {
+                showToast('No document selected', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmRenameBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Renaming...';
+
+            const data = await API.renameDocument(renameDocId, newName);
+            if (data.success) {
+                showToast('Document renamed successfully');
+                closeRenameModal();
+                await loadDocuments();
+            } else {
+                showToast(data.error || 'Failed to rename document', 'error');
+            }
+
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Rename';
+        });
+
+        // ==================== DELETE DOCUMENT MODAL ====================
+
+        const deleteModal = document.getElementById('deleteDocModal');
+        let deleteDocId = null;
+
+        function openDeleteModal(docId, docName) {
+            deleteDocId = docId;
+            document.getElementById('deleteDocNameDisplay').textContent = docName;
+            deleteModal.classList.add('show');
+        }
+
+        function closeDeleteModal() {
+            deleteModal.classList.remove('show');
+            deleteDocId = null;
+        }
+
+        document.getElementById('closeDeleteModal').addEventListener('click', closeDeleteModal);
+        document.getElementById('cancelDeleteDoc').addEventListener('click', closeDeleteModal);
+
+        deleteModal.addEventListener('click', (e) => {
+            if (e.target === deleteModal) closeDeleteModal();
+        });
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!deleteDocId) {
+                showToast('No document selected', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Deleting...';
+
+            const data = await API.deleteDocument(deleteDocId);
+            if (data.success) {
+                showToast('Document deleted successfully');
+                closeDeleteModal();
+
+                // If deleted document was current, select another or clear editor
+                if (currentDocumentId === deleteDocId) {
+                    currentDocumentId = null;
+                    quill.root.innerHTML = '';
+                }
+
+                await loadDocuments();
+            } else {
+                showToast(data.error || 'Failed to delete document', 'error');
+            }
+
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Delete';
+        });
+
+        // ==================== PENDING EDITS ====================
+
+        {% if is_owner or role == 'ADMIN' %}
+        async function loadPendingEdits() {
+            const pendingList = document.getElementById('pendingList');
+            const pendingBadge = document.getElementById('pendingBadge');
+
+            pendingList.innerHTML = '<div class="pending-empty">Loading pending edits...</div>';
+
+            const data = await API.getPendingEdits();
+            if (data.success) {
+                renderPendingEdits(data.pending);
+            } else if (data.error && data.error.includes('not available')) {
+                pendingList.innerHTML = '<div class="pending-empty">Pending edits not available for this tier</div>';
+                pendingBadge.style.display = 'none';
+            } else {
+                pendingList.innerHTML = '<div class="pending-empty">Failed to load pending edits</div>';
+            }
+        }
+
+        function renderPendingEdits(pending) {
+            const pendingList = document.getElementById('pendingList');
+            const pendingBadge = document.getElementById('pendingBadge');
+
+            // Update badge
+            if (pending.length > 0) {
+                pendingBadge.textContent = pending.length;
+                pendingBadge.style.display = 'inline-flex';
+            } else {
+                pendingBadge.style.display = 'none';
+            }
+
+            if (pending.length === 0) {
+                pendingList.innerHTML = '<div class="pending-empty">No pending edits</div>';
+                return;
+            }
+
+            pendingList.innerHTML = pending.map(p => `
+                <div class="pending-item" data-pending-id="${p.id}">
+                    <div class="pending-header">
+                        <div class="pending-info">
+                            <div class="pending-user">${escapeHtml(p.username)}</div>
+                            <div class="pending-doc">${escapeHtml(p.document_name)}</div>
+                            <div class="pending-team" style="font-size: 0.7rem; color: var(--text-tertiary);">Team: ${escapeHtml(p.team_name)}</div>
+                        </div>
+                        <span class="pending-time">${formatTime(p.created_at)}</span>
+                    </div>
+                    ${p.note ? `<div class="pending-note" style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-elevated); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 2px solid var(--accent-orange);">"${escapeHtml(p.note)}"</div>` : ''}
+                    <div class="pending-actions">
+                        <button class="pending-btn pending-btn-preview" data-pending-id="${p.id}" data-content="${encodeURIComponent(p.submitted_content)}">Preview</button>
+                        <button class="pending-btn pending-btn-accept" data-pending-id="${p.id}" data-action="accept">Accept</button>
+                        <button class="pending-btn pending-btn-reject" data-pending-id="${p.id}" data-action="reject">Reject</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            pendingList.querySelectorAll('.pending-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const pendingId = parseInt(btn.dataset.pendingId);
+                    const action = btn.dataset.action;
+
+                    btn.disabled = true;
+                    btn.textContent = action === 'accept' ? 'Accepting...' : 'Rejecting...';
+
+                    const data = await API.handlePendingEdit(pendingId, action);
+                    if (data.success) {
+                        showToast(action === 'accept' ? 'Changes accepted' : 'Changes rejected');
+                        // Reload pending edits
+                        await loadPendingEdits();
+                        // If accepted, refresh the affected document if it's currently open
+                        if (action === 'accept' && data.document_id && data.document_id === currentDocumentId) {
+                            await selectDocument(currentDocumentId, true);
+                        }
+                    } else {
+                        showToast(data.error || 'Failed to process', 'error');
+                        btn.disabled = false;
+                        btn.textContent = action === 'accept' ? 'Accept' : 'Reject';
+                    }
+                });
+            });
+        }
+
+        // Load pending edits count on init for badge
+        (async function initPendingBadge() {
+            const data = await API.getPendingEdits();
+            if (data.success) {
+                const pendingBadge = document.getElementById('pendingBadge');
+                if (data.pending.length > 0) {
+                    pendingBadge.textContent = data.pending.length;
+                    pendingBadge.style.display = 'inline-flex';
+                }
+            }
+        })();
+        {% endif %}
+
+        // ==================== BACKUPS ====================
+
+        {% if is_owner or role == 'ADMIN' %}
+        async function loadBackups() {
+            const backupsList = document.getElementById('backupsList');
+            if (!backupsList) return;
+
+            backupsList.innerHTML = '<div class="backup-empty">Loading backups...</div>';
+
+            const data = await API.getBackups();
+            if (data.success) {
+                renderBackups(data.backups);
+            } else if (data.error && data.error.includes('not available')) {
+                backupsList.innerHTML = '<div class="backup-empty">Backups not available for this tier</div>';
+            } else {
+                backupsList.innerHTML = '<div class="backup-empty">Failed to load backups</div>';
+            }
+        }
+
+        function renderBackups(backups) {
+            const backupsList = document.getElementById('backupsList');
+
+            if (!backups || backups.length === 0) {
+                backupsList.innerHTML = '<div class="backup-empty">No backups yet</div>';
+                return;
+            }
+
+            const grouped = {};
+            backups.forEach(b => {
+                if (!grouped[b.document_id]) {
+                    grouped[b.document_id] = { document_name: b.document_name, backups: [] };
+                }
+                grouped[b.document_id].backups.push(b);
+            });
+
+            let html = '';
+            for (const [docId, group] of Object.entries(grouped)) {
+                html += `<div class="backup-doc-group">`;
+                html += `<div class="backup-doc-name">${escapeHtml(group.document_name)}</div>`;
+                group.backups.forEach(b => {
+                    const time = new Date(b.created_at).toLocaleString();
+                    html += `
+                        <div class="backup-item">
+                            <div class="backup-header">
+                                <span class="backup-version">v${b.version}</span>
+                                <span class="backup-time">${time}</span>
+                            </div>
+                            <button class="backup-revert-btn"
+                                    data-backup-id="${b.id}"
+                                    data-version="${b.version}"
+                                    data-doc-name="${escapeHtml(b.document_name)}"
+                                    data-doc-id="${b.document_id}"
+                                    data-time="${time}">
+                                REVERT TO BACKUP AT ${time}, VERSION: v${b.version}
+                            </button>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            backupsList.innerHTML = html;
+
+            backupsList.querySelectorAll('.backup-revert-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const backupId = parseInt(btn.dataset.backupId);
+                    const version = btn.dataset.version;
+                    const docName = btn.dataset.docName;
+                    const docId = parseInt(btn.dataset.docId);
+
+                    const confirmed = await showConfirm(
+                        `Revert "${docName}" to v${version}? This will replace the current content.`,
+                        'Revert'
+                    );
+                    if (!confirmed) return;
+
+                    btn.disabled = true;
+                    btn.textContent = 'Reverting...';
+
+                    const data = await API.revertBackup(backupId);
+                    if (data.success) {
+                        showToast(`Reverted "${docName}" to v${data.version}`);
+                        if (currentDocumentId === docId) {
+                            await selectDocument(currentDocumentId, true);
+                        }
+                        await loadBackups();
+                    } else {
+                        showToast(data.error || 'Revert failed', 'error');
+                        btn.disabled = false;
+                        btn.textContent = `REVERT TO BACKUP AT ${btn.dataset.time}, VERSION: v${version}`;
+                    }
+                });
+            });
+        }
+        {% endif %}
+
+        // ==================== AUDIT HISTORY ====================
+
+        async function loadAuditHistory() {
+            const auditList = document.getElementById('auditList');
+
+            auditList.innerHTML = '<div class="audit-loading">Loading history...</div>';
+
+            const data = await API.getAudits();
+            if (data.success) {
+                renderAuditHistory(data.audits);
+            } else {
+                auditList.innerHTML = '<div class="audit-empty">Failed to load history</div>';
+            }
+        }
+
+        function renderAuditHistory(audits) {
+            const auditList = document.getElementById('auditList');
+
+            if (audits.length === 0) {
+                auditList.innerHTML = '<div class="audit-empty">No history yet</div>';
+                return;
+            }
+
+            auditList.innerHTML = audits.map(audit => `
+                <div class="audit-item">
+                    <div class="audit-header">
+                        <span class="audit-user">${escapeHtml(audit.username)}</span>
+                        <span class="audit-time">${formatTime(audit.created_at)}</span>
+                    </div>
+                    <div class="audit-action">${formatAuditAction(audit.action, audit.document_name)}</div>
+                </div>
+            `).join('');
+        }
+
+        function formatAuditAction(action, documentName) {
+            const docName = escapeHtml(documentName || 'N/A');
+            switch(action) {
+                case 'edit':
+                    return `Edited "${docName}"`;
+                case 'create':
+                    return `Created "${docName}"`;
+                case 'rename':
+                    return `Renamed "${docName}"`;
+                case 'create_team':
+                    return 'Created a team';
+                case 'pending_accept':
+                    return `Accepted pending edit for "${docName}"`;
+                case 'pending_reject':
+                    return `Rejected pending edit for "${docName}"`;
+                default:
+                    if (action.startsWith('delete:')) {
+                        const deletedName = action.substring(7);
+                        return `Deleted "${escapeHtml(deletedName)}"`;
+                    }
+                    return `${action} on "${docName}"`;
+            }
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        // ==================== PANEL TABS ====================
+
+        document.querySelectorAll('.panel-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const tabName = tab.dataset.tab;
+                document.getElementById('infoSection').style.display = tabName === 'info' ? 'block' : 'none';
+                document.getElementById('historySection').style.display = tabName === 'history' ? 'block' : 'none';
+
+                const pendingSection = document.getElementById('pendingSection');
+                if (pendingSection) {
+                    pendingSection.style.display = tabName === 'pending' ? 'block' : 'none';
+                }
+
+                const backupsSection = document.getElementById('backupsSection');
+                if (backupsSection) {
+                    backupsSection.style.display = tabName === 'backups' ? 'block' : 'none';
+                }
+
+                if (tabName === 'history') {
+                    loadAuditHistory();
+                }
+                {% if is_owner or role == 'ADMIN' %}
+                if (tabName === 'pending') {
+                    loadPendingEdits();
+                }
+                if (tabName === 'backups') {
+                    loadBackups();
+                }
+                {% endif %}
+            });
+        });
+
+        // ==================== TOOLBAR ====================
+
+        document.getElementById('boldBtn').onclick = () => {
+            quill.format('bold', !quill.getFormat().bold);
+            updateToolbarState();
+        };
+
+        document.getElementById('italicBtn').onclick = () => {
+            quill.format('italic', !quill.getFormat().italic);
+            updateToolbarState();
+        };
+
+        document.getElementById('underlineBtn').onclick = () => {
+            quill.format('underline', !quill.getFormat().underline);
+            updateToolbarState();
+        };
+
+        document.getElementById('strikeBtn').onclick = () => {
+            quill.format('strike', !quill.getFormat().strike);
+            updateToolbarState();
+        };
+
+        document.getElementById('bulletListBtn').onclick = () => {
+            const format = quill.getFormat();
+            quill.format('list', format.list === 'bullet' ? false : 'bullet');
+            updateToolbarState();
+        };
+
+        document.getElementById('orderedListBtn').onclick = () => {
+            const format = quill.getFormat();
+            quill.format('list', format.list === 'ordered' ? false : 'ordered');
+            updateToolbarState();
+        };
+
+        document.getElementById('quoteBtn').onclick = () => {
+            quill.format('blockquote', !quill.getFormat().blockquote);
+            updateToolbarState();
+        };
+
+        document.getElementById('codeBtn').onclick = () => {
+            quill.format('code', !quill.getFormat().code);
+            updateToolbarState();
+        };
+
+        document.getElementById('codeBlockBtn').onclick = () => {
+            quill.format('code-block', !quill.getFormat()['code-block']);
+            updateToolbarState();
+        };
+
+        document.getElementById('linkBtn').onclick = () => {
+            const range = quill.getSelection();
+            const existing = range ? quill.getFormat(range).link : null;
+            const url = prompt('Enter URL:', existing || 'https://');
+            if (url === null) return;
+            if (url === '') {
+                quill.format('link', false);
+            } else {
+                quill.format('link', url);
+            }
+        };
+
+        document.getElementById('imageBtn').onclick = () => {
+            const url = prompt('Enter image URL:');
+            if (url) {
+                const range = quill.getSelection(true);
+                quill.insertEmbed(range.index, 'image', url);
+            }
+        };
+
+        document.getElementById('undoBtn').onclick = () => quill.history.undo();
+        document.getElementById('redoBtn').onclick = () => quill.history.redo();
+
+        document.getElementById('clearBtn').onclick = () => {
+            const range = quill.getSelection();
+            if (range) quill.removeFormat(range.index, range.length);
+        };
+
+        document.getElementById('headingSelect').onchange = (e) => {
+            const value = e.target.value;
+            quill.format('header', value ? parseInt(value) : false);
+        };
+
+
+        function updateToolbarState() {
+            const format = quill.getFormat();
+            document.getElementById('boldBtn').classList.toggle('active', !!format.bold);
+            document.getElementById('italicBtn').classList.toggle('active', !!format.italic);
+            document.getElementById('underlineBtn').classList.toggle('active', !!format.underline);
+            document.getElementById('strikeBtn').classList.toggle('active', !!format.strike);
+            document.getElementById('bulletListBtn').classList.toggle('active', format.list === 'bullet');
+            document.getElementById('orderedListBtn').classList.toggle('active', format.list === 'ordered');
+            document.getElementById('quoteBtn').classList.toggle('active', !!format.blockquote);
+            document.getElementById('codeBtn').classList.toggle('active', !!format.code);
+            document.getElementById('codeBlockBtn').classList.toggle('active', !!format['code-block']);
+            document.getElementById('headingSelect').value = format.header || '';
+        }
+
+        quill.on('selection-change', (range) => {
+            if (!quill.isEnabled()) return;
+            updateToolbarState();
+        });
+        quill.on('text-change', () => {
+            if (!quill.isEnabled()) return;
+            updateToolbarState();
+            updateWordCount();
+        });
+
+        // ==================== WORD COUNT ====================
+
+        function updateWordCount() {
+            const text = quill.getText().trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            const chars = text.length;
+            const lines = text ? text.split('\n').length : 0;
+            const readMinutes = Math.max(1, Math.ceil(words / 200));
+            document.getElementById('wordCount').textContent = words;
+            document.getElementById('charCount').textContent = chars;
+            document.getElementById('lineCount').textContent = lines;
+            document.getElementById('readTime').textContent = words === 0 ? '0m' : `${readMinutes}m`;
+        }
+
+        // ==================== SAVE ====================
+
+        // ==================== EXPORT ====================
+
+        // Export dropdown toggle
+        document.getElementById('exportBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('exportDropdown').classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('exportDropdown').classList.remove('show');
+        });
+
+        // Export HTML
+        document.getElementById('exportHtml').addEventListener('click', () => {
+            const content = quill.root.innerHTML;
+            const blob = new Blob([`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ project.project_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #1a1a1a; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+        h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+        blockquote { border-left: 3px solid #d4a574; padding-left: 1rem; margin: 1rem 0; color: #666; background: #faf8f5; padding: 0.75rem 1rem; border-radius: 0 4px 4px 0; }
+        pre { background: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; }
+        code { background: #f0f0f0; padding: 0.15rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+        pre code { background: transparent; padding: 0; }
+        hr { border: none; border-top: 2px solid #eee; margin: 1.5rem 0; }
+    </style>
+</head>
+<body>${content}</body>
+</html>`], { type: 'text/html' });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ project.project_name }}.html';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported as HTML');
+        });
+
+        // HTML to Markdown converter
+        function htmlToMarkdown(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+
+            function walk(node) {
+                let md = '';
+                for (const child of node.childNodes) {
+                    if (child.nodeType === 3) { // text node
+                        md += child.textContent;
+                    } else if (child.nodeType === 1) { // element
+                        const tag = child.tagName.toLowerCase();
+                        switch (tag) {
+                            case 'h1': md += `# ${walk(child).trim()}\n\n`; break;
+                            case 'h2': md += `## ${walk(child).trim()}\n\n`; break;
+                            case 'h3': md += `### ${walk(child).trim()}\n\n`; break;
+                            case 'p': md += `${walk(child).trim()}\n\n`; break;
+                            case 'strong': case 'b': md += `**${walk(child)}**`; break;
+                            case 'em': case 'i': md += `*${walk(child)}*`; break;
+                            case 'u': md += `__${walk(child)}__`; break;
+                            case 's': md += `~~${walk(child)}~~`; break;
+                            case 'code': md += `\`${child.textContent}\``; break;
+                            case 'pre': {
+                                const codeEl = child.querySelector('code');
+                                const code = codeEl ? codeEl.textContent : child.textContent;
+                                const langClass = codeEl ? (codeEl.className.match(/language-(\w+)/) || []) : [];
+                                const lang = langClass[1] || '';
+                                md += `\`\`\`${lang}\n${code.trim()}\n\`\`\`\n\n`;
+                                break;
+                            }
+                            case 'blockquote': {
+                                const lines = walk(child).trim().split('\n');
+                                md += lines.map(l => `> ${l}`).join('\n') + '\n\n';
+                                break;
+                            }
+                            case 'ul': {
+                                for (const li of child.children) {
+                                    if (li.tagName === 'LI') {
+                                        const checked = child.getAttribute('data-checked');
+                                        if (checked === 'true') md += `- [x] ${walk(li).trim()}\n`;
+                                        else if (checked === 'false') md += `- [ ] ${walk(li).trim()}\n`;
+                                        else md += `- ${walk(li).trim()}\n`;
+                                    }
+                                }
+                                md += '\n';
+                                break;
+                            }
+                            case 'ol': {
+                                let i = 1;
+                                for (const li of child.children) {
+                                    if (li.tagName === 'LI') {
+                                        md += `${i}. ${walk(li).trim()}\n`;
+                                        i++;
+                                    }
+                                }
+                                md += '\n';
+                                break;
+                            }
+                            case 'a': {
+                                const href = child.getAttribute('href');
+                                md += `[${walk(child)}](${href})`;
+                                break;
+                            }
+                            case 'img': {
+                                const src = child.getAttribute('src');
+                                const alt = child.getAttribute('alt') || '';
+                                md += `![${alt}](${src})`;
+                                break;
+                            }
+                            case 'hr': md += `---\n\n`; break;
+                            case 'br': md += '\n'; break;
+                            case 'li': md += walk(child); break;
+                            default: md += walk(child); break;
+                        }
+                    }
+                }
+                return md;
+            }
+
+            return walk(div).trim() + '\n';
+        }
+
+        // Export Markdown
+        document.getElementById('exportMarkdown').addEventListener('click', () => {
+            const content = quill.root.innerHTML;
+            const markdown = htmlToMarkdown(content);
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ project.project_name }}.md';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported as Markdown');
+        });
+
+        // Export Plain Text
+        document.getElementById('exportText').addEventListener('click', () => {
+            const text = quill.getText();
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ project.project_name }}.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Exported as Plain Text');
+        });
+
+        // ==================== UTILS ====================
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Connection status
+        function updateStatus(status) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            dot.className = 'status-dot ' + status;
+            text.textContent = status === 'connecting' ? 'Connecting...' :
+                              status === 'disconnected' ? 'Disconnected' : 'Connected';
+        }
+
+        setTimeout(() => updateStatus(''), 1000);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 's') {
+                    e.preventDefault();
+                    document.getElementById('saveBtn').click();
+                }
+                if (e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('linkBtn').click();
+                }
+                if (e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+                    e.preventDefault();
+                    document.getElementById('codeBlockBtn').click();
+                }
+            }
+        });
+
+        // Spin animation
+        const style = document.createElement('style');
+        style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+
+        // ==================== MARKDOWN SHORTCUTS ====================
+        // Type markdown-style prefixes and they auto-convert on space/enter
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^#{1,3}$/,
+            collapsed: true
+        }, function(range, context) {
+            const match = context.prefix.match(/^(#{1,3})$/);
+            if (!match) return true;
+            const level = match[1].length;
+            quill.deleteText(range.index - level, level);
+            quill.formatLine(range.index - level, 1, 'header', level);
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^[-*]$/,
+            collapsed: true
+        }, function(range, context) {
+            quill.deleteText(range.index - 1, 1);
+            quill.formatLine(range.index - 1, 1, 'list', 'bullet');
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^\d+\.$/,
+            collapsed: true
+        }, function(range, context) {
+            const len = context.prefix.length;
+            quill.deleteText(range.index - len, len);
+            quill.formatLine(range.index - len, 1, 'list', 'ordered');
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^>$/,
+            collapsed: true
+        }, function(range, context) {
+            quill.deleteText(range.index - 1, 1);
+            quill.formatLine(range.index - 1, 1, 'blockquote', true);
+            return false;
+        });
+
+        quill.keyboard.addBinding({ key: ' ' }, {
+            prefix: /^```$/,
+            collapsed: true
+        }, function(range, context) {
+            quill.deleteText(range.index - 3, 3);
+            quill.formatLine(range.index - 3, 1, 'code-block', true);
+            return false;
+        });
+
+
+        // ==================== VISIBILITY & BACKGROUND SYNC ====================
+
+        // Track when user left the page
+        let lastActiveTime = Date.now();
+
+        // Refresh data when user returns after being away
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const timeAway = Date.now() - lastActiveTime;
+                // If away for more than 2 minutes, refresh documents list
+                if (timeAway > 2 * 60 * 1000) {
+                    console.log('[Cache] User returned after extended absence, refreshing data');
+                    loadDocuments();
+                }
+            } else {
+                lastActiveTime = Date.now();
+            }
+        });
+
+        // Optional: Periodic background refresh every 5 minutes while active
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                API.getDocuments().then(data => {
+                    if (data.success && data.documents) {
+                        renderDocumentsList(data.documents);
+                    }
+                });
+            }
+        }, 5 * 60 * 1000);
+
+        // ==================== UNSAVED CHANGES WARNING ====================
+
+        let hasUnsavedChanges = false;
+        let lastSavedContent = '';
+
+        // Track content changes
+        quill.on('text-change', () => {
+            if (currentDocumentId) {
+                const currentContent = quill.root.innerHTML;
+                hasUnsavedChanges = currentContent !== lastSavedContent;
+            }
+        });
+
+        // Update lastSavedContent when document is loaded
+        const originalSelectDocument = selectDocument;
+        selectDocument = async function(docId, forceRefresh = false) {
+            // Check for unsaved changes before switching
+            if (hasUnsavedChanges && currentDocumentId && currentDocumentId !== docId) {
+                if (!await showConfirm('You have unsaved changes. Are you sure you want to switch documents?', 'Switch')) {
+                    return;
+                }
+            }
+
+            await originalSelectDocument(docId, forceRefresh);
+
+            // Update saved content reference
+            lastSavedContent = quill.root.innerHTML;
+            hasUnsavedChanges = false;
+        };
+
+        // ==================== PENDING NOTE MODAL ====================
+
+        let pendingSaveContent = null; // Store content while waiting for note
+
+        const pendingNoteModal = document.getElementById('pendingNoteModal');
+        const pendingNoteInput = document.getElementById('pendingNoteInput');
+        const pendingNoteCharCount = document.getElementById('pendingNoteCharCount');
+
+        // Character count for note
+        pendingNoteInput.addEventListener('input', () => {
+            pendingNoteCharCount.textContent = pendingNoteInput.value.length;
+        });
+
+        function showPendingNoteModal() {
+    pendingNoteInput.value = '';
+    pendingNoteCharCount.textContent = '0';
+    quill.disable();
+    pendingNoteModal.classList.add('show');
+    setTimeout(() => {
+        pendingNoteInput.focus();
+        pendingNoteInput.click();
+    }, 350);
+}
+
+function hidePendingNoteModal() {
+    pendingNoteModal.classList.remove('show');
+    pendingSaveContent = null;
+    quill.enable();
+}
+
+
+        document.getElementById('closePendingNoteModal').addEventListener('click', hidePendingNoteModal);
+        document.getElementById('cancelPendingNote').addEventListener('click', hidePendingNoteModal);
+
+        pendingNoteModal.addEventListener('click', (e) => {
+            if (e.target === pendingNoteModal) hidePendingNoteModal();
+        });
+
+        document.getElementById('confirmPendingNote').addEventListener('click', async () => {
+            const note = pendingNoteInput.value.trim();
+            if (!note) {
+                showToast('Please enter a note describing your changes', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmPendingNote');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Submitting...';
+
+            const data = await API.saveDocument(currentDocumentId, pendingSaveContent, note);
+            if (data.success) {
+                showToast('Changes submitted for review');
+                document.getElementById('lastModified').textContent = 'Just now';
+                hasUnsavedChanges = false;
+                hidePendingNoteModal();
+            } else {
+                showToast('Submit failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Submit for Review';
+        });
+
+        // Update after successful save
+        const originalSaveHandler = document.getElementById('saveBtn').onclick;
+        document.getElementById('saveBtn').onclick = null;
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            if (!currentDocumentId) {
+                showToast('No document selected', 'error');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            const content = quill.root.innerHTML;
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Saving...
+            `;
+
+            // First try without a note
+            const data = await API.saveDocument(currentDocumentId, content);
+            if (data.success) {
+                showToast(data.pending ? 'Changes submitted for review' : 'Saved successfully');
+                document.getElementById('lastModified').textContent = 'Just now';
+                lastSavedContent = content;
+                hasUnsavedChanges = false;
+            } else if (data.requires_note) {
+                // User needs to provide a note for pending review
+                pendingSaveContent = content;
+                showPendingNoteModal();
+                return;
+            } else {
+                showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Save
+            `;
+        });
+
+        // Warn before leaving page with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        // Also warn when clicking back button
+        document.querySelector('.back-btn').addEventListener('click', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                const href = e.currentTarget.href;
+                showConfirm('You have unsaved changes. Are you sure you want to leave?', 'Leave').then((confirmed) => {
+                    if (confirmed) {
+                        hasUnsavedChanges = false;
+                        window.location.href = href;
+                    }
+                });
+            }
+        });
+
+        // ==================== MOBILE SIDEBAR ====================
+
+        const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function openMobileSidebar() {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileSidebar() {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        mobileSidebarToggle.addEventListener('click', openMobileSidebar);
+        sidebarOverlay.addEventListener('click', closeMobileSidebar);
+
+        // Close sidebar when a document is selected on mobile
+        const origSelectDocument = selectDocument;
+        selectDocument = async function(docId, forceRefresh) {
+            closeMobileSidebar();
+            return origSelectDocument(docId, forceRefresh);
+        };
+
+        // ==================== INIT ====================
+
+        loadDocuments();
+    function getCookie(name) {
+let cookieValue = null;
+if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+    }
+}
+return cookieValue;
+}
+    </script>
+</body>
+</html>
