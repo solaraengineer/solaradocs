@@ -1,0 +1,1163 @@
+{% load socialaccount %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solara Docs</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'assets/favicon-512.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Claude-inspired warm darks */
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+
+            /* Borders */
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+
+            /* Text */
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+
+            /* Accents - Claude orange + DataGrip purple/teal */
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+
+            /* Docker blue */
+            --docker-blue: #2496ed;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::selection {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        /* Scrollbar - DataGrip style */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+
+        /* Layout */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar - DataGrip style */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .sidebar-header:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--bg-primary);
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 0;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 8px;
+        }
+
+        .nav-section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 8px 20px 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+            border-left-color: var(--accent-orange);
+        }
+
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        .nav-item.active svg {
+            opacity: 1;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            padding: 2px 6px;
+            background: var(--accent-blue);
+            color: var(--bg-primary);
+            font-size: 0.65rem;
+            font-weight: 600;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .sidebar-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 16px;
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .sidebar-cta:hover {
+            background: #e0b385;
+            transform: translateY(-1px);
+        }
+
+        .sidebar-cta svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Main content */
+        .main {
+            flex: 1;
+            margin-left: 260px;
+        }
+
+        /* Top bar - Docker style */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb-sep {
+            color: var(--text-tertiary);
+        }
+
+        .breadcrumb-current {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .topbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .topbar-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--text-tertiary);
+        }
+
+        .topbar-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .topbar-btn.primary {
+            background: var(--docker-blue);
+            border-color: var(--docker-blue);
+            color: white;
+        }
+
+        .topbar-btn.primary:hover {
+            background: #1a85d4;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--bg-primary);
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Hero section */
+        .hero {
+            padding: 80px 32px 60px;
+            max-width: 900px;
+        }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-teal);
+            margin-bottom: 24px;
+        }
+
+        .hero-tag-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .hero-title span {
+            color: var(--accent-orange);
+        }
+
+        .hero-desc {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #e0b385;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            border-color: var(--text-tertiary);
+        }
+
+        /* Code block preview */
+        .hero-preview {
+            margin-top: 48px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .preview-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .preview-dot.red { background: #d46a6a; }
+        .preview-dot.yellow { background: #d4a574; }
+        .preview-dot.green { background: #7fb069; }
+
+        .preview-title {
+            flex: 1;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        .preview-body {
+            display: flex;
+        }
+
+        .preview-sidebar {
+            width: 200px;
+            background: var(--bg-tertiary);
+            border-right: 1px solid var(--border-subtle);
+            padding: 12px 0;
+        }
+
+        .preview-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .preview-nav-item.active {
+            background: var(--bg-secondary);
+            color: var(--accent-orange);
+            border-left: 2px solid var(--accent-orange);
+        }
+
+        .preview-nav-item svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0.6;
+        }
+
+        .preview-content {
+            flex: 1;
+            padding: 24px;
+        }
+
+        .preview-doc-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .preview-doc-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-bottom: 20px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .preview-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .preview-line {
+            height: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .preview-line:nth-child(1) { width: 95%; }
+        .preview-line:nth-child(2) { width: 80%; }
+        .preview-line:nth-child(3) { width: 90%; }
+        .preview-line:nth-child(4) { width: 70%; }
+        .preview-line:nth-child(5) { width: 85%; }
+
+        /* Features grid */
+        .features {
+            padding: 60px 32px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .section-header {
+            margin-bottom: 40px;
+        }
+
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .feature-card:hover {
+            border-color: var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-elevated);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+        }
+
+        .feature-card:nth-child(1) .feature-icon { background: rgba(212, 165, 116, 0.15); }
+        .feature-card:nth-child(2) .feature-icon { background: rgba(107, 158, 206, 0.15); }
+        .feature-card:nth-child(3) .feature-icon { background: rgba(157, 124, 216, 0.15); }
+        .feature-card:nth-child(4) .feature-icon { background: rgba(95, 179, 161, 0.15); }
+        .feature-card:nth-child(5) .feature-icon { background: rgba(127, 176, 105, 0.15); }
+        .feature-card:nth-child(6) .feature-icon { background: rgba(36, 150, 237, 0.15); }
+
+        .feature-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .feature-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Stats section */
+        .stats {
+            padding: 60px 32px;
+            border-top: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .stat-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-orange);
+            letter-spacing: -0.02em;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* CTA section */
+        .cta {
+            padding: 80px 32px;
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .cta-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .cta-desc {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 32px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-copy {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .footer-link {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* Terminal-style code block */
+        .code-example {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            overflow-x: auto;
+        }
+
+        .code-line {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .code-prompt {
+            color: var(--accent-teal);
+            user-select: none;
+        }
+
+        .code-command {
+            color: var(--text-primary);
+        }
+
+        .code-flag {
+            color: var(--accent-purple);
+        }
+
+        .code-string {
+            color: var(--accent-orange);
+        }
+
+        .code-comment {
+            color: var(--text-tertiary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .preview-sidebar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                padding: 40px 20px;
+            }
+
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .hero-actions {
+                flex-direction: column;
+            }
+
+            .footer {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="/" class="sidebar-header">
+                <div class="logo">S</div>
+                <span class="logo-text">Solara Docs</span>
+            </a>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Overview</div>
+                    <a href="#" class="nav-item active">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        Home
+                    </a>
+                    <a href="#features" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                            <polyline points="2 17 12 22 22 17"/>
+                            <polyline points="2 12 12 17 22 12"/>
+                        </svg>
+                        Features
+                    </a>
+                    <a href="/docs" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Documentation
+                        <span class="nav-badge">NEW</span>
+                    </a>
+                    <a href="/buy" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Pricing
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Resources</div>
+                    <a href="/changelog" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Changelog
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Community</div>
+                    <a href="https://github.com" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        GitHub
+                    </a>
+                    <a href="/discord" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Discord
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                {% if request.user.is_authenticated %}
+                <a href="/dashboard" class="sidebar-cta">
+                    Go to Dashboard
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% else %}
+                <a href="/register" class="sidebar-cta">
+                    Get Started
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main">
+            <!-- Top bar -->
+            <div class="topbar">
+                <div class="topbar-breadcrumb">
+                    <span>Solara Docs</span>
+                    <span class="breadcrumb-sep">/</span>
+                    <span class="breadcrumb-current">Home</span>
+                </div>
+                <div class="topbar-actions">
+                    {% if request.user.is_authenticated %}
+                    <div class="user-menu">
+                        <span class="user-name">{{ request.user.username }}</span>
+                        <a href="/profile" class="user-avatar" title="Profile">
+                            {{ request.user.username|slice:":1"|upper }}
+                        </a>
+                        <a href="/dashboard" class="topbar-btn primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                            Dashboard
+                        </a>
+                    </div>
+                    {% else %}
+                    <a href="/login" class="topbar-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10 17 15 12 10 7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        Sign in
+                    </a>
+                    <a href="/register" class="topbar-btn primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        Create account
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Hero -->
+            <section class="hero">
+                <div class="hero-tag">
+                    <span class="hero-tag-dot"></span>
+                    v2.0 now available
+                </div>
+                <h1 class="hero-title">Documentation <span>made simple.</span></h1>
+                <p class="hero-desc">
+                    Version control and instant publishing. The modern way to create and maintain documentation for your team.
+                </p>
+                <div class="hero-actions">
+                    {% if request.user.is_authenticated %}
+                    <a href="/dashboard" class="btn btn-primary">
+                        Go to Dashboard
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </a>
+                    {% else %}
+                    <a href="/register" class="btn btn-primary">
+                        Get started free
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </a>
+                    {% endif %}
+                    <a href="/docs" class="btn btn-secondary">
+                        Read the docs
+                    </a>
+                </div>
+
+                <!-- Preview window -->
+                <div class="hero-preview">
+                    <div class="preview-header">
+                        <div class="preview-dot red"></div>
+                        <div class="preview-dot yellow"></div>
+                        <div class="preview-dot green"></div>
+                        <span class="preview-title">getting-started.md</span>
+                    </div>
+                    <div class="preview-body">
+                        <div class="preview-sidebar">
+                            <div class="preview-nav-item active">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                                Getting Started
+                            </div>
+                            <div class="preview-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="16 18 22 12 16 6"/>
+                                    <polyline points="8 6 2 12 8 18"/>
+                                </svg>
+                                API Reference
+                            </div>
+                            <div class="preview-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                                Deployment
+                            </div>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-doc-title">Getting Started</div>
+                            <div class="preview-doc-meta">
+                                <span>Last updated: 2h ago</span>
+                                <span>3 min read</span>
+                            </div>
+                            <div class="preview-lines">
+                                <div class="preview-line"></div>
+                                <div class="preview-line"></div>
+                                <div class="preview-line"></div>
+                                <div class="preview-line"></div>
+                                <div class="preview-line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terminal example -->
+                <div class="code-example">
+                    <div class="code-line">
+                        <span class="code-prompt">$</span>
+                        <span class="code-command">npx</span>
+                        <span class="code-string">solara-docs</span>
+                        <span class="code-flag">init</span>
+                    </div>
+                    <div class="code-line">
+                        <span class="code-comment"># Creating your workspace...</span>
+                    </div>
+                    <div class="code-line">
+                        <span class="code-comment"># Project initialized</span>
+                    </div>
+                    <div class="code-line">
+                        <span class="code-comment"># Ready at http://localhost:3000</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Features -->
+            <section id="features" class="features">
+                <div class="section-header">
+                    <div class="section-tag">// Features</div>
+                    <h2 class="section-title">Everything you need</h2>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">@</div>
+                        <h3 class="feature-title">End-to-end encryption</h3>
+                        <p class="feature-desc">Your documents are encrypted at rest and in transit.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">#</div>
+                        <h3 class="feature-title">Version control</h3>
+                        <p class="feature-desc">Full history. Instant rollback. Time travel for your docs.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">></div>
+                        <h3 class="feature-title">Instant publishing</h3>
+                        <p class="feature-desc">One click to go live. Custom domains and SEO optimization.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">~</div>
+                        <h3 class="feature-title">Markdown native</h3>
+                        <p class="feature-desc">Write in markdown with live preview and syntax highlighting.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">&</div>
+                        <h3 class="feature-title">API access</h3>
+                        <p class="feature-desc">Full REST API. Automate your docs workflow.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats -->
+            <section class="stats">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">50ms</div>
+                        <div class="stat-label">Response time</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">inf</div>
+                        <div class="stat-label">Projects</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">24/7</div>
+                        <div class="stat-label">Support</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA -->
+            <section class="cta">
+                <h2 class="cta-title">Ready to get started?</h2>
+                <p class="cta-desc">Create your first project in under a minute.</p>
+                {% if request.user.is_authenticated %}
+                <a href="/setup" class="btn btn-primary">
+                    Create new project
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% else %}
+                <a href="/register" class="btn btn-primary">
+                    Start for free
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% endif %}
+            </section>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="footer-copy">2025 Solara Docs</div>
+                <div class="footer-links">
+                    <a href="/privacy" class="footer-link">Privacy</a>
+                    <a href="/terms" class="footer-link">Terms</a>
+                    <a href="/security" class="footer-link">Security</a>
+                    <a href="https://github.com" class="footer-link">GitHub</a>
+                    <a href="/contact" class="footer-link">Contact</a>
+                </div>
+            </footer>
+        </main>
+    </div>
+<!-- Beta Badge -->
+<div style="
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--accent-orange);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    z-index: 999;
+    max-width: 240px;
+    line-height: 1.5;
+">
+    <span style="color: var(--accent-orange); font-weight: 600;">⚡ EARLY ACCESS BETA</span><br>
+    Some features like backups are still in progress.
+</div>
+</body>
+</html>

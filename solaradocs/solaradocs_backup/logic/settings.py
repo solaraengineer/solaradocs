@@ -17,7 +17,7 @@ JWT_PRIVATE_KEY = base64.b64decode(os.getenv('JWT_PRIVATE_KEY', '')).decode('utf
 JWT_PUBLIC_KEY = base64.b64decode(os.getenv('JWT_PUBLIC_KEY', '')).decode('utf-8')
 
 AUTH_USER_MODEL = 'solaradocs.User'
-
+WARDENT_SECRET = os.environ.get("RUST_HEADER")
 
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
@@ -50,6 +50,7 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    "logic.wardent_middleware.WardentMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

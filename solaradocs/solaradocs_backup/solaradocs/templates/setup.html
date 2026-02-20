@@ -1,0 +1,935 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Project - Solara Docs</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'assets/favicon-512.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        /* Left Side - Branding */
+        .brand-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem;
+            position: relative;
+            background: var(--bg-primary);
+        }
+
+        .logo {
+            position: absolute;
+            top: 2.5rem;
+            left: 4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 2.5rem;
+            right: 4rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .back-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-orange);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--bg-primary);
+        }
+
+        .brand-content {
+            max-width: 480px;
+        }
+
+        .brand-content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .brand-content > p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-orange);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Features */
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .feature-check {
+            width: 20px;
+            height: 20px;
+            background: rgba(212, 165, 116, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-orange);
+            flex-shrink: 0;
+        }
+
+        .feature-check svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .feature-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Right Side - Form */
+        .form-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .form-header p {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-label-optional {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+        }
+
+        /* Checkbox */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.875rem;
+            padding: 1.25rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-wrapper:hover {
+            border-color: var(--border);
+        }
+
+        .checkbox-wrapper:has(input:checked) {
+            border-color: var(--accent-orange);
+            background: rgba(212, 165, 116, 0.08);
+        }
+
+        .checkbox-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-wrapper:has(input:checked) .checkbox-box {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+        }
+
+        .checkbox-box svg {
+            width: 12px;
+            height: 12px;
+            color: var(--bg-primary);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .checkbox-wrapper:has(input:checked) .checkbox-box svg {
+            opacity: 1;
+        }
+
+        .checkbox-input {
+            display: none;
+        }
+
+        .checkbox-content {
+            flex: 1;
+        }
+
+        .checkbox-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+            margin-bottom: 0.15rem;
+            color: var(--text-primary);
+        }
+
+        .checkbox-desc {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.875rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(212, 165, 116, 0.25);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Back link */
+        .back-link {
+            position: absolute;
+            top: 2.5rem;
+            left: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+
+        .back-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-side {
+                display: none;
+            }
+
+            .form-side {
+                border-left: none;
+            }
+
+            .back-link {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-side {
+                padding: 2rem 1.5rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Notification Modal */
+        .notif-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .notif-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .notif-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 380px;
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .notif-overlay.show .notif-box {
+            transform: scale(1) translateY(0);
+        }
+
+        .notif-icon-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.75rem 1.5rem 0.75rem;
+        }
+
+        .notif-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notif-icon-circle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .notif-icon-circle.success {
+            background: rgba(127, 176, 105, 0.15);
+            color: var(--accent-green);
+        }
+
+        .notif-icon-circle.error {
+            background: rgba(212, 106, 106, 0.15);
+            color: var(--accent-red);
+        }
+
+        .notif-content {
+            text-align: center;
+            padding: 0.75rem 1.75rem 1.25rem;
+        }
+
+        .notif-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .notif-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .notif-actions {
+            padding: 0 1.5rem 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .notif-btn {
+            padding: 0.6rem 2rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .notif-btn.success {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .notif-btn.success:hover {
+            box-shadow: 0 4px 16px rgba(127, 176, 105, 0.3);
+        }
+
+        .notif-btn.error {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .notif-btn.error:hover {
+            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Side - Branding -->
+        <div class="brand-side">
+            <a href="/" class="logo">
+                <div class="logo-icon">S</div>
+                <span>Solara Docs</span>
+            </a>
+
+            <a href="/dashboard" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Back to Dashboard
+            </a>
+
+            <div class="brand-content">
+                <h1>Start building together</h1>
+                <p>Create a project and invite your team to collaborate in real-time with automatic backups and version control.</p>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-number">5-10</div>
+                        <div class="stat-label">Team members per project</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">&#8734;</div>
+                        <div class="stat-label">Automatic backups</div>
+                    </div>
+                </div>
+
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Automatic version backups</span>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Role-based permissions</span>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <span class="feature-text">Instant publishing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Form -->
+        <div class="form-side">
+            <div class="form-container">
+                <a href="/dashboard" class="back-link" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    Back to dashboard
+                </a>
+
+                <div class="form-header">
+                    <h2>Create Project</h2>
+                    <p>Set up your collaborative workspace</p>
+                </div>
+
+                <form id="setupForm">
+                    {% csrf_token %}
+
+                    <div class="form-group">
+                        <label class="form-label" for="projectName">Project Name</label>
+                        <input
+                            type="text"
+                            class="form-input"
+                            id="projectName"
+                            name="project_name"
+                            placeholder="My Awesome Project"
+                            required
+                        >
+                        <p class="form-hint">Choose a descriptive name for your project</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" class="checkbox-input" id="backupsCheckbox" name="backups" checked>
+                            <div class="checkbox-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="checkbox-content">
+                                <div class="checkbox-title">Enable Backups</div>
+                                <div class="checkbox-desc">Automatically save versions of your project for rollback</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/dashboard/'">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            Create Project
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tier configuration from server
+        const tierConfig = {
+            maxProjects: {{ tier_config.max_projects|default:"null" }},
+            maxCollaborators: {{ tier_config.max_collaborators|default:"null" }},
+            backupsEnabled: {{ tier_config.backups_enabled|yesno:"true,false" }}
+        };
+        const userTier = "{{ tier|default:'Free' }}";
+
+        // JWT Token Management with Auto-Refresh
+        const TokenManager = {
+            getToken() {
+                return localStorage.getItem('token');
+            },
+            setToken(token) {
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
+            },
+            clearToken() {
+                localStorage.removeItem('token');
+            },
+            async refreshToken() {
+                try {
+                    const res = await fetch('/gen/token', { credentials: 'include' });
+                    const data = await res.json();
+                    if (data.success && data.token) {
+                        this.setToken(data.token);
+                        return data.token;
+                    }
+                } catch (e) {
+                    console.error('Token refresh failed:', e);
+                }
+                return null;
+            }
+        };
+
+        // Check auth and initialize token
+        (async function() {
+            let token = TokenManager.getToken();
+            if (!token) {
+                // Try to get token from session
+                token = await TokenManager.refreshToken();
+                if (!token) {
+                    window.location.href = '/login/';
+                    return;
+                }
+            }
+
+            // Show tier limits info
+            const limitsInfo = [];
+            if (tierConfig.maxProjects !== null) {
+                limitsInfo.push('Max ' + tierConfig.maxProjects + ' projects');
+            }
+            if (tierConfig.maxCollaborators !== null) {
+                limitsInfo.push('Max ' + tierConfig.maxCollaborators + ' collaborators');
+            }
+            if (!tierConfig.backupsEnabled) {
+                const backupCheckbox = document.getElementById('backupsCheckbox');
+                if (backupCheckbox) {
+                    backupCheckbox.checked = false;
+                    backupCheckbox.disabled = true;
+                    backupCheckbox.closest('.checkbox-wrapper').style.opacity = '0.5';
+                    backupCheckbox.closest('.checkbox-wrapper').style.cursor = 'not-allowed';
+                }
+            }
+        })();
+
+        // Authenticated fetch with auto token refresh
+        async function authFetch(url, options = {}) {
+            const token = TokenManager.getToken();
+            const headers = { ...(options.headers || {}) };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            let response = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include'
+            });
+
+            if (response.status === 401) {
+                const data = await response.json();
+                if (data.new_token) {
+                    TokenManager.setToken(data.new_token);
+                    headers['Authorization'] = `Bearer ${data.new_token}`;
+                    response = await fetch(url, { ...options, headers, credentials: 'include' });
+                } else {
+                    const newToken = await TokenManager.refreshToken();
+                    if (newToken) {
+                        headers['Authorization'] = `Bearer ${newToken}`;
+                        response = await fetch(url, { ...options, headers, credentials: 'include' });
+                    } else {
+                        TokenManager.clearToken();
+                        showNotif('Session expired. Please login again.', 'error');
+                        setTimeout(() => { window.location.href = '/login/'; }, 2600);
+                        return null;
+                    }
+                }
+            }
+            return response;
+        }
+
+        // Form submission
+        document.getElementById('setupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const token = TokenManager.getToken();
+            if (!token) {
+                // Try to refresh token from session
+                const newToken = await TokenManager.refreshToken();
+                if (!newToken) {
+                    showNotif('You must be logged in to create a project', 'error');
+                    setTimeout(() => { window.location.href = '/login/'; }, 2600);
+                    return;
+                }
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            const formData = new FormData();
+            formData.append('project_name', document.getElementById('projectName').value);
+            if (document.getElementById('backupsCheckbox').checked) {
+                formData.append('backups', 'on');
+            }
+
+            try {
+                const response = await authFetch('/setup/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: formData
+                });
+
+                if (!response) return;
+
+                const data = await response.json();
+                if (data.success) {
+                    submitBtn.textContent = 'Success!';
+                    window.location.href = data.redirect || '/dashboard/';
+                } else {
+                    showNotif(data.error || 'Failed to create project', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Project';
+                }
+            } catch (error) {
+                showNotif('Failed to create project', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Project';
+            }
+        });
+
+        let notifTimer = null;
+
+        function showNotif(message, type = 'success') {
+            const overlay = document.getElementById('notifOverlay');
+            const iconCircle = document.getElementById('notifIconCircle');
+            const successIcon = document.getElementById('notifIconSuccess');
+            const errorIcon = document.getElementById('notifIconError');
+            const title = document.getElementById('notifTitle');
+            const msg = document.getElementById('notifMessage');
+            const btn = document.getElementById('notifBtn');
+
+            iconCircle.className = 'notif-icon-circle ' + type;
+            btn.className = 'notif-btn ' + type;
+            successIcon.style.display = type === 'success' ? 'block' : 'none';
+            errorIcon.style.display = type === 'error' ? 'block' : 'none';
+            title.textContent = type === 'success' ? 'Success' : 'Error';
+            msg.textContent = message;
+
+            overlay.classList.add('show');
+
+            if (notifTimer) clearTimeout(notifTimer);
+            if (type === 'success') {
+                notifTimer = setTimeout(() => closeNotif(), 2500);
+            }
+        }
+
+        function closeNotif() {
+            document.getElementById('notifOverlay').classList.remove('show');
+            if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
+        }
+
+        document.getElementById('notifOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeNotif();
+        });
+
+        // Show back link on mobile
+        if (window.innerWidth <= 1024) {
+            document.querySelector('.back-link').style.display = 'flex';
+        }
+
+        window.addEventListener('resize', () => {
+            const backLink = document.querySelector('.back-link');
+            backLink.style.display = window.innerWidth <= 1024 ? 'flex' : 'none';
+        });
+    </script>
+
+    <div class="notif-overlay" id="notifOverlay">
+        <div class="notif-box">
+            <div class="notif-icon-area">
+                <div class="notif-icon-circle" id="notifIconCircle">
+                    <svg id="notifIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <svg id="notifIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="notif-content">
+                <div class="notif-title" id="notifTitle"></div>
+                <div class="notif-message" id="notifMessage"></div>
+            </div>
+            <div class="notif-actions">
+                <button class="notif-btn" id="notifBtn" onclick="closeNotif()">OK</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
