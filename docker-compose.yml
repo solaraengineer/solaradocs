@@ -51,9 +51,9 @@ services:
       - .:/app
     environment:
       - DEBUG=False
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - SECRET_KEY=${DJANGO_SECRET_KEY}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
@@ -66,7 +66,7 @@ services:
       - otel-collector
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.96.0
     command: ["--config", "/etc/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
@@ -79,7 +79,7 @@ services:
       - tempo
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.7.0
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml

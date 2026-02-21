@@ -1,0 +1,322 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ error_code }} — Solara Docs</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-purple: #9d7cd8;
+            --accent-teal: #5fb3a1;
+            --accent-red: #d46a6a;
+            --accent-green: #7fb069;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        ::selection {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        /* Subtle grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--border-subtle) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* Radial glow behind the error code */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212, 165, 116, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            padding: 40px;
+            max-width: 560px;
+        }
+
+        /* Solara logo — custom SVG */
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 56px;
+            text-decoration: none;
+            opacity: 0;
+            animation: fadeDown 0.6s ease forwards;
+        }
+
+        .logo-mark {
+            width: 36px;
+            height: 36px;
+            position: relative;
+        }
+
+        .logo-mark svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .logo-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .logo-text span {
+            color: var(--accent-orange);
+        }
+
+        /* Error code */
+        .error-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(6rem, 15vw, 10rem);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            color: var(--bg-tertiary);
+            position: relative;
+            margin-bottom: 24px;
+            opacity: 0;
+            animation: fadeUp 0.7s ease 0.15s forwards;
+        }
+
+        .error-code::after {
+            content: attr(data-code);
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            opacity: 0.5;
+            filter: blur(0px);
+        }
+
+        /* Message */
+        .error-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            opacity: 0;
+            animation: fadeUp 0.7s ease 0.3s forwards;
+        }
+
+        .error-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: fadeUp 0.7s ease 0.4s forwards;
+        }
+
+        /* Button */
+        .btn-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            opacity: 0;
+            animation: fadeUp 0.7s ease 0.5s forwards;
+        }
+
+        .btn-home:hover {
+            background: var(--bg-elevated);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(212, 165, 116, 0.1);
+        }
+
+        .btn-home svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-home:hover svg {
+            transform: translateX(-3px);
+        }
+
+        /* Wardent badge */
+        .wardent-badge {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-tertiary);
+            letter-spacing: 0.04em;
+            opacity: 0;
+            animation: fadeUp 0.7s ease 0.7s forwards;
+        }
+
+        .wardent-badge .shield {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-teal);
+        }
+
+        .wardent-badge span {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Animations */
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scanline flicker on error code — subtle */
+        .error-code::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -10%;
+            width: 120%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(26, 25, 21, 0.15) 2px,
+                rgba(26, 25, 21, 0.15) 4px
+            );
+            pointer-events: none;
+            animation: scanFlicker 4s ease-in-out infinite;
+        }
+
+        @keyframes scanFlicker {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .container { padding: 24px; }
+            .logo { margin-bottom: 40px; }
+            .error-code { font-size: 5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Logo -->
+        <a href="/" class="logo">
+            <div class="logo-mark">
+                <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Outer hexagonal shield shape -->
+                    <path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" fill="none" stroke="url(#logoGrad)" stroke-width="1.5"/>
+                    <!-- Inner S letterform built from geometric paths -->
+                    <path d="M22 13.5C22 11.5 20.2 10 18 10C15.8 10 14 11.5 14 13.5C14 15.5 15.8 16.5 18 17C20.2 17.5 22 18.5 22 20.5C22 22.5 20.2 24 18 24C15.8 24 14 22.5 14 20.5" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round"/>
+                    <!-- Decorative dots at terminals -->
+                    <circle cx="22" cy="13.5" r="1.5" fill="#d4a574"/>
+                    <circle cx="14" cy="20.5" r="1.5" fill="#9d7cd8"/>
+                    <defs>
+                        <linearGradient id="logoGrad" x1="4" y1="2" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#d4a574"/>
+                            <stop offset="1" stop-color="#9d7cd8"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class="logo-text">Solara <span>Docs</span></div>
+        </a>
+
+        <!-- Error -->
+        <div class="error-code" data-code="{{ error_code }}">{{ error_code }}</div>
+        <h1 class="error-title">{{ error_title }}</h1>
+        <p class="error-desc">{{ error_desc }}</p>
+
+        <a href="/" class="btn-home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"/>
+                <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Back to safety
+        </a>
+    </div>
+
+    <!-- Wardent badge -->
+    <div class="wardent-badge">
+        <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Protected by <span>Wardent</span>
+    </div>
+</body>
+</html>

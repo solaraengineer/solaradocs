@@ -30,6 +30,59 @@ USERNAME_REGEX = re.compile(r'^[a-zA-Z0-9_@#$!]+$')
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 
+ERROR_PAGES = {
+    400: {
+        'error_code': '400',
+        'error_title': 'Bad request.',
+        'error_desc': 'Something about that request didn\'t make sense. Double-check and try again.',
+    },
+    401: {
+        'error_code': '401',
+        'error_title': 'Not authenticated.',
+        'error_desc': 'You need to be logged in to access this. Sign in and try again.',
+    },
+    403: {
+        'error_code': '403',
+        'error_title': 'Access denied.',
+        'error_desc': 'You don\'t have permission to be here. If this is a mistake, contact support.',
+    },
+    404: {
+        'error_code': '404',
+        'error_title': 'Page not found.',
+        'error_desc': 'Whatever you were looking for isn\'t here. It may have been moved or deleted.',
+    },
+    408: {
+        'error_code': '408',
+        'error_title': 'Request timed out.',
+        'error_desc': 'The server waited too long for your request. Check your connection and try again.',
+    },
+    413: {
+        'error_code': '413',
+        'error_title': 'That\'s too heavy.',
+        'error_desc': 'The request body exceeds the maximum allowed size. Try sending less data.',
+    },
+    429: {
+        'error_code': '429',
+        'error_title': 'Slow down there.',
+        'error_desc': 'You\'re sending too many requests. Take a breath and try again in a moment.',
+    },
+    500: {
+        'error_code': '500',
+        'error_title': 'Something went wrong.',
+        'error_desc': 'An unexpected error occurred on our end. We\'re probably already looking into it.',
+    },
+    502: {
+        'error_code': '502',
+        'error_title': 'Something broke upstream.',
+        'error_desc': 'The server received an invalid response. We\'re probably already on it.',
+    },
+    503: {
+        'error_code': '503',
+        'error_title': 'Service unavailable.',
+        'error_desc': 'We\'re temporarily offline for maintenance or overloaded. Try again shortly.',
+    },
+}
+
 def sanitize_string(value, max_length, pattern, field_name):
     if not isinstance(value, str):
         return None, f'{field_name} must be a string'
@@ -73,11 +126,14 @@ TIER_LIMITS = {
 @require_GET
 @ratelimit(key='ip', rate='10/m', block=True)
 def get_oauth_token(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
 
-    token = generate_auth_token(request.user.id)
-    return JsonResponse({'success': True, 'token': token})
+        token = generate_auth_token(request.user.id)
+        return JsonResponse({'success': True, 'token': token})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 def generate_auth_token(user_id):
@@ -136,8 +192,11 @@ def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    projects = Project.objects.filter(owner_id=request.user.id).order_by('-created_at')
-    return render(request, 'dashboard.html', {'projects': projects})
+    try:
+        projects = Project.objects.filter(owner_id=request.user.id).order_by('-created_at')
+        return render(request, 'dashboard.html', {'projects': projects})
+    except Exception:
+        return render_error(request, 500)
 
 
 @require_auth_token
@@ -145,92 +204,98 @@ def dashboard(request):
 @ratelimit(key='ip', rate='10/m', block=True)
 def setup(request):
     if request.method == 'GET':
+        try:
+            user_tier = request.user.Tier
+            tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
+            return render(request, 'setup.html', {'tier': user_tier, 'tier_config': tier_config})
+        except Exception:
+            return render_error(request, 500)
+
+    try:
         user_tier = request.user.Tier
+        if user_tier not in TIER_LIMITS:
+            return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
+
         tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
-        return render(request, 'setup.html', {'tier': user_tier, 'tier_config': tier_config})
 
-    user_tier = request.user.Tier
-    if user_tier not in TIER_LIMITS:
-        return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
-
-    tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
-
-    project_name, error = sanitize_string(
-        request.POST.get('project_name', ''),
-        max_length=100,
-        pattern=PROJECT_NAME_REGEX,
-        field_name='Project name'
-    )
-    if error:
-        return JsonResponse({'success': False, 'error': error}, status=400)
-
-    backups_raw = request.POST.get('backups', '')
-    if backups_raw not in ('', 'true', 'false', '1', '0', 'on', 'off', True, False):
-        return JsonResponse({'success': False, 'error': 'Invalid backups value'}, status=400)
-
-    backups_enabled = backups_raw in ('true', '1', 'on', True) and tier_config.get('backups', False)
-
-    raw_people = request.POST.get('people', '')
-    people = []
-
-    if raw_people.strip():
-        for username in raw_people.split():
-            username = username.strip()
-            if not username:
-                continue
-
-            clean_username, error = sanitize_string(
-                username,
-                max_length=50,
-                pattern=USERNAME_REGEX,
-                field_name='Username'
-            )
-            if error:
-                return JsonResponse({'success': False, 'error': f'Invalid username: {username}'}, status=400)
-
-            if not User.objects.filter(username=clean_username).exists():
-                return JsonResponse({'success': False, 'error': f'User not found: {clean_username}'}, status=404)
-
-            people.append(clean_username)
-
-    people = list(dict.fromkeys(people))
-
-    current_project_count = Project.objects.filter(owner=request.user).count()
-    max_projects = tier_config.get('projects')
-    if max_projects is not None and current_project_count >= max_projects:
-        return JsonResponse({'success': False, 'error': 'Project limit reached for your tier'}, status=403)
-
-    max_collaborators = tier_config.get('members')
-    if max_collaborators is not None and len(people) > max_collaborators:
-        return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'},
-                            status=403)
-
-    with transaction.atomic():
-        project = Project.objects.create(
-            owner=request.user,
-            project_name=project_name,
-            people=','.join(people),
-            backups_enabled=backups_enabled,
-            tier=user_tier,
+        project_name, error = sanitize_string(
+            request.POST.get('project_name', ''),
+            max_length=100,
+            pattern=PROJECT_NAME_REGEX,
+            field_name='Project name'
         )
-        if people:
-            Contributor.objects.bulk_create(
-                [Contributor(project=project, username=p, role='VIEWER') for p in people]
+        if error:
+            return JsonResponse({'success': False, 'error': error}, status=400)
+
+        backups_raw = request.POST.get('backups', '')
+        if backups_raw not in ('', 'true', 'false', '1', '0', 'on', 'off', True, False):
+            return JsonResponse({'success': False, 'error': 'Invalid backups value'}, status=400)
+
+        backups_enabled = backups_raw in ('true', '1', 'on', True) and tier_config.get('backups', False)
+
+        raw_people = request.POST.get('people', '')
+        people = []
+
+        if raw_people.strip():
+            for username in raw_people.split():
+                username = username.strip()
+                if not username:
+                    continue
+
+                clean_username, error = sanitize_string(
+                    username,
+                    max_length=50,
+                    pattern=USERNAME_REGEX,
+                    field_name='Username'
+                )
+                if error:
+                    return JsonResponse({'success': False, 'error': f'Invalid username: {username}'}, status=400)
+
+                if not User.objects.filter(username=clean_username).exists():
+                    return JsonResponse({'success': False, 'error': f'User not found: {clean_username}'}, status=404)
+
+                people.append(clean_username)
+
+        people = list(dict.fromkeys(people))
+
+        current_project_count = Project.objects.filter(owner=request.user).count()
+        max_projects = tier_config.get('projects')
+        if max_projects is not None and current_project_count >= max_projects:
+            return JsonResponse({'success': False, 'error': 'Project limit reached for your tier'}, status=403)
+
+        max_collaborators = tier_config.get('members')
+        if max_collaborators is not None and len(people) > max_collaborators:
+            return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'},
+                                status=403)
+
+        with transaction.atomic():
+            project = Project.objects.create(
+                owner=request.user,
+                project_name=project_name,
+                people=','.join(people),
+                backups_enabled=backups_enabled,
+                tier=user_tier,
+            )
+            if people:
+                Contributor.objects.bulk_create(
+                    [Contributor(project=project, username=p, role='VIEWER') for p in people]
+                )
+
+            public_team = Teams.objects.create(
+                project=project,
+                team_name='Public',
             )
 
-        public_team = Teams.objects.create(
-            project=project,
-            team_name='Public',
-        )
+            Documents.objects.create(
+                project=project,
+                document_name='Getting Started',
+                content='',
+                team_assigned=public_team,
+            )
 
-        Documents.objects.create(
-            project=project,
-            document_name='Getting Started',
-            content='',
-            team_assigned=public_team,
-        )
-
-    return JsonResponse({'success': True, 'redirect': '/dashboard/'})
+        return JsonResponse({'success': True, 'redirect': '/dashboard/'})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -242,54 +307,57 @@ def change_roles(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    project_id = data.get('project_id')
-    contributor_id = data.get('contributor_id')
-    new_role = data.get('role', '')
+    try:
+        project_id = data.get('project_id')
+        contributor_id = data.get('contributor_id')
+        new_role = data.get('role', '')
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(new_role, str):
-        return JsonResponse({'success': False, 'error': 'Invalid role type'}, status=400)
+        if not isinstance(new_role, str):
+            return JsonResponse({'success': False, 'error': 'Invalid role type'}, status=400)
 
-    new_role = new_role.upper().strip()
+        new_role = new_role.upper().strip()
 
-    if new_role not in ('VIEWER', 'EDITOR', 'ADMIN'):
-        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
+        if new_role not in ('VIEWER', 'EDITOR', 'ADMIN'):
+            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = request.user.id == project.owner_id
-    is_admin_contributor = False
+        is_owner = request.user.id == project.owner_id
+        is_admin_contributor = False
 
-    if not is_owner:
-        is_admin_contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
+        if not is_owner:
+            is_admin_contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
+                role='ADMIN'
+            ).exists()
 
-    if not is_owner and not is_admin_contributor:
-        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        if not is_owner and not is_admin_contributor:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
-    if is_admin_contributor and not is_owner:
-        target = Contributor.objects.filter(id=contributor_id, project_id=project_id).first()
-        if not target:
+        if is_admin_contributor and not is_owner:
+            target = Contributor.objects.filter(id=contributor_id, project_id=project_id).first()
+            if not target:
+                return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
+            if target.role == 'ADMIN':
+                return JsonResponse({'success': False, 'error': 'Only project owner can change admin roles'}, status=403)
+            if new_role == 'ADMIN':
+                return JsonResponse({'success': False, 'error': 'Only project owner can assign admin role'}, status=403)
+
+        updated = Contributor.objects.filter(id=contributor_id, project_id=project_id).update(role=new_role)
+
+        if not updated:
             return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
-        if target.role == 'ADMIN':
-            return JsonResponse({'success': False, 'error': 'Only project owner can change admin roles'}, status=403)
-        if new_role == 'ADMIN':
-            return JsonResponse({'success': False, 'error': 'Only project owner can assign admin role'}, status=403)
 
-    updated = Contributor.objects.filter(id=contributor_id, project_id=project_id).update(role=new_role)
-
-    if not updated:
-        return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
-
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @ratelimit(key='ip', rate='5/m', block=True)
@@ -301,69 +369,72 @@ def add_people(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    project_id = data.get('project_id')
-    usernames = data.get('usernames', '')
+    try:
+        project_id = data.get('project_id')
+        usernames = data.get('usernames', '')
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(usernames, str):
-        return JsonResponse({'success': False, 'error': 'Invalid usernames format'}, status=400)
+        if not isinstance(usernames, str):
+            return JsonResponse({'success': False, 'error': 'Invalid usernames format'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if request.user.id != project.owner.id:
-        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        if request.user.id != project.owner.id:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
-    people = list({p.strip() for p in usernames.split() if p.strip()})
+        people = list({p.strip() for p in usernames.split() if p.strip()})
 
-    if not people:
-        return JsonResponse({'success': False, 'error': 'No usernames provided'}, status=400)
+        if not people:
+            return JsonResponse({'success': False, 'error': 'No usernames provided'}, status=400)
 
-    for username in people:
-        if not USERNAME_REGEX.match(username):
-            return JsonResponse({'success': False, 'error': f'Invalid username format: {username}'}, status=400)
-        if not User.objects.filter(username=username).exists():
-            return JsonResponse({'success': False, 'error': f'User {username} not found'}, status=404)
+        for username in people:
+            if not USERNAME_REGEX.match(username):
+                return JsonResponse({'success': False, 'error': f'Invalid username format: {username}'}, status=400)
+            if not User.objects.filter(username=username).exists():
+                return JsonResponse({'success': False, 'error': f'User {username} not found'}, status=404)
 
-    user_tier = request.user.Tier
-    tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
-    max_collaborators = tier_config.get('members')
+        user_tier = request.user.Tier
+        tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
+        max_collaborators = tier_config.get('members')
 
-    current_count = Contributor.objects.filter(project_id=project_id).count()
-    if max_collaborators is not None and (current_count + len(people)) > max_collaborators:
-        return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'},
-                            status=403)
+        current_count = Contributor.objects.filter(project_id=project_id).count()
+        if max_collaborators is not None and (current_count + len(people)) > max_collaborators:
+            return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'},
+                                status=403)
 
-    existing = set(
-        Contributor.objects.filter(project_id=project_id, username__in=people).values_list('username', flat=True)
-    )
-    new_people = [p for p in people if p not in existing]
-
-    for username in new_people:
-        target_user = User.objects.filter(username=username).first()
-        if not target_user:
-            return JsonResponse({'success': False, 'error': f'User {username} not found'}, status=404)
-        target_tier = target_user.Tier.lower()
-        target_tier_config = TIER_LIMITS.get(target_tier, TIER_LIMITS['free'])
-        max_collaborations = target_tier_config.get('collaborations')
-        if max_collaborations is not None:
-            current_collaborations = Contributor.objects.filter(username=username).count()
-            if current_collaborations >= max_collaborations:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'{username} has reached their collaboration limit ({max_collaborations} projects) for their tier'
-                }, status=403)
-
-    if new_people:
-        Contributor.objects.bulk_create(
-            [Contributor(project_id=project_id, username=p, role='VIEWER') for p in new_people]
+        existing = set(
+            Contributor.objects.filter(project_id=project_id, username__in=people).values_list('username', flat=True)
         )
+        new_people = [p for p in people if p not in existing]
 
-    return JsonResponse({'success': True, 'added_count': len(new_people)})
+        for username in new_people:
+            target_user = User.objects.filter(username=username).first()
+            if not target_user:
+                return JsonResponse({'success': False, 'error': f'User {username} not found'}, status=404)
+            target_tier = target_user.Tier.lower()
+            target_tier_config = TIER_LIMITS.get(target_tier, TIER_LIMITS['free'])
+            max_collaborations = target_tier_config.get('collaborations')
+            if max_collaborations is not None:
+                current_collaborations = Contributor.objects.filter(username=username).count()
+                if current_collaborations >= max_collaborations:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'{username} has reached their collaboration limit ({max_collaborations} projects) for their tier'
+                    }, status=403)
+
+        if new_people:
+            Contributor.objects.bulk_create(
+                [Contributor(project_id=project_id, username=p, role='VIEWER') for p in new_people]
+            )
+
+        return JsonResponse({'success': True, 'added_count': len(new_people)})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @cache_page(60 * 15)
@@ -381,8 +452,11 @@ def docs(request):
 @require_GET
 @cache_page(60 * 15)
 def changelog(request):
-    changelogs = Changelog.objects.all().order_by('-created_at')
-    return render(request, 'changelog.html', {'changelogs': changelogs})
+    try:
+        changelogs = Changelog.objects.all().order_by('-created_at')
+        return render(request, 'changelog.html', {'changelogs': changelogs})
+    except Exception:
+        return render_error(request, 500)
 
 
 @ratelimit(key='ip', rate='5/m', block=True)
@@ -502,31 +576,34 @@ def deleteuser(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    project_id = data.get('project_id')
-    contributor_id = data.get('contributor_id')
+    try:
+        project_id = data.get('project_id')
+        contributor_id = data.get('contributor_id')
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(contributor_id, int) or contributor_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid contributor ID'}, status=400)
+        if not isinstance(contributor_id, int) or contributor_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid contributor ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if request.user.id != project.owner.id:
-        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        if request.user.id != project.owner.id:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
-    contributor = Contributor.objects.filter(id=contributor_id, project_id=project_id).first()
+        contributor = Contributor.objects.filter(id=contributor_id, project_id=project_id).first()
 
-    if not contributor:
-        return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
+        if not contributor:
+            return JsonResponse({'success': False, 'error': 'Contributor not found'}, status=404)
 
-    contributor.delete()
+        contributor.delete()
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -536,7 +613,9 @@ def project_detail(request, project_id):
     try:
         project = Project.objects.get(id=project_id)
     except Project.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        return render_error(request, 404)
+    except Exception:
+        return render_error(request, 500)
 
     is_owner = project.owner_id == request.user.id
     contributor = None
@@ -549,7 +628,7 @@ def project_detail(request, project_id):
         ).values('role').first()
 
         if not contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            return render_error(request, 403)
 
         role = contributor['role']
 
@@ -570,22 +649,25 @@ def delete_project(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    project_id = data.get('project_id')
+    try:
+        project_id = data.get('project_id')
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if request.user.id != project.owner_id:
-        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        if request.user.id != project.owner_id:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
-    project.delete()
+        project.delete()
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -593,63 +675,66 @@ def delete_project(request):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def list_project_backups(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
-    if not tier_config.get('backups', False):
-        return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        if not tier_config.get('backups', False):
+            return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
 
-    is_owner = project.owner_id == request.user.id
-    can_see_all = False
-    allowed_team_ids = []
+        is_owner = project.owner_id == request.user.id
+        can_see_all = False
+        allowed_team_ids = []
 
-    if is_owner:
-        can_see_all = True
-    else:
-        is_project_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
-
-        if is_project_admin:
+        if is_owner:
             can_see_all = True
         else:
-            admin_teams = TeamMember.objects.filter(
-                team__project_id=project_id,
-                user=request.user,
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
                 role='ADMIN'
-            ).values_list('team_id', flat=True)
+            ).exists()
 
-            allowed_team_ids = list(admin_teams)
-            if not allowed_team_ids:
-                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            if is_project_admin:
+                can_see_all = True
+            else:
+                admin_teams = TeamMember.objects.filter(
+                    team__project_id=project_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).values_list('team_id', flat=True)
 
-    if can_see_all:
-        backups = Backup.objects.filter(
-            project_id=project_id
-        ).select_related('document').order_by('-created_at')
-    else:
-        backups = Backup.objects.filter(
-            project_id=project_id,
-            document__team_assigned_id__in=allowed_team_ids
-        ).select_related('document').order_by('-created_at')
+                allowed_team_ids = list(admin_teams)
+                if not allowed_team_ids:
+                    return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-    data = [{
-        'id': b.id,
-        'document_id': b.document_id,
-        'document_name': b.document.document_name,
-        'version': b.version,
-        'created_at': b.created_at.isoformat(),
-    } for b in backups[:100]]
+        if can_see_all:
+            backups = Backup.objects.filter(
+                project_id=project_id
+            ).select_related('document').order_by('-created_at')
+        else:
+            backups = Backup.objects.filter(
+                project_id=project_id,
+                document__team_assigned_id__in=allowed_team_ids
+            ).select_related('document').order_by('-created_at')
 
-    return JsonResponse({'success': True, 'backups': data})
+        data = [{
+            'id': b.id,
+            'document_id': b.document_id,
+            'document_name': b.document.document_name,
+            'version': b.version,
+            'created_at': b.created_at.isoformat(),
+        } for b in backups[:100]]
+
+        return JsonResponse({'success': True, 'backups': data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -658,72 +743,75 @@ def list_project_backups(request, project_id):
 @csrf_protect
 @ratelimit(key='ip', rate='5/m', block=True)
 def revert_backup(request, project_id, backup_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
-    if not isinstance(backup_id, int) or backup_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid backup ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(backup_id, int) or backup_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid backup ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
-    if not tier_config.get('backups', False):
-        return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        if not tier_config.get('backups', False):
+            return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
 
-    backup = Backup.objects.filter(
-        id=backup_id, project_id=project_id
-    ).select_related('document', 'document__team_assigned').first()
+        backup = Backup.objects.filter(
+            id=backup_id, project_id=project_id
+        ).select_related('document', 'document__team_assigned').first()
 
-    if not backup:
-        return JsonResponse({'success': False, 'error': 'Backup not found'}, status=404)
+        if not backup:
+            return JsonResponse({'success': False, 'error': 'Backup not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
-    can_revert = False
+        is_owner = project.owner_id == request.user.id
+        can_revert = False
 
-    if is_owner:
-        can_revert = True
-    else:
-        is_project_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
-
-        if is_project_admin:
+        if is_owner:
             can_revert = True
         else:
-            is_team_admin = TeamMember.objects.filter(
-                team_id=backup.document.team_assigned_id,
-                user=request.user,
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
                 role='ADMIN'
             ).exists()
 
-            if is_team_admin:
+            if is_project_admin:
                 can_revert = True
+            else:
+                is_team_admin = TeamMember.objects.filter(
+                    team_id=backup.document.team_assigned_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).exists()
 
-    if not can_revert:
-        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+                if is_team_admin:
+                    can_revert = True
 
-    try:
-        restore_document_from_backup(backup.id)
+        if not can_revert:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+        try:
+            restore_document_from_backup(backup.id)
+        except Exception:
+            return JsonResponse({'success': False, 'error': 'Failed to restore backup'}, status=500)
+
+        if tier_config.get('audit', False):
+            Audit.objects.create(
+                project=project,
+                document=backup.document,
+                user=request.user,
+                action=f'revert:v{backup.version}'
+            )
+
+        return JsonResponse({
+            'success': True,
+            'document_id': backup.document_id,
+            'version': backup.version
+        })
     except Exception:
-        return JsonResponse({'success': False, 'error': 'Failed to restore backup'}, status=500)
-
-    if tier_config.get('audit', False):
-        Audit.objects.create(
-            project=project,
-            document=backup.document,
-            user=request.user,
-            action=f'revert:v{backup.version}'
-        )
-
-    return JsonResponse({
-        'success': True,
-        'document_id': backup.document_id,
-        'version': backup.version
-    })
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -731,32 +819,35 @@ def revert_backup(request, project_id, backup_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_collaborators(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
-    if not is_owner:
-        is_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
-        if not is_admin:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        is_owner = project.owner_id == request.user.id
+        if not is_owner:
+            is_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
+                role='ADMIN'
+            ).exists()
+            if not is_admin:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-    contributors = Contributor.objects.filter(project_id=project_id).order_by('added_at')
-    data = [{
-        'id': c.id,
-        'username': c.username,
-        'role': c.role,
-        'added_at': c.added_at.isoformat(),
-    } for c in contributors]
+        contributors = Contributor.objects.filter(project_id=project_id).order_by('added_at')
+        data = [{
+            'id': c.id,
+            'username': c.username,
+            'role': c.role,
+            'added_at': c.added_at.isoformat(),
+        } for c in contributors]
 
-    return JsonResponse({'success': True, 'collaborators': data})
+        return JsonResponse({'success': True, 'collaborators': data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -769,117 +860,123 @@ def handle_pending(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    pending_id = data.get('pending_id')
-    action = data.get('action', '').lower()
+    try:
+        pending_id = data.get('pending_id')
+        action = data.get('action', '').lower()
 
-    if not isinstance(pending_id, int) or pending_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid pending ID'}, status=400)
+        if not isinstance(pending_id, int) or pending_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid pending ID'}, status=400)
 
-    if action not in ('accept', 'reject'):
-        return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
+        if action not in ('accept', 'reject'):
+            return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
 
-    with transaction.atomic():
-        pending = Pending.objects.select_related(
-            'project', 'document', 'team', 'user'
-        ).filter(id=pending_id).first()
+        with transaction.atomic():
+            pending = Pending.objects.select_related(
+                'project', 'document', 'team', 'user'
+            ).filter(id=pending_id).first()
 
-        if not pending:
-            return JsonResponse({'success': False, 'error': 'Pending edit not found'}, status=404)
+            if not pending:
+                return JsonResponse({'success': False, 'error': 'Pending edit not found'}, status=404)
 
-        project = pending.project
-        is_owner = project.owner_id == request.user.id
+            project = pending.project
+            is_owner = project.owner_id == request.user.id
 
-        can_handle = False
+            can_handle = False
 
-        if is_owner:
-            can_handle = True
-        else:
-            is_project_admin = Contributor.objects.filter(
-                project_id=project.id,
-                username=request.user.username,
-                role='ADMIN'
-            ).exists()
-
-            if is_project_admin:
+            if is_owner:
                 can_handle = True
             else:
-                is_team_admin = TeamMember.objects.filter(
-                    team_id=pending.team_id,
-                    user=request.user,
+                is_project_admin = Contributor.objects.filter(
+                    project_id=project.id,
+                    username=request.user.username,
                     role='ADMIN'
                 ).exists()
 
-                if is_team_admin:
+                if is_project_admin:
                     can_handle = True
+                else:
+                    is_team_admin = TeamMember.objects.filter(
+                        team_id=pending.team_id,
+                        user=request.user,
+                        role='ADMIN'
+                    ).exists()
 
-        if not can_handle:
-            return JsonResponse({'success': False, 'error': 'Not authorized to handle this pending edit'}, status=403)
+                    if is_team_admin:
+                        can_handle = True
 
-        tier = project.tier.lower()
-        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+            if not can_handle:
+                return JsonResponse({'success': False, 'error': 'Not authorized to handle this pending edit'}, status=403)
 
-        document = pending.document
-        pending_user = pending.user
-        document_name = document.document_name if document else 'Unknown'
-        pending_note = pending.note
+            tier = project.tier.lower()
+            tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-        if action == 'accept':
-            if not document:
-                return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
+            document = pending.document
+            pending_user = pending.user
+            document_name = document.document_name if document else 'Unknown'
+            pending_note = pending.note
 
-            document = Documents.objects.select_for_update().get(id=document.id)
+            if action == 'accept':
+                if not document:
+                    return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
 
-            if project.backups_enabled and tier_config.get('backups', False):
-                backup_document_to_r2.delay(document.id)
+                document = Documents.objects.select_for_update().get(id=document.id)
 
-            document.content = pending.submitted_content
-            document.save(update_fields=['content'])
+                if project.backups_enabled and tier_config.get('backups', False):
+                    backup_document_to_r2.delay(document.id)
+
+                document.content = pending.submitted_content
+                document.save(update_fields=['content'])
+
+                if tier_config.get('audit', False):
+                    Audit.objects.create(
+                        project=project,
+                        document=document,
+                        user=pending_user,
+                        action='edit'
+                    )
+
+            PendingAction.objects.create(
+                project=project,
+                document=document if document else None,
+                pending_user=pending_user,
+                actioned_by=request.user,
+                action=action,
+                document_name=document_name,
+                pending_note=pending_note
+            )
 
             if tier_config.get('audit', False):
                 Audit.objects.create(
                     project=project,
-                    document=document,
-                    user=pending_user,
-                    action='edit'
+                    document=document if document else None,
+                    user=request.user,
+                    action=f'pending_{action}'
                 )
 
-        PendingAction.objects.create(
-            project=project,
-            document=document if document else None,
-            pending_user=pending_user,
-            actioned_by=request.user,
-            action=action,
-            document_name=document_name,
-            pending_note=pending_note
-        )
+            pending.delete()
 
-        if tier_config.get('audit', False):
-            Audit.objects.create(
-                project=project,
-                document=document if document else None,
-                user=request.user,
-                action=f'pending_{action}'
-            )
-
-        pending.delete()
-
-    return JsonResponse({
-        'success': True,
-        'action': action,
-        'document_id': document.id if document else None,
-        'document_name': document_name
-    })
+        return JsonResponse({
+            'success': True,
+            'action': action,
+            'document_id': document.id if document else None,
+            'document_name': document_name
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
 @require_auth_token
 @ratelimit(key='ip', rate='30/m', block=True)
 def collaborations(request):
-    collaborated_projects = Contributor.objects.filter(
-        username=request.user.username
-    ).select_related('project').order_by('-project__created_at')
+    try:
+        collaborated_projects = Contributor.objects.filter(
+            username=request.user.username
+        ).select_related('project').order_by('-project__created_at')
 
-    return render(request, 'collaborations.html', {'collaborated_projects': collaborated_projects})
+        return render(request, 'collaborations.html', {'collaborated_projects': collaborated_projects})
+    except Exception:
+        return render_error(request, 500)
 
 
 @csrf_exempt
@@ -906,43 +1003,46 @@ PRICE_IDS = {
 @transaction.atomic
 @ratelimit(key='ip', rate='5/m', block=True)
 def create_checkout_session(request):
-    tier = request.POST.get('tier')
-
-    if tier not in PRICE_IDS:
-        return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
-
     try:
-        if request.user.stripe_customer_id:
-            customer_id = request.user.stripe_customer_id
-        else:
-            customer = stripe.Customer.create(
-                email=request.user.email,
-                metadata={'user_id': str(request.user.id)},
+        tier = request.POST.get('tier')
+
+        if tier not in PRICE_IDS:
+            return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
+
+        try:
+            if request.user.stripe_customer_id:
+                customer_id = request.user.stripe_customer_id
+            else:
+                customer = stripe.Customer.create(
+                    email=request.user.email,
+                    metadata={'user_id': str(request.user.id)},
+                )
+                customer_id = customer.id
+                request.user.stripe_customer_id = customer_id
+                request.user.save(update_fields=['stripe_customer_id'])
+
+            subscription = stripe.Subscription.create(
+                customer=customer_id,
+                items=[{'price': PRICE_IDS[tier]}],
+                payment_behavior='default_incomplete',
+                payment_settings={'save_default_payment_method': 'on_subscription'},
+                expand=['latest_invoice.confirmation_secret'],
+                metadata={
+                    'user_id': str(request.user.id),
+                    'tier': tier,
+                },
             )
-            customer_id = customer.id
-            request.user.stripe_customer_id = customer_id
-            request.user.save(update_fields=['stripe_customer_id'])
 
-        subscription = stripe.Subscription.create(
-            customer=customer_id,
-            items=[{'price': PRICE_IDS[tier]}],
-            payment_behavior='default_incomplete',
-            payment_settings={'save_default_payment_method': 'on_subscription'},
-            expand=['latest_invoice.confirmation_secret'],
-            metadata={
-                'user_id': str(request.user.id),
-                'tier': tier,
-            },
-        )
+            return JsonResponse({
+                'client_secret': subscription.latest_invoice.confirmation_secret.client_secret,
+                'subscription_id': subscription.id,
+            })
 
-        return JsonResponse({
-            'client_secret': subscription.latest_invoice.confirmation_secret.client_secret,
-            'subscription_id': subscription.id,
-        })
-
-    except stripe.error.StripeError as e:
-        print(str(e))
-        return JsonResponse({'success': False, 'error': str(e)}, status=503)
+        except stripe.error.StripeError as e:
+            print(str(e))
+            return JsonResponse({'success': False, 'error': str(e)}, status=503)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @csrf_exempt
@@ -1124,62 +1224,65 @@ def privacy(request):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_documents(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    is_admin = Contributor.objects.filter(
-        project_id=project_id,
-        username=request.user.username,
-        role='ADMIN',
-    ).exists()
-
-    if is_owner or is_admin:
-        documents = Documents.objects.filter(
-            project_id=project_id
-        ).select_related('team_assigned').order_by('-created_at')
-    else:
-        is_contributor = Contributor.objects.filter(
+        is_admin = Contributor.objects.filter(
             project_id=project_id,
-            username=request.user.username
+            username=request.user.username,
+            role='ADMIN',
         ).exists()
 
-        if not is_contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        if is_owner or is_admin:
+            documents = Documents.objects.filter(
+                project_id=project_id
+            ).select_related('team_assigned').order_by('-created_at')
+        else:
+            is_contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username
+            ).exists()
 
-        user_team_ids = list(TeamMember.objects.filter(
-            team__project_id=project_id,
-            user=request.user
-        ).values_list('team_id', flat=True))
+            if not is_contributor:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-        public_team_ids = list(Teams.objects.filter(
-            project_id=project_id,
-            team_name='Public'
-        ).values_list('id', flat=True))
+            user_team_ids = list(TeamMember.objects.filter(
+                team__project_id=project_id,
+                user=request.user
+            ).values_list('team_id', flat=True))
 
-        visible_team_ids = list(set(user_team_ids + public_team_ids))
+            public_team_ids = list(Teams.objects.filter(
+                project_id=project_id,
+                team_name='Public'
+            ).values_list('id', flat=True))
 
-        documents = Documents.objects.filter(
-            project_id=project_id,
-            team_assigned_id__in=visible_team_ids
-        ).select_related('team_assigned').order_by('-created_at')
+            visible_team_ids = list(set(user_team_ids + public_team_ids))
 
-    docs_data = [{
-        'id': doc.id,
-        'document_name': doc.document_name,
-        'content': doc.content,
-        'team_name': doc.team_assigned.team_name,
-        'team_id': doc.team_assigned_id,
-        'created_at': doc.created_at.isoformat()
-    } for doc in documents]
+            documents = Documents.objects.filter(
+                project_id=project_id,
+                team_assigned_id__in=visible_team_ids
+            ).select_related('team_assigned').order_by('-created_at')
 
-    return JsonResponse({'success': True, 'documents': docs_data})
+        docs_data = [{
+            'id': doc.id,
+            'document_name': doc.document_name,
+            'content': doc.content,
+            'team_name': doc.team_assigned.team_name,
+            'team_id': doc.team_assigned_id,
+            'created_at': doc.created_at.isoformat()
+        } for doc in documents]
+
+        return JsonResponse({'success': True, 'documents': docs_data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -1187,65 +1290,68 @@ def get_documents(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_document(request, project_id, doc_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(doc_id, int) or doc_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
+        if not isinstance(doc_id, int) or doc_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        is_contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).exists()
-
-        if not is_contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
-
-    document = Documents.objects.select_related('team_assigned').filter(
-        id=doc_id,
-        project_id=project_id
-    ).first()
-
-    if not document:
-        return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
-
-    is_admin = Contributor.objects.filter(
-        project_id=project_id,
-        username=request.user.username,
-        role='ADMIN',
-    ).exists()
-
-    if not is_owner and not is_admin:
-        is_public_team = document.team_assigned.team_name == 'Public'
-
-        if not is_public_team:
-            is_team_member = TeamMember.objects.filter(
-                team_id=document.team_assigned_id,
-                user=request.user
+        if not is_owner:
+            is_contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username
             ).exists()
 
-            if not is_team_member:
+            if not is_contributor:
                 return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-    return JsonResponse({
-        'success': True,
-        'document': {
-            'id': document.id,
-            'document_name': document.document_name,
-            'content': document.content,
-            'team_name': document.team_assigned.team_name,
-            'team_id': document.team_assigned_id,
-            'created_at': document.created_at.isoformat()
-        }
-    })
+        document = Documents.objects.select_related('team_assigned').filter(
+            id=doc_id,
+            project_id=project_id
+        ).first()
+
+        if not document:
+            return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
+
+        is_admin = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='ADMIN',
+        ).exists()
+
+        if not is_owner and not is_admin:
+            is_public_team = document.team_assigned.team_name == 'Public'
+
+            if not is_public_team:
+                is_team_member = TeamMember.objects.filter(
+                    team_id=document.team_assigned_id,
+                    user=request.user
+                ).exists()
+
+                if not is_team_member:
+                    return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+        return JsonResponse({
+            'success': True,
+            'document': {
+                'id': document.id,
+                'document_name': document.document_name,
+                'content': document.content,
+                'team_name': document.team_assigned.team_name,
+                'team_id': document.team_assigned_id,
+                'created_at': document.created_at.isoformat()
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1258,103 +1364,106 @@ def add_document(request, project_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    document_name = data.get('document_name', '')
-    team_id = data.get('team_id')
+        document_name = data.get('document_name', '')
+        team_id = data.get('team_id')
 
-    if not isinstance(document_name, str):
-        return JsonResponse({'success': False, 'error': 'Invalid document name'}, status=400)
+        if not isinstance(document_name, str):
+            return JsonResponse({'success': False, 'error': 'Invalid document name'}, status=400)
 
-    document_name = document_name.strip()
+        document_name = document_name.strip()
 
-    if not document_name:
-        return JsonResponse({'success': False, 'error': 'Document name required'}, status=400)
+        if not document_name:
+            return JsonResponse({'success': False, 'error': 'Document name required'}, status=400)
 
-    if len(document_name) > 255:
-        return JsonResponse({'success': False, 'error': 'Document name too long'}, status=400)
+        if len(document_name) > 255:
+            return JsonResponse({'success': False, 'error': 'Document name too long'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    team = Teams.objects.filter(id=team_id, project_id=project_id).first()
+        team = Teams.objects.filter(id=team_id, project_id=project_id).first()
 
-    if not team:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not team:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        is_contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).exists()
+        if not is_owner:
+            is_contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username
+            ).exists()
 
-        if not is_contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            if not is_contributor:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-        is_project_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
-
-        if not is_project_admin:
-            team_admin_membership = TeamMember.objects.filter(
-                team__project_id=project_id,
-                user=request.user,
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
                 role='ADMIN'
-            ).first()
+            ).exists()
 
-            if not team_admin_membership:
-                return JsonResponse(
-                    {'success': False, 'error': 'Only owners, admins and team admins can create documents'}, status=403)
+            if not is_project_admin:
+                team_admin_membership = TeamMember.objects.filter(
+                    team__project_id=project_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).first()
 
-            if team_admin_membership.team_id != team_id:
-                return JsonResponse({'success': False, 'error': 'You can only create documents for your own team'},
+                if not team_admin_membership:
+                    return JsonResponse(
+                        {'success': False, 'error': 'Only owners, admins and team admins can create documents'}, status=403)
+
+                if team_admin_membership.team_id != team_id:
+                    return JsonResponse({'success': False, 'error': 'You can only create documents for your own team'},
+                                        status=403)
+
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        max_docs = tier_config.get('documents')
+
+        if max_docs is not None:
+            current_doc_count = Documents.objects.filter(project_id=project_id).count()
+            if current_doc_count >= max_docs:
+                return JsonResponse({'success': False, 'error': f'Document limit ({max_docs}) reached for your tier'},
                                     status=403)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
-    max_docs = tier_config.get('documents')
-
-    if max_docs is not None:
-        current_doc_count = Documents.objects.filter(project_id=project_id).count()
-        if current_doc_count >= max_docs:
-            return JsonResponse({'success': False, 'error': f'Document limit ({max_docs}) reached for your tier'},
-                                status=403)
-
-    with transaction.atomic():
-        document = Documents.objects.create(
-            project=project,
-            document_name=document_name,
-            content='',
-            team_assigned=team
-        )
-
-        if tier_config.get('audit', False):
-            Audit.objects.create(
+        with transaction.atomic():
+            document = Documents.objects.create(
                 project=project,
-                document=document,
-                user=request.user,
-                action='create'
+                document_name=document_name,
+                content='',
+                team_assigned=team
             )
 
-    return JsonResponse({
-        'success': True,
-        'document': {
-            'id': document.id,
-            'document_name': document.document_name,
-            'team_name': team.team_name,
-            'team_id': team.id
-        }
-    })
+            if tier_config.get('audit', False):
+                Audit.objects.create(
+                    project=project,
+                    document=document,
+                    user=request.user,
+                    action='create'
+                )
+
+        return JsonResponse({
+            'success': True,
+            'document': {
+                'id': document.id,
+                'document_name': document.document_name,
+                'team_name': team.team_name,
+                'team_id': team.id
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1367,120 +1476,123 @@ def save_document(request, project_id, doc_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
-
-    if not isinstance(doc_id, int) or doc_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
-
-    content = data.get('content')
-    change_note = data.get('note', '').strip()
-
-    if content is None:
-        return JsonResponse({'success': False, 'error': 'Content required'}, status=400)
-
-    if not isinstance(content, str):
-        return JsonResponse({'success': False, 'error': 'Invalid content type'}, status=400)
-
-    if len(change_note) > 500:
-        return JsonResponse({'success': False, 'error': 'Note too long (max 500 chars)'}, status=400)
-
     try:
-        with transaction.atomic():
-            project = Project.objects.get(id=project_id)
-            document = Documents.objects.select_for_update().get(id=doc_id, project_id=project_id)
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-            is_owner = project.owner_id == request.user.id
-            tier = project.tier.lower()
-            tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        if not isinstance(doc_id, int) or doc_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
 
-            can_direct_save = False
-            requires_pending = False
+        content = data.get('content')
+        change_note = data.get('note', '').strip()
 
-            if is_owner:
-                can_direct_save = True
-            else:
-                contributor = Contributor.objects.filter(
-                    project_id=project_id,
-                    username=request.user.username
-                ).first()
+        if content is None:
+            return JsonResponse({'success': False, 'error': 'Content required'}, status=400)
 
-                if not contributor:
-                    return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+        if not isinstance(content, str):
+            return JsonResponse({'success': False, 'error': 'Invalid content type'}, status=400)
 
-                if contributor.role == 'ADMIN':
+        if len(change_note) > 500:
+            return JsonResponse({'success': False, 'error': 'Note too long (max 500 chars)'}, status=400)
+
+        try:
+            with transaction.atomic():
+                project = Project.objects.get(id=project_id)
+                document = Documents.objects.select_for_update().get(id=doc_id, project_id=project_id)
+
+                is_owner = project.owner_id == request.user.id
+                tier = project.tier.lower()
+                tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+                can_direct_save = False
+                requires_pending = False
+
+                if is_owner:
                     can_direct_save = True
-                elif document.team_assigned.team_name == 'Public':
-                    if contributor.role == 'EDITOR':
-                        can_direct_save = True
-                    elif contributor.role == 'VIEWER':
-                        return JsonResponse({'success': False, 'error': 'Viewers cannot edit documents'}, status=403)
                 else:
-                    membership = TeamMember.objects.filter(
-                        team_id=document.team_assigned_id,
-                        user=request.user
+                    contributor = Contributor.objects.filter(
+                        project_id=project_id,
+                        username=request.user.username
                     ).first()
 
-                    if not membership:
-                        return JsonResponse({'success': False, 'error': 'Not a team member for this document'},
-                                            status=403)
+                    if not contributor:
+                        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-                    if membership.role == 'ADMIN':
+                    if contributor.role == 'ADMIN':
                         can_direct_save = True
-                    elif membership.role == 'EDITOR':
-                        if membership.can_direct_save:
+                    elif document.team_assigned.team_name == 'Public':
+                        if contributor.role == 'EDITOR':
                             can_direct_save = True
-                        elif tier_config.get('pending', False):
-                            requires_pending = True
-                        else:
-                            can_direct_save = True
+                        elif contributor.role == 'VIEWER':
+                            return JsonResponse({'success': False, 'error': 'Viewers cannot edit documents'}, status=403)
                     else:
-                        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=403)
+                        membership = TeamMember.objects.filter(
+                            team_id=document.team_assigned_id,
+                            user=request.user
+                        ).first()
 
-            if requires_pending:
-                if not change_note:
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'A note is required when submitting changes for review',
-                        'requires_note': True
-                    }, status=400)
+                        if not membership:
+                            return JsonResponse({'success': False, 'error': 'Not a team member for this document'},
+                                                status=403)
+
+                        if membership.role == 'ADMIN':
+                            can_direct_save = True
+                        elif membership.role == 'EDITOR':
+                            if membership.can_direct_save:
+                                can_direct_save = True
+                            elif tier_config.get('pending', False):
+                                requires_pending = True
+                            else:
+                                can_direct_save = True
+                        else:
+                            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=403)
+
+                if requires_pending:
+                    if not change_note:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'A note is required when submitting changes for review',
+                            'requires_note': True
+                        }, status=400)
+
+                    if document.content == content:
+                        return JsonResponse({'success': True, 'message': 'No changes to submit'})
+
+                    Pending.objects.create(
+                        project=project,
+                        team=document.team_assigned,
+                        document=document,
+                        user=request.user,
+                        submitted_content=content,
+                        note=change_note
+                    )
+                    return JsonResponse({'success': True, 'pending': True})
 
                 if document.content == content:
-                    return JsonResponse({'success': True, 'message': 'No changes to submit'})
+                    return JsonResponse({'success': True, 'message': 'No changes'})
 
-                Pending.objects.create(
-                    project=project,
-                    team=document.team_assigned,
-                    document=document,
-                    user=request.user,
-                    submitted_content=content,
-                    note=change_note
-                )
-                return JsonResponse({'success': True, 'pending': True})
+                if project.backups_enabled and tier_config.get('backups', False):
+                    backup_document_to_r2.delay(document.id)
 
-            if document.content == content:
-                return JsonResponse({'success': True, 'message': 'No changes'})
+                if tier_config.get('audit', False):
+                    Audit.objects.create(
+                        project=project,
+                        document=document,
+                        user=request.user,
+                        action='edit'
+                    )
 
-            if project.backups_enabled and tier_config.get('backups', False):
-                backup_document_to_r2.delay(document.id)
+                document.content = content
+                document.save(update_fields=['content'])
 
-            if tier_config.get('audit', False):
-                Audit.objects.create(
-                    project=project,
-                    document=document,
-                    user=request.user,
-                    action='edit'
-                )
+        except Project.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        except Documents.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
 
-            document.content = content
-            document.save(update_fields=['content'])
-
-    except Project.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
-    except Documents.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
-
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1493,70 +1605,73 @@ def rename_document(request, project_id, doc_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
 
-    new_name = data.get('document_name', '').strip()
-
-    if not new_name:
-        return JsonResponse({'success': False, 'error': 'Document name required'})
-
-    if len(new_name) > 255:
-        return JsonResponse({'success': False, 'error': 'Document name too long'})
-
     try:
-        project = Project.objects.get(id=project_id)
-    except Project.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        new_name = data.get('document_name', '').strip()
 
-    try:
-        document = Documents.objects.get(id=doc_id, project_id=project_id)
-    except Documents.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
+        if not new_name:
+            return JsonResponse({'success': False, 'error': 'Document name required'})
 
-    is_owner = project.owner_id == request.user.id
+        if len(new_name) > 255:
+            return JsonResponse({'success': False, 'error': 'Document name too long'})
 
-    if not is_owner:
-        is_project_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-        if not is_project_admin:
-            is_team_admin = TeamMember.objects.filter(
-                team_id=document.team_assigned_id,
-                user=request.user,
+        try:
+            document = Documents.objects.get(id=doc_id, project_id=project_id)
+        except Documents.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
+
+        is_owner = project.owner_id == request.user.id
+
+        if not is_owner:
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
                 role='ADMIN'
             ).exists()
 
-            if not is_team_admin:
-                return JsonResponse({'success': False,
-                                     'error': 'Only project owner, project admin, or team admin can rename documents'},
-                                    status=403)
+            if not is_project_admin:
+                is_team_admin = TeamMember.objects.filter(
+                    team_id=document.team_assigned_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).exists()
 
-    old_name = document.document_name
+                if not is_team_admin:
+                    return JsonResponse({'success': False,
+                                         'error': 'Only project owner, project admin, or team admin can rename documents'},
+                                        status=403)
 
-    with transaction.atomic():
-        document.document_name = new_name
-        document.save(update_fields=['document_name'])
+        old_name = document.document_name
 
-        tier = project.tier.lower()
-        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        with transaction.atomic():
+            document.document_name = new_name
+            document.save(update_fields=['document_name'])
 
-        if tier_config.get('audit', False):
-            Audit.objects.create(
-                project=project,
-                document=document,
-                user=request.user,
-                action='rename'
-            )
+            tier = project.tier.lower()
+            tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-    return JsonResponse({
-        'success': True,
-        'document': {
-            'id': document.id,
-            'document_name': new_name,
-            'old_name': old_name
-        }
-    })
+            if tier_config.get('audit', False):
+                Audit.objects.create(
+                    project=project,
+                    document=document,
+                    user=request.user,
+                    action='rename'
+                )
+
+        return JsonResponse({
+            'success': True,
+            'document': {
+                'id': document.id,
+                'document_name': new_name,
+                'old_name': old_name
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1565,60 +1680,63 @@ def rename_document(request, project_id, doc_id):
 @csrf_exempt
 def delete_document(request, project_id, doc_id):
     try:
-        project = Project.objects.get(id=project_id)
-    except Project.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    try:
-        document = Documents.objects.get(id=doc_id, project_id=project_id)
-    except Documents.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
+        try:
+            document = Documents.objects.get(id=doc_id, project_id=project_id)
+        except Documents.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        is_project_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
-
-        if not is_project_admin:
-            is_team_admin = TeamMember.objects.filter(
-                team_id=document.team_assigned_id,
-                user=request.user,
+        if not is_owner:
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
                 role='ADMIN'
             ).exists()
 
-            if not is_team_admin:
-                return JsonResponse({'success': False,
-                                     'error': 'Only project owner, project admin, or team admin can delete documents'},
-                                    status=403)
+            if not is_project_admin:
+                is_team_admin = TeamMember.objects.filter(
+                    team_id=document.team_assigned_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).exists()
 
-    document_name = document.document_name
-    document_id = document.id
+                if not is_team_admin:
+                    return JsonResponse({'success': False,
+                                         'error': 'Only project owner, project admin, or team admin can delete documents'},
+                                        status=403)
 
-    with transaction.atomic():
-        tier = project.tier.lower()
-        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        document_name = document.document_name
+        document_id = document.id
 
-        if tier_config.get('audit', False):
-            Audit.objects.create(
-                project=project,
-                document=None,
-                user=request.user,
-                action=f'delete:{document_name}'
-            )
+        with transaction.atomic():
+            tier = project.tier.lower()
+            tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-        document.delete()
+            if tier_config.get('audit', False):
+                Audit.objects.create(
+                    project=project,
+                    document=None,
+                    user=request.user,
+                    action=f'delete:{document_name}'
+                )
 
-    return JsonResponse({
-        'success': True,
-        'deleted': {
-            'id': document_id,
-            'document_name': document_name
-        }
-    })
+            document.delete()
+
+        return JsonResponse({
+            'success': True,
+            'deleted': {
+                'id': document_id,
+                'document_name': document_name
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -1626,50 +1744,53 @@ def delete_document(request, project_id, doc_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_teams(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).exists()
+        if not is_owner:
+            contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username
+            ).exists()
 
-        if not contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            if not contributor:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-        user_team_ids = TeamMember.objects.filter(
-            team__project_id=project_id,
-            user=request.user
-        ).values_list('team_id', flat=True)
+            user_team_ids = TeamMember.objects.filter(
+                team__project_id=project_id,
+                user=request.user
+            ).values_list('team_id', flat=True)
 
-        teams = Teams.objects.filter(id__in=user_team_ids).order_by('team_name')
-    elif is_owner:
-        teams = Teams.objects.filter(project_id=project_id)
+            teams = Teams.objects.filter(id__in=user_team_ids).order_by('team_name')
+        elif is_owner:
+            teams = Teams.objects.filter(project_id=project_id)
 
-    teams_data = []
-    for team in teams:
-        members = TeamMember.objects.filter(team=team).select_related('user')
-        teams_data.append({
-            'id': team.id,
-            'team_name': team.team_name,
-            'created_at': team.created_at.isoformat(),
-            'members': [{
-                'id': m.user.id,
-                'username': m.user.username,
-                'role': m.role,
-                'can_direct_save': m.can_direct_save
-            } for m in members]
-        })
+        teams_data = []
+        for team in teams:
+            members = TeamMember.objects.filter(team=team).select_related('user')
+            teams_data.append({
+                'id': team.id,
+                'team_name': team.team_name,
+                'created_at': team.created_at.isoformat(),
+                'members': [{
+                    'id': m.user.id,
+                    'username': m.user.username,
+                    'role': m.role,
+                    'can_direct_save': m.can_direct_save
+                } for m in members]
+            })
 
-    return JsonResponse({'success': True, 'teams': teams_data})
+        return JsonResponse({'success': True, 'teams': teams_data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -1677,69 +1798,72 @@ def get_teams(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_pending_edits(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    can_see_all = False
-    team_admin_team_ids = []
+        can_see_all = False
+        team_admin_team_ids = []
 
-    if is_owner:
-        can_see_all = True
-    else:
-        is_project_admin = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username,
-            role='ADMIN'
-        ).exists()
-
-        if is_project_admin:
+        if is_owner:
             can_see_all = True
         else:
-            team_admin_team_ids = list(TeamMember.objects.filter(
-                team__project_id=project_id,
-                user=request.user,
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username,
                 role='ADMIN'
-            ).values_list('team_id', flat=True))
+            ).exists()
 
-            if not team_admin_team_ids:
-                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            if is_project_admin:
+                can_see_all = True
+            else:
+                team_admin_team_ids = list(TeamMember.objects.filter(
+                    team__project_id=project_id,
+                    user=request.user,
+                    role='ADMIN'
+                ).values_list('team_id', flat=True))
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+                if not team_admin_team_ids:
+                    return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-    if not tier_config.get('pending', False):
-        return JsonResponse({'success': False, 'error': 'Pending edits not available for your tier'}, status=403)
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-    if can_see_all:
-        pending_edits = Pending.objects.filter(
-            project_id=project_id
-        ).select_related('document', 'user', 'team').order_by('-created_at')
-    else:
-        pending_edits = Pending.objects.filter(
-            project_id=project_id,
-            team_id__in=team_admin_team_ids
-        ).select_related('document', 'user', 'team').order_by('-created_at')
+        if not tier_config.get('pending', False):
+            return JsonResponse({'success': False, 'error': 'Pending edits not available for your tier'}, status=403)
 
-    pending_data = [{
-        'id': p.id,
-        'document_id': p.document.id,
-        'document_name': p.document.document_name,
-        'username': p.user.username,
-        'team_id': p.team.id,
-        'team_name': p.team.team_name,
-        'submitted_content': p.submitted_content,
-        'note': p.note,
-        'created_at': p.created_at.isoformat()
-    } for p in pending_edits]
+        if can_see_all:
+            pending_edits = Pending.objects.filter(
+                project_id=project_id
+            ).select_related('document', 'user', 'team').order_by('-created_at')
+        else:
+            pending_edits = Pending.objects.filter(
+                project_id=project_id,
+                team_id__in=team_admin_team_ids
+            ).select_related('document', 'user', 'team').order_by('-created_at')
 
-    return JsonResponse({'success': True, 'pending': pending_data})
+        pending_data = [{
+            'id': p.id,
+            'document_id': p.document.id,
+            'document_name': p.document.document_name,
+            'username': p.user.username,
+            'team_id': p.team.id,
+            'team_name': p.team.team_name,
+            'submitted_content': p.submitted_content,
+            'note': p.note,
+            'created_at': p.created_at.isoformat()
+        } for p in pending_edits]
+
+        return JsonResponse({'success': True, 'pending': pending_data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -1795,46 +1919,49 @@ def get_audits(request, project_id):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def get_pending_actions(request, project_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    is_owner = project.owner_id == request.user.id
+        is_owner = project.owner_id == request.user.id
 
-    if not is_owner:
-        contributor = Contributor.objects.filter(
-            project_id=project_id,
-            username=request.user.username
-        ).exists()
+        if not is_owner:
+            contributor = Contributor.objects.filter(
+                project_id=project_id,
+                username=request.user.username
+            ).exists()
 
-        if not contributor:
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+            if not contributor:
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-    if not tier_config.get('audit', False):
-        return JsonResponse({'success': False, 'error': 'Audit logs not available for your tier'}, status=403)
+        if not tier_config.get('audit', False):
+            return JsonResponse({'success': False, 'error': 'Audit logs not available for your tier'}, status=403)
 
-    pending_actions = PendingAction.objects.filter(
-        project_id=project_id
-    ).select_related('pending_user', 'actioned_by', 'document').order_by('-created_at')[:100]
+        pending_actions = PendingAction.objects.filter(
+            project_id=project_id
+        ).select_related('pending_user', 'actioned_by', 'document').order_by('-created_at')[:100]
 
-    actions_data = [{
-        'id': action.id,
-        'actioned_by': action.actioned_by.username,
-        'pending_user': action.pending_user.username,
-        'action': action.action,
-        'document_name': action.document_name,
-        'pending_note': action.pending_note,
-        'created_at': action.created_at.isoformat()
-    } for action in pending_actions]
+        actions_data = [{
+            'id': action.id,
+            'actioned_by': action.actioned_by.username,
+            'pending_user': action.pending_user.username,
+            'action': action.action,
+            'document_name': action.document_name,
+            'pending_note': action.pending_note,
+            'created_at': action.created_at.isoformat()
+        } for action in pending_actions]
 
-    return JsonResponse({'success': True, 'pending_actions': actions_data})
+        return JsonResponse({'success': True, 'pending_actions': actions_data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1847,68 +1974,71 @@ def create_team(request, project_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    team_name = data.get('team_name', '')
+        team_name = data.get('team_name', '')
 
-    if not isinstance(team_name, str):
-        return JsonResponse({'success': False, 'error': 'Invalid team name'}, status=400)
+        if not isinstance(team_name, str):
+            return JsonResponse({'success': False, 'error': 'Invalid team name'}, status=400)
 
-    team_name = team_name.strip()
+        team_name = team_name.strip()
 
-    if not team_name:
-        return JsonResponse({'success': False, 'error': 'Team name required'}, status=400)
+        if not team_name:
+            return JsonResponse({'success': False, 'error': 'Team name required'}, status=400)
 
-    if len(team_name) > 255:
-        return JsonResponse({'success': False, 'error': 'Team name too long'}, status=400)
+        if len(team_name) > 255:
+            return JsonResponse({'success': False, 'error': 'Team name too long'}, status=400)
 
-    if not PROJECT_NAME_REGEX.match(team_name):
-        return JsonResponse({'success': False, 'error': 'Team name contains invalid characters'}, status=400)
+        if not PROJECT_NAME_REGEX.match(team_name):
+            return JsonResponse({'success': False, 'error': 'Team name contains invalid characters'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can create teams'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can create teams'}, status=403)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
-    max_teams = tier_config.get('teams')
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        max_teams = tier_config.get('teams')
 
-    if max_teams is not None:
-        current_team_count = Teams.objects.filter(project_id=project_id).count()
-        if current_team_count >= max_teams:
-            return JsonResponse({'success': False, 'error': f'Team limit ({max_teams}) reached for your tier'},
-                                status=403)
+        if max_teams is not None:
+            current_team_count = Teams.objects.filter(project_id=project_id).count()
+            if current_team_count >= max_teams:
+                return JsonResponse({'success': False, 'error': f'Team limit ({max_teams}) reached for your tier'},
+                                    status=403)
 
-    if Teams.objects.filter(project_id=project_id, team_name=team_name).exists():
-        return JsonResponse({'success': False, 'error': 'Team name already exists in this project'}, status=400)
+        if Teams.objects.filter(project_id=project_id, team_name=team_name).exists():
+            return JsonResponse({'success': False, 'error': 'Team name already exists in this project'}, status=400)
 
-    with transaction.atomic():
-        team = Teams.objects.create(
-            project=project,
-            team_name=team_name
-        )
-
-        if tier_config.get('audit', False):
-            Audit.objects.create(
+        with transaction.atomic():
+            team = Teams.objects.create(
                 project=project,
-                document=None,
-                user=request.user,
-                action='create_team'
+                team_name=team_name
             )
 
-    return JsonResponse({
-        'success': True,
-        'team': {
-            'id': team.id,
-            'team_name': team.team_name,
-            'members': []
-        }
-    })
+            if tier_config.get('audit', False):
+                Audit.objects.create(
+                    project=project,
+                    document=None,
+                    user=request.user,
+                    action='create_team'
+                )
+
+        return JsonResponse({
+            'success': True,
+            'team': {
+                'id': team.id,
+                'team_name': team.team_name,
+                'members': []
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1921,52 +2051,55 @@ def update_team(request, project_id, team_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can edit teams'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can edit teams'}, status=403)
 
-    team = Teams.objects.filter(id=team_id, project_id=project_id).first()
+        team = Teams.objects.filter(id=team_id, project_id=project_id).first()
 
-    if not team:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not team:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    team_name = data.get('team_name', '')
+        team_name = data.get('team_name', '')
 
-    if not isinstance(team_name, str):
-        return JsonResponse({'success': False, 'error': 'Invalid team name'}, status=400)
+        if not isinstance(team_name, str):
+            return JsonResponse({'success': False, 'error': 'Invalid team name'}, status=400)
 
-    team_name = team_name.strip()
+        team_name = team_name.strip()
 
-    if team_name:
-        if len(team_name) > 255:
-            return JsonResponse({'success': False, 'error': 'Team name too long'}, status=400)
+        if team_name:
+            if len(team_name) > 255:
+                return JsonResponse({'success': False, 'error': 'Team name too long'}, status=400)
 
-        if not PROJECT_NAME_REGEX.match(team_name):
-            return JsonResponse({'success': False, 'error': 'Team name contains invalid characters'}, status=400)
+            if not PROJECT_NAME_REGEX.match(team_name):
+                return JsonResponse({'success': False, 'error': 'Team name contains invalid characters'}, status=400)
 
-        if Teams.objects.filter(project_id=project_id, team_name=team_name).exclude(id=team_id).exists():
-            return JsonResponse({'success': False, 'error': 'Team name already exists'}, status=400)
+            if Teams.objects.filter(project_id=project_id, team_name=team_name).exclude(id=team_id).exists():
+                return JsonResponse({'success': False, 'error': 'Team name already exists'}, status=400)
 
-        team.team_name = team_name
-        team.save(update_fields=['team_name'])
+            team.team_name = team_name
+            team.save(update_fields=['team_name'])
 
-    return JsonResponse({
-        'success': True,
-        'team': {
-            'id': team.id,
-            'team_name': team.team_name
-        }
-    })
+        return JsonResponse({
+            'success': True,
+            'team': {
+                'id': team.id,
+                'team_name': team.team_name
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -1974,26 +2107,29 @@ def update_team(request, project_id, team_id):
 @login_required
 @ratelimit(key='ip', rate='10/m', block=True)
 def delete_team(request, project_id, team_id):
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can delete teams'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can delete teams'}, status=403)
 
-    deleted, _ = Teams.objects.filter(id=team_id, project_id=project_id).delete()
+        deleted, _ = Teams.objects.filter(id=team_id, project_id=project_id).delete()
 
-    if not deleted:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not deleted:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -2006,82 +2142,85 @@ def add_team_member(request, project_id, team_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    username = data.get('username', '')
-    role = data.get('role', 'EDITOR')
+        username = data.get('username', '')
+        role = data.get('role', 'EDITOR')
 
-    if not isinstance(username, str):
-        return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
+        if not isinstance(username, str):
+            return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
 
-    if not isinstance(role, str):
-        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
+        if not isinstance(role, str):
+            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
 
-    username = username.strip()
-    role = role.upper().strip()
+        username = username.strip()
+        role = role.upper().strip()
 
-    if not username:
-        return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
+        if not username:
+            return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
 
-    if not USERNAME_REGEX.match(username):
-        return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
+        if not USERNAME_REGEX.match(username):
+            return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
 
-    if role not in ('EDITOR', 'ADMIN'):
-        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
+        if role not in ('EDITOR', 'ADMIN'):
+            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can add team members'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can add team members'}, status=403)
 
-    team = Teams.objects.filter(id=team_id, project_id=project_id).first()
+        team = Teams.objects.filter(id=team_id, project_id=project_id).first()
 
-    if not team:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not team:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    is_contributor = Contributor.objects.filter(
-        project_id=project_id,
-        username=username
-    ).exists()
+        is_contributor = Contributor.objects.filter(
+            project_id=project_id,
+            username=username
+        ).exists()
 
-    if not is_contributor:
-        return JsonResponse({'success': False, 'error': 'User must be a contributor first'}, status=400)
+        if not is_contributor:
+            return JsonResponse({'success': False, 'error': 'User must be a contributor first'}, status=400)
 
-    user = User.objects.filter(username=username).first()
+        user = User.objects.filter(username=username).first()
 
-    if not user:
-        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        if not user:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
 
-    if TeamMember.objects.filter(team=team, user=user).exists():
-        return JsonResponse({'success': False, 'error': 'User already in team'}, status=400)
+        if TeamMember.objects.filter(team=team, user=user).exists():
+            return JsonResponse({'success': False, 'error': 'User already in team'}, status=400)
 
-    tier = project.tier.lower()
-    tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
-    max_members = tier_config.get('members')
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        max_members = tier_config.get('members')
 
-    if max_members is not None:
-        current_count = TeamMember.objects.filter(team=team).count()
-        if current_count >= max_members:
-            return JsonResponse({'success': False, 'error': f'Member limit ({max_members}) reached for your tier'},
-                                status=403)
+        if max_members is not None:
+            current_count = TeamMember.objects.filter(team=team).count()
+            if current_count >= max_members:
+                return JsonResponse({'success': False, 'error': f'Member limit ({max_members}) reached for your tier'},
+                                    status=403)
 
-    TeamMember.objects.create(team=team, user=user, role=role)
+        TeamMember.objects.create(team=team, user=user, role=role)
 
-    return JsonResponse({
-        'success': True,
-        'member': {
-            'id': user.id,
-            'username': user.username,
-            'role': role
-        }
-    })
+        return JsonResponse({
+            'success': True,
+            'member': {
+                'id': user.id,
+                'username': user.username,
+                'role': role
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -2094,49 +2233,52 @@ def remove_team_member(request, project_id, team_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    username = data.get('username', '')
+        username = data.get('username', '')
 
-    if not isinstance(username, str):
-        return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
+        if not isinstance(username, str):
+            return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
 
-    username = username.strip()
+        username = username.strip()
 
-    if not username:
-        return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
+        if not username:
+            return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
 
-    if not USERNAME_REGEX.match(username):
-        return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
+        if not USERNAME_REGEX.match(username):
+            return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can remove team members'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can remove team members'}, status=403)
 
-    team = Teams.objects.filter(id=team_id, project_id=project_id).first()
+        team = Teams.objects.filter(id=team_id, project_id=project_id).first()
 
-    if not team:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not team:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    user = User.objects.filter(username=username).first()
+        user = User.objects.filter(username=username).first()
 
-    if not user:
-        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        if not user:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
 
-    deleted, _ = TeamMember.objects.filter(team=team, user=user).delete()
+        deleted, _ = TeamMember.objects.filter(team=team, user=user).delete()
 
-    if not deleted:
-        return JsonResponse({'success': False, 'error': 'User not in team'}, status=400)
+        if not deleted:
+            return JsonResponse({'success': False, 'error': 'User not in team'}, status=400)
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -2149,68 +2291,71 @@ def update_team_member_role(request, project_id, team_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    username = data.get('username', '')
-    role = data.get('role', '')
+        username = data.get('username', '')
+        role = data.get('role', '')
 
-    if not isinstance(username, str):
-        return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
+        if not isinstance(username, str):
+            return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
 
-    if not isinstance(role, str):
-        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
+        if not isinstance(role, str):
+            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
 
-    username = username.strip()
-    role = role.upper().strip()
+        username = username.strip()
+        role = role.upper().strip()
 
-    if not username:
-        return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
+        if not username:
+            return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
 
-    if not USERNAME_REGEX.match(username):
-        return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
+        if not USERNAME_REGEX.match(username):
+            return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
 
-    if role not in ('EDITOR', 'ADMIN'):
-        return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
+        if role not in ('EDITOR', 'ADMIN'):
+            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can change member roles'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can change member roles'}, status=403)
 
-    team = Teams.objects.filter(id=team_id, project_id=project_id).first()
+        team = Teams.objects.filter(id=team_id, project_id=project_id).first()
 
-    if not team:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not team:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    user = User.objects.filter(username=username).first()
+        user = User.objects.filter(username=username).first()
 
-    if not user:
-        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        if not user:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
 
-    membership = TeamMember.objects.filter(team=team, user=user).first()
+        membership = TeamMember.objects.filter(team=team, user=user).first()
 
-    if not membership:
-        return JsonResponse({'success': False, 'error': 'User not in team'}, status=404)
+        if not membership:
+            return JsonResponse({'success': False, 'error': 'User not in team'}, status=404)
 
-    membership.role = role
-    membership.save(update_fields=['role'])
+        membership.role = role
+        membership.save(update_fields=['role'])
 
-    return JsonResponse({
-        'success': True,
-        'member': {
-            'id': user.id,
-            'username': user.username,
-            'role': role,
-            'can_direct_save': membership.can_direct_save
-        }
-    })
+        return JsonResponse({
+            'success': True,
+            'member': {
+                'id': user.id,
+                'username': user.username,
+                'role': role,
+                'can_direct_save': membership.can_direct_save
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -2223,67 +2368,70 @@ def update_team_member_review(request, project_id, team_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    if not isinstance(project_id, int) or project_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
-    if not isinstance(team_id, int) or team_id < 1:
-        return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
+        if not isinstance(team_id, int) or team_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid team ID'}, status=400)
 
-    username = data.get('username', '')
-    can_direct_save = data.get('can_direct_save')
+        username = data.get('username', '')
+        can_direct_save = data.get('can_direct_save')
 
-    if not isinstance(username, str):
-        return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
+        if not isinstance(username, str):
+            return JsonResponse({'success': False, 'error': 'Invalid username'}, status=400)
 
-    username = username.strip()
+        username = username.strip()
 
-    if not username:
-        return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
+        if not username:
+            return JsonResponse({'success': False, 'error': 'Username required'}, status=400)
 
-    if not USERNAME_REGEX.match(username):
-        return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
+        if not USERNAME_REGEX.match(username):
+            return JsonResponse({'success': False, 'error': 'Invalid username format'}, status=400)
 
-    if can_direct_save is None:
-        return JsonResponse({'success': False, 'error': 'can_direct_save field required'}, status=400)
+        if can_direct_save is None:
+            return JsonResponse({'success': False, 'error': 'can_direct_save field required'}, status=400)
 
-    if not isinstance(can_direct_save, bool):
-        return JsonResponse({'success': False, 'error': 'can_direct_save must be boolean'}, status=400)
+        if not isinstance(can_direct_save, bool):
+            return JsonResponse({'success': False, 'error': 'can_direct_save must be boolean'}, status=400)
 
-    project = Project.objects.filter(id=project_id).first()
+        project = Project.objects.filter(id=project_id).first()
 
-    if not project:
-        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
-    if project.owner_id != request.user.id:
-        return JsonResponse({'success': False, 'error': 'Only project owner can change review settings'}, status=403)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only project owner can change review settings'}, status=403)
 
-    team = Teams.objects.filter(id=team_id, project_id=project_id).first()
+        team = Teams.objects.filter(id=team_id, project_id=project_id).first()
 
-    if not team:
-        return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
+        if not team:
+            return JsonResponse({'success': False, 'error': 'Team not found'}, status=404)
 
-    user = User.objects.filter(username=username).first()
+        user = User.objects.filter(username=username).first()
 
-    if not user:
-        return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+        if not user:
+            return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
 
-    membership = TeamMember.objects.filter(team=team, user=user).first()
+        membership = TeamMember.objects.filter(team=team, user=user).first()
 
-    if not membership:
-        return JsonResponse({'success': False, 'error': 'User not in team'}, status=404)
+        if not membership:
+            return JsonResponse({'success': False, 'error': 'User not in team'}, status=404)
 
-    membership.can_direct_save = can_direct_save
-    membership.save(update_fields=['can_direct_save'])
+        membership.can_direct_save = can_direct_save
+        membership.save(update_fields=['can_direct_save'])
 
-    return JsonResponse({
-        'success': True,
-        'member': {
-            'id': user.id,
-            'username': user.username,
-            'role': membership.role,
-            'can_direct_save': membership.can_direct_save
-        }
-    })
+        return JsonResponse({
+            'success': True,
+            'member': {
+                'id': user.id,
+                'username': user.username,
+                'role': membership.role,
+                'can_direct_save': membership.can_direct_save
+            }
+        })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @login_required
@@ -2301,57 +2449,63 @@ def change_password(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    current_password = data.get('current_password', '')
-    new_password = data.get('new_password', '')
+    try:
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
 
-    if not current_password or not new_password:
-        return JsonResponse({'success': False, 'error': 'All fields required'}, status=400)
+        if not current_password or not new_password:
+            return JsonResponse({'success': False, 'error': 'All fields required'}, status=400)
 
-    if len(new_password) < 6:
-        return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters'}, status=400)
+        if len(new_password) < 6:
+            return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters'}, status=400)
 
-    if not request.user.check_password(current_password):
-        return JsonResponse({'success': False, 'error': 'Current password is incorrect'}, status=400)
+        if not request.user.check_password(current_password):
+            return JsonResponse({'success': False, 'error': 'Current password is incorrect'}, status=400)
 
-    request.user.set_password(new_password)
-    request.user.save()
+        request.user.set_password(new_password)
+        request.user.save()
 
-    update_session_auth_hash(request, request.user)
+        update_session_auth_hash(request, request.user)
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @login_required
 @require_POST
 @ratelimit(key='ip', rate='5/m', block=True)
 def cancel_subscription(request):
-    if not request.user.stripe_customer_id:
-        return JsonResponse({'success': False, 'error': 'No active subscription'}, status=400)
-
     try:
-        subscriptions = stripe.Subscription.list(
-            customer=request.user.stripe_customer_id,
-            status='active',
-            limit=1
-        )
-
-        if not subscriptions.data:
+        if not request.user.stripe_customer_id:
             return JsonResponse({'success': False, 'error': 'No active subscription'}, status=400)
 
-        stripe.Subscription.modify(
-            subscriptions.data[0].id,
-            cancel_at_period_end=True
-        )
+        try:
+            subscriptions = stripe.Subscription.list(
+                customer=request.user.stripe_customer_id,
+                status='active',
+                limit=1
+            )
 
-        tier_before = request.user.Tier
-        request.user.subscription_status = 'canceled'
-        request.user.save(update_fields=['subscription_status'])
+            if not subscriptions.data:
+                return JsonResponse({'success': False, 'error': 'No active subscription'}, status=400)
 
-        send_cancellation_email.delay(request.user.email, request.user.username, tier_before)
+            stripe.Subscription.modify(
+                subscriptions.data[0].id,
+                cancel_at_period_end=True
+            )
 
-        return JsonResponse({'success': True})
+            tier_before = request.user.Tier
+            request.user.subscription_status = 'canceled'
+            request.user.save(update_fields=['subscription_status'])
 
-    except stripe.error.StripeError:
+            send_cancellation_email.delay(request.user.email, request.user.username, tier_before)
+
+            return JsonResponse({'success': True})
+
+        except stripe.error.StripeError:
+            return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+    except Exception:
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2359,25 +2513,28 @@ def cancel_subscription(request):
 @require_POST
 @ratelimit(key='ip', rate='3/m', block=True)
 def delete_account(request):
-    user = request.user
+    try:
+        user = request.user
 
-    if user.stripe_customer_id:
-        try:
-            subscriptions = stripe.Subscription.list(
-                customer=user.stripe_customer_id,
-                status='active'
-            )
-            for sub in subscriptions.data:
-                stripe.Subscription.cancel(sub.id)
-        except stripe.error.StripeError:
-            return JsonResponse(
-                {'success': False, 'error': 'Please contact support if your subscrption hasnt automaticaly cancelled'},
-                status=500)
+        if user.stripe_customer_id:
+            try:
+                subscriptions = stripe.Subscription.list(
+                    customer=user.stripe_customer_id,
+                    status='active'
+                )
+                for sub in subscriptions.data:
+                    stripe.Subscription.cancel(sub.id)
+            except stripe.error.StripeError:
+                return JsonResponse(
+                    {'success': False, 'error': 'Please contact support if your subscrption hasnt automaticaly cancelled'},
+                    status=500)
 
-    auth_logout(request)
-    user.delete()
+        auth_logout(request)
+        user.delete()
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 @ratelimit(key='ip', rate='3/m', block=True)
 @require_GET
@@ -2393,28 +2550,31 @@ def password_reset_send(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    email = data.get('email', '')
+    try:
+        email = data.get('email', '')
 
-    if not isinstance(email, str):
-        return JsonResponse({'success': False, 'error': 'Invalid email'}, status=400)
+        if not isinstance(email, str):
+            return JsonResponse({'success': False, 'error': 'Invalid email'}, status=400)
 
-    email = email.strip().lower()
+        email = email.strip().lower()
 
-    if not email or not EMAIL_REGEX.match(email):
-        return JsonResponse({'success': False, 'error': 'Invalid email format'}, status=400)
+        if not email or not EMAIL_REGEX.match(email):
+            return JsonResponse({'success': False, 'error': 'Invalid email format'}, status=400)
 
-    user = User.objects.filter(email=email).first()
+        user = User.objects.filter(email=email).first()
 
-    if user:
-        code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+        if user:
+            code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
-        cache.set(f'pw_reset_code:{email}', code, timeout=900)
-        cache.set(f'pw_reset_attempts:{email}', 0, timeout=900)
-        cache.delete(f'pw_reset_token:{email}')
+            cache.set(f'pw_reset_code:{email}', code, timeout=900)
+            cache.set(f'pw_reset_attempts:{email}', 0, timeout=900)
+            cache.delete(f'pw_reset_token:{email}')
 
-        send_password_reset_email(user.email, user.username, code)
+            send_password_reset_email(user.email, user.username, code)
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 @csrf_exempt
 @require_POST
@@ -2425,45 +2585,48 @@ def password_reset_verify(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    email = data.get('email', '')
-    code = data.get('code', '')
+    try:
+        email = data.get('email', '')
+        code = data.get('code', '')
 
-    if not isinstance(email, str) or not isinstance(code, str):
-        return JsonResponse({'success': False, 'error': 'Invalid input'}, status=400)
+        if not isinstance(email, str) or not isinstance(code, str):
+            return JsonResponse({'success': False, 'error': 'Invalid input'}, status=400)
 
-    email = email.strip().lower()
-    code = code.strip()
+        email = email.strip().lower()
+        code = code.strip()
 
-    if not email or not code:
-        return JsonResponse({'success': False, 'error': 'Email and code required'}, status=400)
+        if not email or not code:
+            return JsonResponse({'success': False, 'error': 'Email and code required'}, status=400)
 
-    if len(code) != 6 or not code.isdigit():
-        return JsonResponse({'success': False, 'error': 'Invalid code format'}, status=400)
+        if len(code) != 6 or not code.isdigit():
+            return JsonResponse({'success': False, 'error': 'Invalid code format'}, status=400)
 
-    attempts = cache.get(f'pw_reset_attempts:{email}', None)
-    if attempts is None:
-        return JsonResponse({'success': False, 'error': 'No reset requested or code expired'}, status=400)
+        attempts = cache.get(f'pw_reset_attempts:{email}', None)
+        if attempts is None:
+            return JsonResponse({'success': False, 'error': 'No reset requested or code expired'}, status=400)
 
-    if attempts >= 5:
+        if attempts >= 5:
+            cache.delete(f'pw_reset_code:{email}')
+            cache.delete(f'pw_reset_attempts:{email}')
+            return JsonResponse({'success': False, 'error': 'Too many attempts. Request a new code'}, status=400)
+
+        stored_code = cache.get(f'pw_reset_code:{email}')
+        if not stored_code:
+            return JsonResponse({'success': False, 'error': 'Code expired. Request a new one'}, status=400)
+
+        cache.set(f'pw_reset_attempts:{email}', attempts + 1, timeout=900)
+
+        if code != stored_code:
+            return JsonResponse({'success': False, 'error': 'Invalid code'}, status=400)
+
+        token = secrets.token_urlsafe(32)
+        cache.set(f'pw_reset_token:{email}', token, timeout=600)
         cache.delete(f'pw_reset_code:{email}')
         cache.delete(f'pw_reset_attempts:{email}')
-        return JsonResponse({'success': False, 'error': 'Too many attempts. Request a new code'}, status=400)
 
-    stored_code = cache.get(f'pw_reset_code:{email}')
-    if not stored_code:
-        return JsonResponse({'success': False, 'error': 'Code expired. Request a new one'}, status=400)
-
-    cache.set(f'pw_reset_attempts:{email}', attempts + 1, timeout=900)
-
-    if code != stored_code:
-        return JsonResponse({'success': False, 'error': 'Invalid code'}, status=400)
-
-    token = secrets.token_urlsafe(32)
-    cache.set(f'pw_reset_token:{email}', token, timeout=600)
-    cache.delete(f'pw_reset_code:{email}')
-    cache.delete(f'pw_reset_attempts:{email}')
-
-    return JsonResponse({'success': True, 'token': token})
+        return JsonResponse({'success': True, 'token': token})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @csrf_exempt
@@ -2475,33 +2638,71 @@ def password_reset_confirm(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    email = data.get('email', '')
-    token = data.get('token', '')
-    new_password = data.get('new_password', '')
+    try:
+        email = data.get('email', '')
+        token = data.get('token', '')
+        new_password = data.get('new_password', '')
 
-    if not isinstance(email, str) or not isinstance(token, str) or not isinstance(new_password, str):
-        return JsonResponse({'success': False, 'error': 'Invalid input'}, status=400)
+        if not isinstance(email, str) or not isinstance(token, str) or not isinstance(new_password, str):
+            return JsonResponse({'success': False, 'error': 'Invalid input'}, status=400)
 
-    email = email.strip().lower()
-    token = token.strip()
+        email = email.strip().lower()
+        token = token.strip()
 
-    if not email or not token or not new_password:
-        return JsonResponse({'success': False, 'error': 'All fields required'}, status=400)
+        if not email or not token or not new_password:
+            return JsonResponse({'success': False, 'error': 'All fields required'}, status=400)
 
-    if len(new_password) < 6:
-        return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters'}, status=400)
+        if len(new_password) < 6:
+            return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters'}, status=400)
 
-    stored_token = cache.get(f'pw_reset_token:{email}')
-    if not stored_token or stored_token != token:
-        return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=400)
+        stored_token = cache.get(f'pw_reset_token:{email}')
+        if not stored_token or stored_token != token:
+            return JsonResponse({'success': False, 'error': 'Invalid or expired token'}, status=400)
 
-    user = User.objects.filter(email=email).first()
-    if not user:
-        return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
 
-    user.set_password(new_password)
-    user.save()
+        user.set_password(new_password)
+        user.save()
 
-    cache.delete(f'pw_reset_token:{email}')
+        cache.delete(f'pw_reset_token:{email}')
 
-    return JsonResponse({'success': True})
+        return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+def render_error(request, code):
+    return render(request, 'error.html', ERROR_PAGES[code], status=code)
+
+
+def error_400(request):
+    return render_error(request, 400)
+
+def error_401(request):
+    return render_error(request, 401)
+
+def error_403(request):
+    return render_error(request, 403)
+
+def error_404(request):
+    return render_error(request, 404)
+
+def error_408(request):
+    return render_error(request, 408)
+
+def error_413(request):
+    return render_error(request, 413)
+
+def error_429(request):
+    return render_error(request, 429)
+
+def error_500(request):
+    return render_error(request, 500)
+
+def error_502(request):
+    return render_error(request, 502)
+
+def error_503(request):
+    return render_error(request, 503)
