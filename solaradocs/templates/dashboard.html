@@ -1300,6 +1300,43 @@
                     justify-content: flex-end;
                 }
             }
+
+            .viewer-doc-item {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.625rem 1rem;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-subtle);
+                border-radius: 6px;
+                margin-bottom: 0.375rem;
+                cursor: pointer;
+                transition: border-color 0.15s ease;
+            }
+
+            .viewer-doc-item:hover {
+                border-color: var(--border);
+            }
+
+            .viewer-doc-checkbox {
+                width: 16px;
+                height: 16px;
+                accent-color: var(--accent-orange);
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+
+            .viewer-doc-name {
+                font-size: 0.85rem;
+                color: var(--text-primary);
+                flex: 1;
+            }
+
+            .viewer-doc-team {
+                font-size: 0.7rem;
+                color: var(--text-tertiary);
+                font-family: 'JetBrains Mono', monospace;
+            }
         </style>
     </head>
     <body>
@@ -1569,6 +1606,24 @@
                                         {% else %}
                                             <p class="detail-value muted">No backups yet</p>
                                         {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="detail-section full-width">
+                                    <div class="section-header">
+                                        <span class="section-title">Viewer Document Access</span>
+                                        <button class="btn btn-primary btn-sm" onclick="saveViewerAccess({{ project.id }})" id="save-viewer-access-btn-{{ project.id }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                                <polyline points="7 3 7 8 15 8"/>
+                                            </svg>
+                                            Save
+                                        </button>
+                                    </div>
+                                    <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.75rem;">Select which documents viewers can access in this project.</p>
+                                    <div class="viewer-docs-list" id="viewer-docs-list-{{ project.id }}">
+                                        <p class="detail-value muted">Loading documents...</p>
                                     </div>
                                 </div>
 
@@ -1911,6 +1966,12 @@
                 const svg = btn.querySelector('svg');
                 details.classList.toggle('expanded');
                 svg.style.transform = details.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0)';
+
+                // Load viewer access docs when expanding
+                if (details.classList.contains('expanded')) {
+                    const projectId = id.replace('project-', '');
+                    loadViewerAccessDocs(parseInt(projectId));
+                }
             }
 
             function closeModal(modalId) {
@@ -2469,6 +2530,84 @@
                 const teamCard = document.getElementById(`team-card-${teamId}`);
                 const countEl = teamCard.querySelector('.team-member-count');
                 countEl.textContent = `${count} member${count !== 1 ? 's' : ''}`;
+            }
+
+            // ==================== VIEWER DOCUMENT ACCESS ====================
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            async function loadViewerAccessDocs(projectId) {
+                const container = document.getElementById(`viewer-docs-list-${projectId}`);
+                if (!container) return;
+                container.innerHTML = '<p class="detail-value muted">Loading...</p>';
+
+                try {
+                    // Fetch all project documents
+                    const docsResponse = await authFetch(`/api/project/${projectId}/documents`);
+                    if (!docsResponse) return;
+                    const docsData = await docsResponse.json();
+
+                    if (!docsData.success) {
+                        container.innerHTML = '<p class="detail-value muted">Failed to load documents</p>';
+                        return;
+                    }
+
+                    if (!docsData.documents || docsData.documents.length === 0) {
+                        container.innerHTML = '<p class="detail-value muted">No documents in this project</p>';
+                        return;
+                    }
+
+                    // Fetch current viewer access selections
+                    const accessResponse = await authFetch(`/api/project/${projectId}/viewer-access`);
+                    if (!accessResponse) return;
+                    const accessData = await accessResponse.json();
+
+                    const checkedIds = new Set(accessData.success ? accessData.document_ids : []);
+
+                    container.innerHTML = docsData.documents.map(doc => `
+                        <label class="viewer-doc-item">
+                            <input type="checkbox" class="viewer-doc-checkbox" value="${doc.id}" ${checkedIds.has(doc.id) ? 'checked' : ''}>
+                            <span class="viewer-doc-name">${escapeHtml(doc.document_name)}</span>
+                            <span class="viewer-doc-team">${escapeHtml(doc.team_name)}</span>
+                        </label>
+                    `).join('');
+                } catch (err) {
+                    container.innerHTML = '<p class="detail-value muted">Error loading documents</p>';
+                }
+            }
+
+            async function saveViewerAccess(projectId) {
+                const container = document.getElementById(`viewer-docs-list-${projectId}`);
+                if (!container) return;
+
+                const checkboxes = container.querySelectorAll('.viewer-doc-checkbox:checked');
+                const documentIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+                const btn = document.getElementById(`save-viewer-access-btn-${projectId}`);
+                if (btn) btn.disabled = true;
+
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/viewer-access/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({ document_ids: documentIds })
+                    });
+                    if (!response) return;
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(`Viewer access updated (${documentIds.length} document${documentIds.length !== 1 ? 's' : ''})`);
+                    } else {
+                        showToast(data.error || 'Failed to save viewer access', 'error');
+                    }
+                } catch (err) {
+                    showToast('Failed to save viewer access', 'error');
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
             }
 
             (async function initToken() {

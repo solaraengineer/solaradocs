@@ -639,6 +639,110 @@
                 display: none;
             }
         }
+
+        .viewer-panel {
+            margin-top: 1.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            overflow: hidden;
+            animation: slideDown 0.3s ease;
+        }
+
+        .viewer-docs-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .viewer-docs-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+        }
+
+        .viewer-docs-items {
+            padding: 0.75rem 1.25rem;
+        }
+
+        .viewer-doc-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        .viewer-doc-btn:hover {
+            border-color: var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        .viewer-doc-btn svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .viewer-doc-content-area {
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .viewer-doc-content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .viewer-doc-content-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .viewer-doc-content-body {
+            padding: 1.25rem;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .viewer-doc-content-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .viewer-doc-content-body::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        .viewer-doc-content-body::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .viewer-no-docs {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -708,12 +812,14 @@
                     </div>
                     <div class="project-actions">
                         {% if collab.role == 'VIEWER' %}
-                        <button class="btn-icon" onclick="toggleContent('content-{{ collab.id }}')">
+                        <button class="btn-icon" onclick="toggleViewerDocs({{ collab.project.id }}, 'viewer-panel-{{ collab.id }}')">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
                             </svg>
-                            View Content
+                            View Documents
                         </button>
                         {% elif collab.role == 'ADMIN' %}
                         <button class="btn-icon" onclick="navigateToProject({{ collab.project.id }})">
@@ -759,7 +865,27 @@
                     </div>
                 </div>
                 {% if collab.role == 'VIEWER' %}
-                <div class="content-display" id="content-{{ collab.id }}">{{ collab.project.content|safe }}</div>
+                <div class="viewer-panel" id="viewer-panel-{{ collab.id }}" style="display: none;">
+                    <div class="viewer-docs-header">
+                        <span class="viewer-docs-title">Accessible Documents</span>
+                    </div>
+                    <div class="viewer-docs-items" id="viewer-docs-items-{{ collab.id }}" data-project-id="{{ collab.project.id }}">
+                        <div class="admin-loading">Loading documents...</div>
+                    </div>
+                    <div class="viewer-doc-content-area" id="viewer-doc-content-{{ collab.id }}" style="display: none;">
+                        <div class="viewer-doc-content-header">
+                            <span class="viewer-doc-content-name" id="viewer-doc-name-{{ collab.id }}"></span>
+                            <button class="btn-icon" onclick="closeViewerDocContent('{{ collab.id }}')" style="padding: 0.375rem 0.625rem; font-size: 0.75rem;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                                Close
+                            </button>
+                        </div>
+                        <div class="viewer-doc-content-body" id="viewer-doc-body-{{ collab.id }}"></div>
+                    </div>
+                </div>
                 {% endif %}
 
                 {% if collab.role == 'ADMIN' %}
@@ -921,11 +1047,6 @@
         function handleLogout() {
             TokenManager.clearToken();
             window.location.href = '/logout';
-        }
-
-        function toggleContent(id) {
-            const el = document.getElementById(id);
-            el.classList.toggle('visible');
         }
 
         function navigateToProject(projectId) {
@@ -1125,6 +1246,87 @@
             } catch (err) {
                 container.innerHTML = '<div class="admin-loading">Error loading backups</div>';
             }
+        }
+
+        // ==================== VIEWER DOCUMENT ACCESS ====================
+
+        async function toggleViewerDocs(projectId, panelId) {
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                await loadViewerDocs(projectId, panelId);
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        async function loadViewerDocs(projectId, panelId) {
+            const collabId = panelId.replace('viewer-panel-', '');
+            const container = document.getElementById(`viewer-docs-items-${collabId}`);
+            if (!container) return;
+            container.innerHTML = '<div class="admin-loading">Loading...</div>';
+
+            try {
+                const response = await authFetch(`/api/project/${projectId}/viewer-documents`);
+                if (!response) return;
+                const data = await response.json();
+
+                if (!data.success) {
+                    container.innerHTML = `<div class="viewer-no-docs">${escapeHtml(data.error || 'Failed to load')}</div>`;
+                    return;
+                }
+
+                if (!data.documents || data.documents.length === 0) {
+                    container.innerHTML = '<div class="viewer-no-docs">No documents have been shared with viewers yet.</div>';
+                    return;
+                }
+
+                container.innerHTML = data.documents.map(doc => `
+                    <button class="viewer-doc-btn" onclick="loadViewerDocContent(${projectId}, ${doc.id}, '${collabId}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        ${escapeHtml(doc.document_name)}
+                    </button>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = '<div class="viewer-no-docs">Error loading documents</div>';
+            }
+        }
+
+        async function loadViewerDocContent(projectId, docId, collabId) {
+            const contentArea = document.getElementById(`viewer-doc-content-${collabId}`);
+            const nameEl = document.getElementById(`viewer-doc-name-${collabId}`);
+            const bodyEl = document.getElementById(`viewer-doc-body-${collabId}`);
+            if (!contentArea || !bodyEl) return;
+
+            contentArea.style.display = 'block';
+            bodyEl.innerHTML = '<div class="admin-loading">Loading content...</div>';
+            if (nameEl) nameEl.textContent = 'Loading...';
+
+            try {
+                const response = await authFetch(`/api/project/${projectId}/viewer-document/${docId}/content`);
+                if (!response) return;
+                const data = await response.json();
+
+                if (!data.success) {
+                    bodyEl.innerHTML = `<div class="viewer-no-docs">${escapeHtml(data.error || 'Failed to load')}</div>`;
+                    return;
+                }
+
+                if (nameEl) nameEl.textContent = data.document.document_name;
+                bodyEl.innerHTML = data.document.content || '<span style="color: var(--text-tertiary);">This document is empty.</span>';
+            } catch (err) {
+                bodyEl.innerHTML = '<div class="viewer-no-docs">Error loading document</div>';
+            }
+        }
+
+        function closeViewerDocContent(collabId) {
+            const contentArea = document.getElementById(`viewer-doc-content-${collabId}`);
+            if (contentArea) contentArea.style.display = 'none';
         }
 
         // Initialize token on page load

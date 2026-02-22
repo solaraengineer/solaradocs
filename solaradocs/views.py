@@ -20,7 +20,7 @@ from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
 from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, \
-    PendingAction
+    PendingAction, ViewerDocumentAccess
 from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email, send_password_reset_email
 from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
@@ -2669,6 +2669,171 @@ def password_reset_confirm(request):
         cache.delete(f'pw_reset_token:{email}')
 
         return JsonResponse({'success': True})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_viewer_access(request, project_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        if request.user.id != project.owner_id:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+
+        doc_ids = list(
+            ViewerDocumentAccess.objects.filter(project_id=project_id).values_list('document_id', flat=True)
+        )
+
+        return JsonResponse({'success': True, 'document_ids': doc_ids})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_POST
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='10/m', block=True)
+def save_viewer_access(request, project_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        if request.user.id != project.owner_id:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+
+        document_ids = data.get('document_ids', [])
+
+        if not isinstance(document_ids, list):
+            return JsonResponse({'success': False, 'error': 'document_ids must be a list'}, status=400)
+
+        for did in document_ids:
+            if not isinstance(did, int) or did < 1:
+                return JsonResponse({'success': False, 'error': 'Invalid document ID in list'}, status=400)
+
+        # Validate all docs belong to this project
+        valid_doc_ids = set(
+            Documents.objects.filter(project_id=project_id, id__in=document_ids).values_list('id', flat=True)
+        )
+
+        invalid = set(document_ids) - valid_doc_ids
+        if invalid:
+            return JsonResponse({'success': False, 'error': 'Some documents do not belong to this project'}, status=400)
+
+        with transaction.atomic():
+            ViewerDocumentAccess.objects.filter(project_id=project_id).delete()
+            if document_ids:
+                ViewerDocumentAccess.objects.bulk_create([
+                    ViewerDocumentAccess(project_id=project_id, document_id=did)
+                    for did in document_ids
+                ])
+
+        return JsonResponse({'success': True, 'count': len(document_ids)})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_viewer_documents(request, project_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        # Must be a VIEWER contributor
+        contributor = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='VIEWER'
+        ).first()
+
+        if not contributor:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+        accessible_doc_ids = ViewerDocumentAccess.objects.filter(
+            project_id=project_id
+        ).values_list('document_id', flat=True)
+
+        documents = Documents.objects.filter(
+            id__in=accessible_doc_ids
+        ).values('id', 'document_name')
+
+        docs_data = [{'id': d['id'], 'document_name': d['document_name']} for d in documents]
+
+        return JsonResponse({'success': True, 'documents': docs_data})
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_viewer_document_content(request, project_id, doc_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(doc_id, int) or doc_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        # Must be a VIEWER contributor
+        contributor = Contributor.objects.filter(
+            project_id=project_id,
+            username=request.user.username,
+            role='VIEWER'
+        ).first()
+
+        if not contributor:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+        # Check document is in viewer access list
+        has_access = ViewerDocumentAccess.objects.filter(
+            project_id=project_id,
+            document_id=doc_id
+        ).exists()
+
+        if not has_access:
+            return JsonResponse({'success': False, 'error': 'Document not accessible'}, status=403)
+
+        document = Documents.objects.filter(id=doc_id, project_id=project_id).first()
+        if not document:
+            return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
+
+        return JsonResponse({
+            'success': True,
+            'document': {
+                'id': document.id,
+                'document_name': document.document_name,
+                'content': document.content
+            }
+        })
     except Exception:
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 

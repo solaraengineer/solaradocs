@@ -72,6 +72,12 @@ class Documents(models.Model):
     def __str__(self):
         return f"{self.document_name} - {self.project.project_name}"
 
+class ViewerDocumentAccess(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    document = models.ForeignKey(Documents, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('project', 'document')
 
 class Audit(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='project_audits')
