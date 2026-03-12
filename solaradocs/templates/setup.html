@@ -710,7 +710,7 @@
         const tierConfig = {
             maxProjects: {{ tier_config.max_projects|default:"null" }},
             maxCollaborators: {{ tier_config.max_collaborators|default:"null" }},
-            backupsEnabled: {{ tier_config.backups_enabled|yesno:"true,false" }}
+            backupsEnabled: {{ tier_config.backups|yesno:"true,false" }}
         };
         const userTier = "{{ tier|default:'Free' }}";
 

@@ -512,7 +512,7 @@
                 gap: 0.5rem;
             }
 
-            .backup-item {
+            .backups-toggle-row {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -520,31 +520,74 @@
                 background: var(--bg-tertiary);
                 border: 1px solid var(--border-subtle);
                 border-radius: 8px;
-                margin-bottom: 0.5rem;
             }
 
-            .backup-info {
+            .backups-toggle-info {
                 display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                font-size: 0.8125rem;
-                color: var(--text-secondary);
+                flex-direction: column;
+                gap: 0.2rem;
             }
 
-            .backup-icon {
-                width: 30px;
-                height: 30px;
-                border-radius: 6px;
-                background: var(--bg-elevated);
-                display: flex;
-                align-items: center;
-                justify-content: center;
+            .backups-toggle-label {
+                font-size: 0.85rem;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+
+            .backups-toggle-desc {
+                font-size: 0.7rem;
                 color: var(--text-tertiary);
             }
 
-            .backup-icon svg {
-                width: 14px;
-                height: 14px;
+            .backups-switch {
+                position: relative;
+                display: inline-block;
+                width: 38px;
+                height: 22px;
+                flex-shrink: 0;
+            }
+
+            .backups-switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .backups-slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: var(--bg-elevated);
+                border: 1px solid var(--border);
+                border-radius: 22px;
+                transition: all 0.25s ease;
+            }
+
+            .backups-slider::before {
+                content: "";
+                position: absolute;
+                height: 16px;
+                width: 16px;
+                left: 2px;
+                bottom: 2px;
+                background: var(--text-tertiary);
+                border-radius: 50%;
+                transition: all 0.25s ease;
+            }
+
+            .backups-switch input:checked + .backups-slider {
+                background: rgba(212, 165, 116, 0.2);
+                border-color: var(--accent-orange);
+            }
+
+            .backups-switch input:checked + .backups-slider::before {
+                transform: translateX(16px);
+                background: var(--accent-orange);
+            }
+
+            .backups-switch input:disabled + .backups-slider {
+                opacity: 0.5;
+                cursor: not-allowed;
             }
 
             .add-form {
@@ -1585,27 +1628,22 @@
 
                                 <div class="detail-section">
                                     <div class="section-header">
-                                        <span class="section-title">Backup History</span>
+                                        <span class="section-title">Backups</span>
                                     </div>
-                                    <div id="backup-list-{{ project.id }}">
-                                        {% if project.backups.all %}
-                                            {% for backup in project.backups.all %}
-                                            <div class="backup-item" id="backup-{{ backup.id }}">
-                                                <div class="backup-info">
-                                                    <div class="backup-icon">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                            <polyline points="23 4 23 10 17 10"/>
-                                                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                                                        </svg>
-                                                    </div>
-                                                    <span>{{ backup.created_at|date:"M d, Y h:i A" }}</span>
-                                                </div>
-                                                <button class="btn btn-secondary btn-sm" onclick="revertBackup({{ project.id }}, {{ backup.id }})">Revert</button>
-                                            </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            <p class="detail-value muted">No backups yet</p>
-                                        {% endif %}
+                                    <div class="backups-toggle-row">
+                                        <div class="backups-toggle-info">
+                                            <span class="backups-toggle-label">Automatic backups</span>
+                                            <span class="backups-toggle-desc" id="backups-desc-{{ project.id }}">
+                                                {% if project.backups_enabled %}Snapshots are created on each save{% else %}Backups are paused — existing snapshots are preserved{% endif %}
+                                            </span>
+                                        </div>
+                                        <label class="backups-switch">
+                                            <input type="checkbox" id="backups-toggle-{{ project.id }}"
+                                                   data-project-id="{{ project.id }}"
+                                                   {% if project.backups_enabled %}checked{% endif %}
+                                                   onchange="toggleBackups({{ project.id }}, this.checked)">
+                                            <span class="backups-slider"></span>
+                                        </label>
                                     </div>
                                 </div>
 
@@ -2067,24 +2105,35 @@
                 }
             }
 
-            async function revertBackup(projectId, backupId) {
-                if (!await showConfirm('Revert to this backup? The current content will be replaced.', 'Revert')) return;
+            async function toggleBackups(projectId, enabled) {
+                const toggle = document.getElementById(`backups-toggle-${projectId}`);
+                const desc = document.getElementById(`backups-desc-${projectId}`);
+                toggle.disabled = true;
                 try {
-                    const response = await authFetch('/revert/', {
+                    const response = await authFetch(`/api/project/${projectId}/toggle-backups`, {
                         method: 'POST',
-                        body: JSON.stringify({ project_id: projectId, backup_id: backupId })
+                        body: JSON.stringify({ enabled: enabled })
                     });
-                    if (!response) return;
+                    if (!response) {
+                        toggle.checked = !enabled;
+                        toggle.disabled = false;
+                        return;
+                    }
                     const data = await response.json();
                     if (data.success) {
-                        showToast('Backup restored');
-                        document.getElementById(`backup-${backupId}`).remove();
+                        showToast(enabled ? 'Backups enabled' : 'Backups paused');
+                        desc.textContent = enabled
+                            ? 'Snapshots are created on each save'
+                            : 'Backups are paused \u2014 existing snapshots are preserved';
                     } else {
-                        showToast(data.error || 'Failed to revert', 'error');
+                        showToast(data.error || 'Failed to toggle backups', 'error');
+                        toggle.checked = !enabled;
                     }
                 } catch (error) {
-                    showToast('Failed to revert', 'error');
+                    showToast('Failed to toggle backups', 'error');
+                    toggle.checked = !enabled;
                 }
+                toggle.disabled = false;
             }
 
             async function saveRole(projectId, contributorId) {

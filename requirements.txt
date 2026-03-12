@@ -39,5 +39,12 @@ ypy==0.2
 django-allauth==65.13.1
 cryptography
 celery==5.4.0
-django-sendgrid
 boto3
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-django
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-celery

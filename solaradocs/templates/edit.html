@@ -7,7 +7,7 @@
     <title>{{ project.project_name }} - Solara docs</title>
     <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
     <link rel="apple-touch-icon" href="{% static 'assets/favicon-512.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -351,14 +351,6 @@
             text-overflow: ellipsis;
         }
 
-        .doc-item:hover .doc-item-name,
-        .doc-item.active .doc-item-name {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: unset;
-            word-break: break-word;
-        }
-
         .doc-item-team {
             font-size: 0.7rem;
             color: var(--text-tertiary);
@@ -551,6 +543,38 @@
             height: 18px;
         }
 
+        .width-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-left: auto;
+        }
+
+        .width-toggle-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .width-toggle-btn.active {
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-orange);
+            border-color: var(--accent-orange);
+        }
+
+        .width-toggle-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
         .toolbar-select {
             padding: 0.375rem 0.625rem;
             background: var(--bg-tertiary);
@@ -575,7 +599,7 @@
         .editor-container {
             flex: 1;
             overflow-y: auto;
-            padding: 2rem;
+            padding: 1rem;
             display: flex;
             justify-content: center;
             background: var(--bg-primary);
@@ -601,6 +625,11 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
+            transition: max-width 0.3s ease;
+        }
+
+        .editor-wrapper.full-width {
+            max-width: none;
         }
 
         /* Quill Overrides */
@@ -616,9 +645,9 @@
 
         .ql-editor {
             min-height: 500px;
-            padding: 2rem;
+            padding: 1.25rem 1.5rem;
             color: var(--text-primary);
-            line-height: 1.8;
+            line-height: 1.5;
         }
 
         .ql-editor.ql-blank::before {
@@ -629,26 +658,26 @@
         .ql-editor h1 {
             font-size: 2rem;
             font-weight: 700;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
             color: var(--text-primary);
         }
 
         .ql-editor h2 {
             font-size: 1.5rem;
             font-weight: 600;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.4rem;
             color: var(--text-primary);
         }
 
         .ql-editor h3 {
             font-size: 1.25rem;
             font-weight: 600;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
             color: var(--text-primary);
         }
 
         .ql-editor p {
-            margin-bottom: 1rem;
+            margin-bottom: 0.4rem;
         }
 
         .ql-editor a {
@@ -662,7 +691,7 @@
         .ql-editor blockquote {
             border-left: 3px solid var(--accent-orange);
             padding-left: 1rem;
-            margin: 1rem 0;
+            margin: 0.5rem 0;
             color: var(--text-secondary);
         }
 
@@ -675,7 +704,7 @@
             font-size: 0.85rem;
             overflow-x: auto;
             position: relative;
-            margin: 1rem 0;
+            margin: 0.5rem 0;
         }
 
         .ql-editor pre .ql-code-block-container {
@@ -755,11 +784,11 @@
 
         .ql-editor ul, .ql-editor ol {
             padding-left: 1.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.4rem;
         }
 
         .ql-editor li {
-            margin-bottom: 0.375rem;
+            margin-bottom: 0.1rem;
         }
 
         .ql-editor img {
@@ -1078,248 +1107,51 @@
             padding: 0.625rem 1.25rem;
         }
 
-        /* Toast */
-        /* Notification Modal */
-        .notif-overlay {
+        /* Toast Notification */
+        .toast {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            padding: 0.625rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: inherit;
             display: flex;
             align-items: center;
-            justify-content: center;
-            z-index: 2000;
+            gap: 0.5rem;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.2s ease;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 2000;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            pointer-events: none;
+            white-space: nowrap;
         }
 
-        .notif-overlay.show {
+        .toast.show {
             opacity: 1;
             visibility: visible;
+            transform: translateX(-50%) translateY(0);
         }
 
-        .notif-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            width: 100%;
-            max-width: 380px;
-            transform: scale(0.92) translateY(10px);
-            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            overflow: hidden;
-        }
-
-        .notif-overlay.show .notif-box {
-            transform: scale(1) translateY(0);
-        }
-
-        .notif-icon-area {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.75rem 1.5rem 0.75rem;
-        }
-
-        .notif-icon-circle {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .notif-icon-circle svg {
-            width: 24px;
-            height: 24px;
-        }
-
-        .notif-icon-circle.success {
-            background: rgba(127, 176, 105, 0.15);
+        .toast.success {
+            background: var(--bg-elevated);
+            border: 1px solid rgba(127, 176, 105, 0.4);
             color: var(--accent-green);
         }
 
-        .notif-icon-circle.error {
-            background: rgba(212, 106, 106, 0.15);
+        .toast.error {
+            background: var(--bg-elevated);
+            border: 1px solid rgba(212, 106, 106, 0.4);
             color: var(--accent-red);
         }
 
-        .notif-content {
-            text-align: center;
-            padding: 0.75rem 1.75rem 1.25rem;
-        }
-
-        .notif-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.35rem;
-        }
-
-        .notif-message {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .notif-actions {
-            padding: 0 1.5rem 1.5rem;
-            display: flex;
-            justify-content: center;
-        }
-
-        .notif-btn {
-            padding: 0.6rem 2rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            transition: all 0.15s ease;
-        }
-
-        .notif-btn.success {
-            background: var(--accent-green);
-            color: var(--bg-primary);
-        }
-
-        .notif-btn.success:hover {
-            box-shadow: 0 4px 16px rgba(127, 176, 105, 0.3);
-        }
-
-        .notif-btn.error {
-            background: var(--accent-red);
-            color: #fff;
-        }
-
-        .notif-btn.error:hover {
-            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
-        }
-
-        /* Confirmation Modal */
-        .confirm-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2001;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s ease;
-        }
-
-        .confirm-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .confirm-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            width: 100%;
-            max-width: 400px;
-            transform: scale(0.92) translateY(10px);
-            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            overflow: hidden;
-        }
-
-        .confirm-overlay.show .confirm-box {
-            transform: scale(1) translateY(0);
-        }
-
-        .confirm-icon-area {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.75rem 1.5rem 0.75rem;
-        }
-
-        .confirm-icon-circle {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(212, 165, 116, 0.15);
-            color: var(--accent-orange);
-        }
-
-        .confirm-icon-circle svg {
-            width: 24px;
-            height: 24px;
-        }
-
-        .confirm-content {
-            text-align: center;
-            padding: 0.75rem 1.75rem 1.25rem;
-        }
-
-        .confirm-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.35rem;
-        }
-
-        .confirm-message {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .confirm-actions {
-            padding: 0 1.5rem 1.5rem;
-            display: flex;
-            justify-content: center;
-            gap: 0.75rem;
-        }
-
-        .confirm-btn-cancel {
-            padding: 0.6rem 1.5rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
-            transition: all 0.15s ease;
-        }
-
-        .confirm-btn-cancel:hover {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-        }
-
-        .confirm-btn-confirm {
-            padding: 0.6rem 1.5rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            background: var(--accent-red);
-            color: #fff;
-            transition: all 0.15s ease;
-        }
-
-        .confirm-btn-confirm:hover {
-            box-shadow: 0 4px 16px rgba(212, 106, 106, 0.3);
+        .toast svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
         }
 
         /* Pending edits styles */
@@ -1426,66 +1258,122 @@
         }
 
         /* Backup items */
+        /* Backup search */
+        .backup-search {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+        }
+
+        .backup-search svg {
+            width: 13px;
+            height: 13px;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .backup-search input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .backup-search input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .backup-disabled-msg {
+            text-align: center;
+            padding: 1.5rem 1rem;
+            color: var(--text-tertiary);
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .backup-disabled-msg svg {
+            width: 28px;
+            height: 28px;
+            margin-bottom: 0.5rem;
+            opacity: 0.4;
+        }
+
         .backup-doc-group {
-            margin-bottom: 1.25rem;
+            margin-bottom: 0.75rem;
         }
 
         .backup-doc-name {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            color: var(--accent-orange);
-            margin-bottom: 0.5rem;
-            padding-bottom: 0.375rem;
-            border-bottom: 1px solid var(--border-subtle);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-tertiary);
+            margin-bottom: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
         }
 
         .backup-item {
-            padding: 0.625rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-            margin-bottom: 0.375rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.6rem;
+            border-left: 2px solid var(--border-subtle);
+            margin-left: 0.5rem;
+            margin-bottom: 0.125rem;
+            transition: border-color 0.15s ease;
         }
 
-        .backup-header {
+        .backup-item:hover {
+            border-left-color: var(--accent-orange);
+        }
+
+        .backup-meta {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 0;
         }
 
         .backup-version {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             color: var(--accent-blue);
         }
 
         .backup-time {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-tertiary);
         }
 
         .backup-revert-btn {
-            width: 100%;
-            padding: 0.375rem;
-            margin-top: 0.375rem;
-            background: var(--bg-elevated);
+            padding: 0.25rem 0.5rem;
+            background: transparent;
             border: 1px solid var(--border);
             border-radius: 4px;
-            color: var(--accent-orange);
+            color: var(--text-secondary);
             font-size: 0.65rem;
             font-weight: 500;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
         }
 
         .backup-revert-btn:hover {
             background: rgba(212, 165, 116, 0.15);
             border-color: var(--accent-orange);
+            color: var(--accent-orange);
         }
 
         .backup-revert-btn:disabled {
@@ -1495,9 +1383,15 @@
 
         .backup-empty {
             text-align: center;
-            padding: 2rem 1rem;
+            padding: 1.5rem 1rem;
             color: var(--text-tertiary);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+        }
+
+        .backup-count {
+            font-size: 0.65rem;
+            color: var(--text-tertiary);
+            margin-bottom: 0.5rem;
         }
 
         /* Delete confirmation modal */
@@ -1507,48 +1401,368 @@
             margin-top: 0.5rem;
         }
 
-        /* Mobile sidebar toggle */
-        .mobile-sidebar-toggle {
-            display: none;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+        /* Panel collapse toggles */
+        .sidebar-collapse-btn,
+        .panel-collapse-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .sidebar-collapse-btn:hover,
+        .panel-collapse-btn:hover {
             background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .sidebar-collapse-btn svg,
+        .panel-collapse-btn svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed * {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .right-panel.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        .right-panel.collapsed * {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar,
+        .right-panel {
+            transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease, border 0.25s ease;
+        }
+
+        /* Sidebar expand tab (visible when collapsed) */
+        .sidebar-expand-tab {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 48px;
+            background: var(--bg-secondary);
             border: 1px solid var(--border);
+            border-left: none;
+            border-radius: 0 6px 6px 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            z-index: 20;
+            transition: all 0.15s ease;
+        }
+
+        .sidebar-expand-tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+            width: 24px;
+        }
+
+        .sidebar-expand-tab svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .sidebar-expand-tab.visible {
+            display: flex;
+        }
+
+        .panel-expand-tab {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 48px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-right: none;
+            border-radius: 6px 0 0 6px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            z-index: 20;
+            transition: all 0.15s ease;
+        }
+
+        .panel-expand-tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-orange);
+            width: 24px;
+        }
+
+        .panel-expand-tab svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .panel-expand-tab.visible {
+            display: flex;
+        }
+
+        .main-layout {
+            position: relative;
+        }
+
+        /* Focus mode */
+        .main-layout.focus-mode .sidebar {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        .main-layout.focus-mode .sidebar * {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .main-layout.focus-mode .right-panel {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        .main-layout.focus-mode .right-panel * {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .main-layout.focus-mode .editor-wrapper {
+            max-width: none;
+        }
+
+        .main-layout.focus-mode .sidebar-expand-tab,
+        .main-layout.focus-mode .panel-expand-tab {
+            display: none !important;
+        }
+
+        /* Preferences dropdown */
+        .prefs-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
+            transition: all 0.15s ease;
         }
 
-        .mobile-sidebar-toggle:hover {
-            background: var(--bg-elevated);
+        .prefs-btn:hover {
+            background: var(--bg-tertiary);
             color: var(--text-primary);
-            border-color: var(--accent-orange);
         }
 
-        .mobile-sidebar-toggle svg {
+        .prefs-btn svg {
             width: 18px;
             height: 18px;
         }
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 500;
-            opacity: 0;
-            transition: opacity 0.25s ease;
+        .prefs-dropdown-wrap {
+            position: relative;
         }
 
-        .sidebar-overlay.show {
-            opacity: 1;
+        .prefs-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem;
+            min-width: 240px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 200;
+            display: none;
+        }
+
+        .prefs-dropdown.show {
+            display: block;
+        }
+
+        .prefs-section {
+            margin-bottom: 0.75rem;
+        }
+
+        .prefs-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .prefs-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-tertiary);
+            margin-bottom: 0.375rem;
+        }
+
+        .prefs-options {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .prefs-option {
+            flex: 1;
+            padding: 0.35rem 0.5rem;
+            border-radius: 5px;
+            background: var(--bg-tertiary);
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s ease;
+        }
+
+        .prefs-option:hover {
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        .prefs-option.active {
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-orange);
+            border-color: var(--accent-orange);
+        }
+
+        /* Font family classes */
+        .font-sans .ql-editor {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .font-serif .ql-editor {
+            font-family: 'Lora', Georgia, serif;
+        }
+
+        .font-mono .ql-editor {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        /* Font size classes */
+        .fontsize-sm .ql-editor { font-size: 0.875rem; }
+        .fontsize-md .ql-editor { font-size: 1rem; }
+        .fontsize-lg .ql-editor { font-size: 1.125rem; }
+        .fontsize-xl .ql-editor { font-size: 1.25rem; }
+
+        /* Line spacing classes */
+        .spacing-compact .ql-editor { line-height: 1.35; }
+        .spacing-normal .ql-editor { line-height: 1.5; }
+        .spacing-relaxed .ql-editor { line-height: 1.75; }
+
+        /* Focus mode button */
+        .focus-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .focus-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .focus-btn.active {
+            background: rgba(212, 165, 116, 0.15);
+            color: var(--accent-orange);
+            border-color: var(--accent-orange);
+        }
+
+        .focus-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Status bar */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.35rem 1rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .status-bar-left,
+        .status-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .status-separator {
+            width: 1px;
+            height: 10px;
+            background: var(--border);
+        }
+
+        .status-bar kbd {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 0 0.3rem;
+            font-size: 0.65rem;
+            font-family: inherit;
+            color: var(--text-tertiary);
         }
 
         /* Responsive */
@@ -1559,180 +1773,33 @@
         }
 
         @media (max-width: 900px) {
-            .mobile-sidebar-toggle {
-                display: flex;
-            }
-
             .sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                bottom: 0;
-                z-index: 501;
-                width: 280px;
-                transform: translateX(-100%);
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: none;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
-            }
-
-            .sidebar-overlay {
-                display: block;
-                pointer-events: none;
-            }
-
-            .sidebar-overlay.show {
-                pointer-events: auto;
-            }
-
-            .doc-item {
-                padding: 0.75rem;
-            }
-
-            .doc-item-name {
-                font-size: 0.95rem;
+                display: none;
             }
         }
 
         @media (max-width: 600px) {
             .top-bar {
-                padding: 0.5rem 0.75rem;
-                gap: 0.5rem;
+                flex-wrap: wrap;
+                gap: 0.75rem;
             }
 
             .top-bar-center {
-                display: none;
-            }
-
-            .project-name {
-                font-size: 0.875rem;
-            }
-
-            .btn {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.8rem;
-            }
-
-            .btn span.btn-label {
-                display: none;
+                order: 3;
+                width: 100%;
+                justify-content: center;
             }
 
             .toolbar {
-                padding: 0.375rem 0.5rem;
-                gap: 0.125rem;
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-            }
-
-            .toolbar::-webkit-scrollbar {
-                display: none;
-            }
-
-            .toolbar-group {
-                padding-right: 0.375rem;
-                margin-right: 0.375rem;
-                flex-shrink: 0;
-            }
-
-            .toolbar-btn {
-                width: 28px;
-                height: 28px;
-            }
-
-            .toolbar-btn svg {
-                width: 16px;
-                height: 16px;
-            }
-
-            .toolbar-select {
-                padding: 0.25rem 0.4rem;
-                font-size: 0.75rem;
-            }
-
-            .editor-container {
-                padding: 0.5rem;
-            }
-
-            .editor-wrapper {
-                border-radius: 8px;
+                padding: 0.5rem 1rem;
             }
 
             .ql-editor {
-                padding: 1rem;
-                min-height: 300px;
-                font-size: 0.95rem;
-            }
-
-            .ql-editor h1 {
-                font-size: 1.5rem;
-            }
-
-            .ql-editor h2 {
-                font-size: 1.25rem;
-            }
-
-            .ql-editor h3 {
-                font-size: 1.1rem;
+                padding: 1rem 1.25rem;
             }
 
             .modal {
-                margin: 0.75rem;
-                max-width: none;
-            }
-
-            .modal-header {
-                padding: 1rem;
-            }
-
-            .modal-body {
-                padding: 1rem;
-            }
-
-            .modal-footer {
-                padding: 1rem;
-            }
-
-            .notif-box, .confirm-box {
-                margin: 0.75rem;
-                max-width: none;
-            }
-
-            .export-dropdown {
-                right: -0.5rem;
-                min-width: 160px;
-            }
-
-            .top-bar-right {
-                gap: 0.5rem;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .top-bar {
-                padding: 0.4rem 0.5rem;
-            }
-
-            .back-btn {
-                width: 32px;
-                height: 32px;
-            }
-
-            .project-name {
-                font-size: 0.8rem;
-            }
-
-            .project-status {
-                font-size: 0.65rem;
-            }
-
-            .top-bar-left {
-                gap: 0.5rem;
+                margin: 1rem;
             }
         }
     </style>
@@ -1742,13 +1809,6 @@
     <!-- Top Bar -->
     <div class="top-bar">
         <div class="top-bar-left">
-            <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" title="Documents">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="6" x2="21" y2="6"/>
-                    <line x1="3" y1="12" x2="21" y2="12"/>
-                    <line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-            </button>
             <a href="/dashboard" class="back-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -1779,7 +1839,7 @@
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    <span class="btn-label">Export</span>
+                    Export
                 </button>
                 <div class="export-dropdown" id="exportDropdown">
                     <button class="toolbar-dropdown-item" id="exportHtml">
@@ -1813,21 +1873,19 @@
                     <polyline points="17 21 17 13 7 13 7 21"/>
                     <polyline points="7 3 7 8 15 8"/>
                 </svg>
-                <span class="btn-label">Save</span>
+                Save
             </button>
         </div>
     </div>
 
-    <!-- Sidebar Overlay (mobile) -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
     <!-- Main Layout -->
     <div class="main-layout">
         <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
+        <div class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Documents</span>
+                    <div style="display: flex; align-items: center; gap: 0.25rem;">
                     <button class="sidebar-refresh-btn" id="refreshDocsBtn" title="Refresh documents">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -1836,6 +1894,13 @@
                             <path d="M16 21h5v-5"/>
                         </svg>
                     </button>
+                    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="11 17 6 12 11 7"/>
+                            <polyline points="18 17 13 12 18 7"/>
+                        </svg>
+                    </button>
+                    </div>
                 </div>
                 <div class="sidebar-search">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1989,6 +2054,62 @@
                         </svg>
                     </button>
                 </div>
+
+                <button class="width-toggle-btn" id="widthToggleBtn" title="Toggle full width">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 3 21 3 21 9"/>
+                        <polyline points="9 21 3 21 3 15"/>
+                        <line x1="21" y1="3" x2="14" y2="10"/>
+                        <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                    <span id="widthToggleLabel">Full width</span>
+                </button>
+
+                <button class="focus-btn" id="focusModeBtn" title="Focus mode (Esc)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+                        <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+                        <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+                        <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+                    </svg>
+                    Focus
+                </button>
+
+                <div class="prefs-dropdown-wrap">
+                    <button class="prefs-btn" id="prefsBtn" title="Editor preferences">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                        </svg>
+                    </button>
+                    <div class="prefs-dropdown" id="prefsDropdown">
+                        <div class="prefs-section">
+                            <div class="prefs-label">Font</div>
+                            <div class="prefs-options" data-pref="fontFamily">
+                                <button class="prefs-option active" data-value="sans">Sans</button>
+                                <button class="prefs-option" data-value="serif">Serif</button>
+                                <button class="prefs-option" data-value="mono">Mono</button>
+                            </div>
+                        </div>
+                        <div class="prefs-section">
+                            <div class="prefs-label">Size</div>
+                            <div class="prefs-options" data-pref="fontSize">
+                                <button class="prefs-option" data-value="sm">S</button>
+                                <button class="prefs-option active" data-value="md">M</button>
+                                <button class="prefs-option" data-value="lg">L</button>
+                                <button class="prefs-option" data-value="xl">XL</button>
+                            </div>
+                        </div>
+                        <div class="prefs-section">
+                            <div class="prefs-label">Spacing</div>
+                            <div class="prefs-options" data-pref="lineSpacing">
+                                <button class="prefs-option" data-value="compact">Tight</button>
+                                <button class="prefs-option active" data-value="normal">Normal</button>
+                                <button class="prefs-option" data-value="relaxed">Relaxed</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Editor -->
@@ -1997,11 +2118,51 @@
                     <div id="editor"></div>
                 </div>
             </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-bar-left">
+                    <span class="status-item" id="statusWords">0 words</span>
+                    <span class="status-separator"></span>
+                    <span class="status-item" id="statusChars">0 chars</span>
+                    <span class="status-separator"></span>
+                    <span class="status-item" id="statusLines">0 lines</span>
+                    <span class="status-separator"></span>
+                    <span class="status-item" id="statusReadTime">0 min read</span>
+                </div>
+                <div class="status-bar-right">
+                    <span class="status-item"><kbd>Ctrl+S</kbd> Save</span>
+                    <span class="status-item"><kbd>Ctrl+K</kbd> Link</span>
+                    <span class="status-item"><kbd>Esc</kbd> Focus</span>
+                </div>
+            </div>
         </div>
+
+        <!-- Sidebar expand tab -->
+        <button class="sidebar-expand-tab" id="sidebarExpandBtn" title="Expand sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="13 17 18 12 13 7"/>
+                <polyline points="6 17 11 12 6 7"/>
+            </svg>
+        </button>
+
+        <!-- Panel expand tab -->
+        <button class="panel-expand-tab" id="panelExpandBtn" title="Expand panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="11 17 6 12 11 7"/>
+                <polyline points="18 17 13 12 18 7"/>
+            </svg>
+        </button>
 
         <!-- Right Panel -->
         <div class="right-panel">
             <div class="panel-tabs">
+                <button class="panel-collapse-btn" id="panelCollapseBtn" title="Collapse panel" style="padding: 0 0.5rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="13 17 18 12 13 7"/>
+                        <polyline points="6 17 11 12 6 7"/>
+                    </svg>
+                </button>
                 <button class="panel-tab active" data-tab="info">Info</button>
                 <button class="panel-tab" data-tab="history">Audit logs</button>
                 {% if is_owner or role == 'ADMIN' %}
@@ -2079,6 +2240,14 @@
                 <div id="backupsSection" style="display: none;">
                     <div class="panel-section">
                         <div class="panel-section-title">Document Backups</div>
+                        <div class="backup-search" id="backupSearchWrap" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21l-4.35-4.35"/>
+                            </svg>
+                            <input type="text" placeholder="Filter by doc name or date..." id="backupSearch">
+                        </div>
+                        <div class="backup-count" id="backupCount"></div>
                         <div id="backupsList">
                             <div class="backup-empty">Loading backups...</div>
                         </div>
@@ -2199,52 +2368,10 @@
         </div>
     </div>
 
-    <!-- Notification Modal -->
-    <div class="notif-overlay" id="notifOverlay">
-        <div class="notif-box">
-            <div class="notif-icon-area">
-                <div class="notif-icon-circle" id="notifIconCircle">
-                    <svg id="notifIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    <svg id="notifIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="15" y1="9" x2="9" y2="15"/>
-                        <line x1="9" y1="9" x2="15" y2="15"/>
-                    </svg>
-                </div>
-            </div>
-            <div class="notif-content">
-                <div class="notif-title" id="notifTitle"></div>
-                <div class="notif-message" id="notifMessage"></div>
-            </div>
-            <div class="notif-actions">
-                <button class="notif-btn" id="notifBtn" onclick="closeNotif()">OK</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="confirm-overlay" id="confirmOverlay">
-        <div class="confirm-box">
-            <div class="confirm-icon-area">
-                <div class="confirm-icon-circle">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                        <line x1="12" y1="9" x2="12" y2="13"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                </div>
-            </div>
-            <div class="confirm-content">
-                <div class="confirm-title" id="confirmTitle">Are you sure?</div>
-                <div class="confirm-message" id="confirmMessage"></div>
-            </div>
-            <div class="confirm-actions">
-                <button class="confirm-btn-cancel" id="confirmBtnCancel">Cancel</button>
-                <button class="confirm-btn-confirm" id="confirmBtnConfirm">Confirm</button>
-            </div>
-        </div>
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span id="toastIcon"></span>
+        <span id="toastMsg"></span>
     </div>
 
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
@@ -2572,64 +2699,26 @@
         let notifTimer = null;
 
         function showToast(message, type = 'success') {
-            const overlay = document.getElementById('notifOverlay');
-            const iconCircle = document.getElementById('notifIconCircle');
-            const successIcon = document.getElementById('notifIconSuccess');
-            const errorIcon = document.getElementById('notifIconError');
-            const title = document.getElementById('notifTitle');
-            const msg = document.getElementById('notifMessage');
-            const btn = document.getElementById('notifBtn');
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMsg');
 
-            iconCircle.className = 'notif-icon-circle ' + type;
-            btn.className = 'notif-btn ' + type;
-            successIcon.style.display = type === 'success' ? 'block' : 'none';
-            errorIcon.style.display = type === 'error' ? 'block' : 'none';
-            title.textContent = type === 'success' ? 'Success' : 'Error';
+            icon.innerHTML = type === 'success'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
             msg.textContent = message;
 
-            overlay.classList.add('show');
+            toast.className = 'toast ' + type;
+
+            // Force reflow for re-triggering animation
+            void toast.offsetWidth;
+            toast.classList.add('show');
 
             if (notifTimer) clearTimeout(notifTimer);
-            if (type === 'success') {
-                notifTimer = setTimeout(() => closeNotif(), 2500);
-            }
-        }
-
-        function closeNotif() {
-            document.getElementById('notifOverlay').classList.remove('show');
-            if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
-        }
-
-        document.getElementById('notifOverlay').addEventListener('click', function(e) {
-            if (e.target === this) closeNotif();
-        });
-
-        function showConfirm(message, confirmLabel = 'Confirm') {
-            return new Promise((resolve) => {
-                const overlay = document.getElementById('confirmOverlay');
-                const msgEl = document.getElementById('confirmMessage');
-                const cancelBtn = document.getElementById('confirmBtnCancel');
-                const confirmBtn = document.getElementById('confirmBtnConfirm');
-
-                msgEl.textContent = message;
-                confirmBtn.textContent = confirmLabel;
-                overlay.classList.add('show');
-
-                function cleanup() {
-                    overlay.classList.remove('show');
-                    cancelBtn.removeEventListener('click', onCancel);
-                    confirmBtn.removeEventListener('click', onConfirm);
-                    overlay.removeEventListener('click', onOverlay);
-                }
-
-                function onCancel() { cleanup(); resolve(false); }
-                function onConfirm() { cleanup(); resolve(true); }
-                function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
-
-                cancelBtn.addEventListener('click', onCancel);
-                confirmBtn.addEventListener('click', onConfirm);
-                overlay.addEventListener('click', onOverlay);
-            });
+            notifTimer = setTimeout(() => {
+                toast.classList.remove('show');
+                notifTimer = null;
+            }, type === 'error' ? 3500 : 2200);
         }
 
         // ==================== DOCUMENTS ====================
@@ -2749,7 +2838,6 @@
             btn.classList.add('refreshing');
             await loadDocuments();
             btn.classList.remove('refreshing');
-            showToast('Documents refreshed');
         });
 
         // ==================== NEW DOCUMENT MODAL ====================
@@ -3037,15 +3125,30 @@
         // ==================== BACKUPS ====================
 
         {% if is_owner or role == 'ADMIN' %}
+        let allBackups = [];
+
         async function loadBackups() {
             const backupsList = document.getElementById('backupsList');
             if (!backupsList) return;
 
             backupsList.innerHTML = '<div class="backup-empty">Loading backups...</div>';
+            document.getElementById('backupSearchWrap').style.display = 'none';
+            document.getElementById('backupCount').textContent = '';
 
             const data = await API.getBackups();
             if (data.success) {
-                renderBackups(data.backups);
+                if (data.disabled) {
+                    backupsList.innerHTML = `<div class="backup-disabled-msg">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                        </svg>
+                        <div>${escapeHtml(data.message || 'Backups are turned off.')}</div>
+                    </div>`;
+                    return;
+                }
+                allBackups = data.backups || [];
+                renderBackups(allBackups);
             } else if (data.error && data.error.includes('not available')) {
                 backupsList.innerHTML = '<div class="backup-empty">Backups not available for this tier</div>';
             } else {
@@ -3055,9 +3158,22 @@
 
         function renderBackups(backups) {
             const backupsList = document.getElementById('backupsList');
+            const searchWrap = document.getElementById('backupSearchWrap');
+            const countEl = document.getElementById('backupCount');
 
-            if (!backups || backups.length === 0) {
+            if (!allBackups || allBackups.length === 0) {
                 backupsList.innerHTML = '<div class="backup-empty">No backups yet</div>';
+                searchWrap.style.display = 'none';
+                countEl.textContent = '';
+                return;
+            }
+
+            searchWrap.style.display = 'flex';
+            countEl.textContent = `${backups.length} backup${backups.length !== 1 ? 's' : ''}` +
+                (backups.length !== allBackups.length ? ` of ${allBackups.length}` : '');
+
+            if (backups.length === 0) {
+                backupsList.innerHTML = '<div class="backup-empty">No backups match your filter</div>';
                 return;
             }
 
@@ -3077,7 +3193,7 @@
                     const time = new Date(b.created_at).toLocaleString();
                     html += `
                         <div class="backup-item">
-                            <div class="backup-header">
+                            <div class="backup-meta">
                                 <span class="backup-version">v${b.version}</span>
                                 <span class="backup-time">${time}</span>
                             </div>
@@ -3087,7 +3203,7 @@
                                     data-doc-name="${escapeHtml(b.document_name)}"
                                     data-doc-id="${b.document_id}"
                                     data-time="${time}">
-                                REVERT TO BACKUP AT ${time}, VERSION: v${b.version}
+                                Revert
                             </button>
                         </div>
                     `;
@@ -3104,12 +3220,6 @@
                     const docName = btn.dataset.docName;
                     const docId = parseInt(btn.dataset.docId);
 
-                    const confirmed = await showConfirm(
-                        `Revert "${docName}" to v${version}? This will replace the current content.`,
-                        'Revert'
-                    );
-                    if (!confirmed) return;
-
                     btn.disabled = true;
                     btn.textContent = 'Reverting...';
 
@@ -3123,11 +3233,27 @@
                     } else {
                         showToast(data.error || 'Revert failed', 'error');
                         btn.disabled = false;
-                        btn.textContent = `REVERT TO BACKUP AT ${btn.dataset.time}, VERSION: v${version}`;
+                        btn.textContent = 'Revert';
                     }
                 });
             });
         }
+
+        // Backup search/filter
+        document.getElementById('backupSearch').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                renderBackups(allBackups);
+                return;
+            }
+            const filtered = allBackups.filter(b => {
+                const name = (b.document_name || '').toLowerCase();
+                const date = new Date(b.created_at).toLocaleString().toLowerCase();
+                const version = ('v' + b.version).toLowerCase();
+                return name.includes(query) || date.includes(query) || version.includes(query);
+            });
+            renderBackups(filtered);
+        });
         {% endif %}
 
         // ==================== AUDIT HISTORY ====================
@@ -3311,6 +3437,155 @@
             if (range) quill.removeFormat(range.index, range.length);
         };
 
+        // Width toggle
+        const widthToggleBtn = document.getElementById('widthToggleBtn');
+        const widthToggleLabel = document.getElementById('widthToggleLabel');
+        const editorWrapper = document.querySelector('.editor-wrapper');
+        const savedWidth = localStorage.getItem('editorFullWidth');
+        if (savedWidth === 'true') {
+            editorWrapper.classList.add('full-width');
+            widthToggleBtn.classList.add('active');
+            widthToggleLabel.textContent = 'Centered';
+        }
+        widthToggleBtn.onclick = () => {
+            const isFullWidth = editorWrapper.classList.toggle('full-width');
+            widthToggleBtn.classList.toggle('active', isFullWidth);
+            widthToggleLabel.textContent = isFullWidth ? 'Centered' : 'Full width';
+            localStorage.setItem('editorFullWidth', isFullWidth);
+        };
+
+        // ==================== FOCUS MODE ====================
+        const mainLayout = document.querySelector('.main-layout');
+        const focusModeBtn = document.getElementById('focusModeBtn');
+
+        function setFocusMode(active) {
+            mainLayout.classList.toggle('focus-mode', active);
+            focusModeBtn.classList.toggle('active', active);
+            localStorage.setItem('editorFocusMode', active);
+        }
+
+        if (localStorage.getItem('editorFocusMode') === 'true') {
+            setFocusMode(true);
+        }
+
+        focusModeBtn.onclick = () => {
+            setFocusMode(!mainLayout.classList.contains('focus-mode'));
+        };
+
+        // ==================== SIDEBAR & PANEL TOGGLES ====================
+        const sidebar = document.querySelector('.sidebar');
+        const rightPanel = document.querySelector('.right-panel');
+
+        const sidebarExpandBtn = document.getElementById('sidebarExpandBtn');
+        const panelExpandBtn = document.getElementById('panelExpandBtn');
+
+        function collapseSidebar() {
+            sidebar.classList.add('collapsed');
+            sidebarExpandBtn.classList.add('visible');
+            localStorage.setItem('sidebarCollapsed', 'true');
+        }
+
+        function expandSidebar() {
+            sidebar.classList.remove('collapsed');
+            sidebarExpandBtn.classList.remove('visible');
+            localStorage.setItem('sidebarCollapsed', 'false');
+        }
+
+        function collapsePanel() {
+            rightPanel.classList.add('collapsed');
+            panelExpandBtn.classList.add('visible');
+            localStorage.setItem('panelCollapsed', 'true');
+        }
+
+        function expandPanel() {
+            rightPanel.classList.remove('collapsed');
+            panelExpandBtn.classList.remove('visible');
+            localStorage.setItem('panelCollapsed', 'false');
+        }
+
+        document.getElementById('sidebarCollapseBtn').onclick = collapseSidebar;
+        sidebarExpandBtn.onclick = expandSidebar;
+        document.getElementById('panelCollapseBtn').onclick = collapsePanel;
+        panelExpandBtn.onclick = expandPanel;
+
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            collapseSidebar();
+        }
+        if (localStorage.getItem('panelCollapsed') === 'true') {
+            collapsePanel();
+        }
+
+        // ==================== EDITOR PREFERENCES ====================
+        const prefsBtn = document.getElementById('prefsBtn');
+        const prefsDropdown = document.getElementById('prefsDropdown');
+
+        prefsBtn.onclick = (e) => {
+            e.stopPropagation();
+            prefsDropdown.classList.toggle('show');
+        };
+
+        document.addEventListener('click', (e) => {
+            if (!prefsDropdown.contains(e.target) && e.target !== prefsBtn) {
+                prefsDropdown.classList.remove('show');
+            }
+        });
+
+        function applyPref(prefType, value) {
+            const wrapper = document.querySelector('.editor-wrapper');
+            if (prefType === 'fontFamily') {
+                wrapper.classList.remove('font-sans', 'font-serif', 'font-mono');
+                wrapper.classList.add('font-' + value);
+            } else if (prefType === 'fontSize') {
+                wrapper.classList.remove('fontsize-sm', 'fontsize-md', 'fontsize-lg', 'fontsize-xl');
+                wrapper.classList.add('fontsize-' + value);
+            } else if (prefType === 'lineSpacing') {
+                wrapper.classList.remove('spacing-compact', 'spacing-normal', 'spacing-relaxed');
+                wrapper.classList.add('spacing-' + value);
+            }
+            localStorage.setItem('editorPref_' + prefType, value);
+
+            // Update active button
+            const group = document.querySelector(`[data-pref="${prefType}"]`);
+            group.querySelectorAll('.prefs-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
+        }
+
+        // Load saved prefs
+        ['fontFamily', 'fontSize', 'lineSpacing'].forEach(pref => {
+            const saved = localStorage.getItem('editorPref_' + pref);
+            if (saved) applyPref(pref, saved);
+        });
+
+        // Pref button clicks
+        prefsDropdown.addEventListener('click', (e) => {
+            const btn = e.target.closest('.prefs-option');
+            if (!btn) return;
+            const group = btn.closest('[data-pref]');
+            applyPref(group.dataset.pref, btn.dataset.value);
+        });
+
+        // ==================== KEYBOARD SHORTCUTS ====================
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                // Close dropdowns first
+                if (prefsDropdown.classList.contains('show')) {
+                    prefsDropdown.classList.remove('show');
+                    return;
+                }
+                const exportDd = document.getElementById('exportDropdown');
+                if (exportDd && exportDd.classList.contains('show')) {
+                    exportDd.classList.remove('show');
+                    return;
+                }
+                const modals = document.querySelectorAll('.modal-overlay');
+                const anyModalOpen = Array.from(modals).some(m => m.classList.contains('show'));
+                if (!anyModalOpen) {
+                    setFocusMode(!mainLayout.classList.contains('focus-mode'));
+                }
+            }
+        });
+
         document.getElementById('headingSelect').onchange = (e) => {
             const value = e.target.value;
             quill.format('header', value ? parseInt(value) : false);
@@ -3353,6 +3628,11 @@
             document.getElementById('charCount').textContent = chars;
             document.getElementById('lineCount').textContent = lines;
             document.getElementById('readTime').textContent = words === 0 ? '0m' : `${readMinutes}m`;
+            // Status bar
+            document.getElementById('statusWords').textContent = words + ' words';
+            document.getElementById('statusChars').textContent = chars.toLocaleString() + ' chars';
+            document.getElementById('statusLines').textContent = lines + ' lines';
+            document.getElementById('statusReadTime').textContent = (words === 0 ? '0' : readMinutes) + ' min read';
         }
 
         // ==================== SAVE ====================
@@ -3652,11 +3932,8 @@
         // Update lastSavedContent when document is loaded
         const originalSelectDocument = selectDocument;
         selectDocument = async function(docId, forceRefresh = false) {
-            // Check for unsaved changes before switching
             if (hasUnsavedChanges && currentDocumentId && currentDocumentId !== docId) {
-                if (!await showConfirm('You have unsaved changes. Are you sure you want to switch documents?', 'Switch')) {
-                    return;
-                }
+                showToast('Unsaved changes discarded', 'error');
             }
 
             await originalSelectDocument(docId, forceRefresh);
@@ -3760,6 +4037,16 @@ function hidePendingNoteModal() {
                 // User needs to provide a note for pending review
                 pendingSaveContent = content;
                 showPendingNoteModal();
+                // Restore save button before returning
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save
+                `;
                 return;
             } else {
                 showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
@@ -3785,47 +4072,7 @@ function hidePendingNoteModal() {
             }
         });
 
-        // Also warn when clicking back button
-        document.querySelector('.back-btn').addEventListener('click', (e) => {
-            if (hasUnsavedChanges) {
-                e.preventDefault();
-                const href = e.currentTarget.href;
-                showConfirm('You have unsaved changes. Are you sure you want to leave?', 'Leave').then((confirmed) => {
-                    if (confirmed) {
-                        hasUnsavedChanges = false;
-                        window.location.href = href;
-                    }
-                });
-            }
-        });
-
-        // ==================== MOBILE SIDEBAR ====================
-
-        const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-        function openMobileSidebar() {
-            sidebar.classList.add('open');
-            sidebarOverlay.classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeMobileSidebar() {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('show');
-            document.body.style.overflow = '';
-        }
-
-        mobileSidebarToggle.addEventListener('click', openMobileSidebar);
-        sidebarOverlay.addEventListener('click', closeMobileSidebar);
-
-        // Close sidebar when a document is selected on mobile
-        const origSelectDocument = selectDocument;
-        selectDocument = async function(docId, forceRefresh) {
-            closeMobileSidebar();
-            return origSelectDocument(docId, forceRefresh);
-        };
+        // Back button respects native beforeunload for unsaved changes
 
         // ==================== INIT ====================
 

@@ -688,6 +688,14 @@ def list_project_backups(request, project_id):
         if not tier_config.get('backups', False):
             return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
 
+        if not project.backups_enabled:
+            return JsonResponse({
+                'success': True,
+                'disabled': True,
+                'message': 'Backups are turned off. Earlier snapshots are preserved and will be available when backups are re-enabled.',
+                'backups': []
+            })
+
         is_owner = project.owner_id == request.user.id
         can_see_all = False
         allowed_team_ids = []
@@ -758,6 +766,9 @@ def revert_backup(request, project_id, backup_id):
         if not tier_config.get('backups', False):
             return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
 
+        if not project.backups_enabled:
+            return JsonResponse({'success': False, 'error': 'Backups are currently turned off'}, status=403)
+
         backup = Backup.objects.filter(
             id=backup_id, project_id=project_id
         ).select_related('document', 'document__team_assigned').first()
@@ -810,6 +821,45 @@ def revert_backup(request, project_id, backup_id):
             'document_id': backup.document_id,
             'version': backup.version
         })
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_POST
+@require_auth_token
+@login_required
+@csrf_protect
+@ratelimit(key='ip', rate='10/m', block=True)
+def toggle_backups(request, project_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        if request.user.id != project.owner_id:
+            return JsonResponse({'success': False, 'error': 'Only the project owner can toggle backups'}, status=403)
+
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        if not tier_config.get('backups', False):
+            return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
+
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+        enabled = data.get('enabled')
+        if not isinstance(enabled, bool):
+            return JsonResponse({'success': False, 'error': 'Invalid value for enabled'}, status=400)
+
+        project.backups_enabled = enabled
+        project.save(update_fields=['backups_enabled'])
+
+        return JsonResponse({'success': True, 'backups_enabled': enabled})
     except Exception:
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
@@ -2903,3 +2953,7 @@ def error_502(request):
 
 def error_503(request):
     return render_error(request, 503)
+
+
+
+

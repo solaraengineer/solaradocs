@@ -5,20 +5,49 @@ on:
     branches: [ master ]
 
 jobs:
-  deploy:
-    name: Deploy to Servers
+  validate:
+    name: Validate Build
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Debug Secrets
+    - name: Check for .env and .venv in repo
       run: |
-        echo "Checking secrets..."
-        echo "SERVER_1_IP: ${{ secrets.SERVER_IP_1 }}"
-        echo "SSH key length: ${#SSH_PRIVATE_KEY_BASE64}"
-      env:
-        SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
+        FOUND_ENV=$(find . -name '.env' -not -path './.git/*' | head -20)
+        FOUND_VENV=$(find . -name '.venv' -not -path './.git/*' -type d | head -20)
+        
+        if [ -n "$FOUND_ENV" ]; then
+          echo "❌ .env file(s) found in repo:"
+          echo "$FOUND_ENV"
+          exit 1
+        fi
+        
+        if [ -n "$FOUND_VENV" ]; then
+          echo "❌ .venv directory found in repo:"
+          echo "$FOUND_VENV"
+          exit 1
+        fi
+        
+        echo "✅ No .env or .venv found"
+
+    - name: Build Docker images
+      run: |
+        docker compose build --no-cache
+        echo "✅ Build succeeded"
+
+    - name: Check Python dependencies
+      run: |
+        docker compose run --rm --no-deps -T web pip check
+        echo "✅ Dependencies check out"
+
+  deploy:
+    name: Deploy to Servers
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+    - uses: actions/checkout@v3
 
     - name: Deploy to Server 1
       env:

@@ -35,8 +35,10 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
-#K8s
+#k8s
 k8s
+k8s/templates/secrets.yaml
+solaradocs-chart
 #Clade
 .claude/skills
 .claude
