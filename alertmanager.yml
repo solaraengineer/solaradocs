@@ -3,7 +3,7 @@ global:
   smtp_smarthost: 'smtp.sendgrid.net:587'
   smtp_from: 'support@solaradocs.net'
   smtp_auth_username: 'apikey'
-  smtp_auth_password: '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'
+  smtp_auth_password: '{SENDGRID_API_KEY}'
   smtp_require_tls: true
 
 route:
