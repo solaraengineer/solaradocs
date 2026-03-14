@@ -1,17 +1,4 @@
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - backend
-
   redis:
     image: redis:7-alpine
     container_name: redis_service
@@ -31,7 +18,7 @@ services:
     environment:
       - DEBUG=False
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
       - SECRET_KEY=${DJANGO_SECRET_KEY}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=solaradocs-web
@@ -39,7 +26,6 @@ services:
       - backend
     depends_on:
       - redis
-      - postgres
       - otel-collector
 
   celery:
@@ -52,7 +38,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
       - SECRET_KEY=${DJANGO_SECRET_KEY}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=solaradocs-celery
@@ -60,7 +46,6 @@ services:
       - backend
     depends_on:
       - redis
-      - postgres
       - otel-collector
 
   otel-collector:
@@ -115,12 +100,11 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
 
-
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: alertmanager
     restart: unless-stopped
-    entrypoint: [ "/bin/sh", "-c", "sed 's|{SENDGRID_API_KEY}|'\"$$SENDGRID_API_KEY\"'|' /etc/alertmanager/alertmanager.yml.tmpl > /etc/alertmanager/alertmanager.yml && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager" ]
+    entrypoint: ["/bin/sh", "-c", "sed 's|{SENDGRID_API_KEY}|'\"$$SENDGRID_API_KEY\"'|' /etc/alertmanager/alertmanager.yml.tmpl > /etc/alertmanager/alertmanager.yml && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager"]
     environment:
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     volumes:
@@ -160,22 +144,10 @@ services:
     depends_on:
       - redis
 
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:latest
-    container_name: postgres-exporter
-    restart: unless-stopped
-    environment:
-      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-    networks:
-      - backend
-    depends_on:
-      - postgres
-
 networks:
   backend:
 
 volumes:
-  postgres_data:
   redis_data:
   prometheus_data:
   grafana_data:

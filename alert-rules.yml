@@ -18,12 +18,12 @@ groups:
           summary: "CPU usage above 75%: {{ $value | printf \"%.1f\" }}%"
 
       - alert: RAMUsageHigh
-        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 70
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 80
         for: 3m
         labels:
           severity: warning
         annotations:
-          summary: "RAM usage above 70%: {{ $value | printf \"%.1f\" }}%"
+          summary: "RAM usage above 80%: {{ $value | printf \"%.1f\" }}%"
 
   - name: container_health
     rules:
@@ -34,14 +34,6 @@ groups:
           severity: critical
         annotations:
           summary: "{{ $labels.job }} is DOWN"
-
-      - alert: ContainerRestarting
-        expr: increase(container_restart_count[10m]) > 2
-        for: 0m
-        labels:
-          severity: critical
-        annotations:
-          summary: "{{ $labels.name }} restarted {{ $value }} times in 10m"
 
   - name: django_errors
     rules:
@@ -54,22 +46,22 @@ groups:
           summary: "2+ 500 errors in last 5 minutes: {{ $value }} total"
 
       - alert: NotFoundSpike
-        expr: increase(django_http_responses_total_by_status_total{status="404"}[5m]) > 0
+        expr: increase(django_http_responses_total_by_status_total{status="404"}[10m]) > 5
         for: 0m
         labels:
           severity: info
         annotations:
-          summary: "404 detected: {{ $value }} in last 5 minutes"
+          summary: "5+ 404s in last 10 minutes: {{ $value }} total"
 
   - name: log_silence
     rules:
       - alert: NoNewLogs
-        expr: time() - max(timestamp(django_http_requests_total_by_method_total)) > 120
+        expr: time() - max(timestamp(django_http_requests_total_by_method_total)) > 600
         for: 0m
         labels:
           severity: critical
         annotations:
-          summary: "No new requests for 2+ minutes — service may be dead"
+          summary: "No new requests for 10+ minutes — service may be dead"
 
   - name: trace_latency
     rules:
@@ -121,21 +113,3 @@ groups:
           severity: critical
         annotations:
           summary: "No active Celery workers — async tasks halted"
-
-  - name: postgres_health
-    rules:
-      - alert: PostgresDown
-        expr: pg_up == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "PostgreSQL is DOWN"
-
-      - alert: PostgresConnectionsHigh
-        expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Postgres connections at {{ $value | printf \"%.1f\" }}% capacity"
