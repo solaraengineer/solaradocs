@@ -1,3 +1,4 @@
+stream_over_http_enabled: true
 server:
   http_listen_port: 3200
 
@@ -7,8 +8,6 @@ distributor:
       protocols:
         grpc:
           endpoint: 0.0.0.0:4317
-        http:
-          endpoint: 0.0.0.0:4318
 
 storage:
   trace:
@@ -19,5 +18,27 @@ storage:
       path: /var/tempo/wal
 
 metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
   storage:
-    path: /var/tempo/metrics
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+  traces_storage:
+    path: /var/tempo/generator/traces
+  processor:
+    span_metrics:
+      dimensions:
+        - span_name
+        - status_code
+    service_graphs:
+      dimensions:
+        - span_name
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - span-metrics
+        - service-graphs

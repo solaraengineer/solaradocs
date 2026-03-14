@@ -1113,38 +1113,23 @@ def stripe_webhook(request):
     if event['type'] == 'customer.subscription.created':
         subscription = event['data']['object']
         customer_id = subscription.get('customer')
-        tier = subscription.get('metadata', {}).get('tier')
 
-        if not tier:
-            items = subscription.get('items', {}).get('data', [])
-            if items:
-                price_id = items[0].get('price', {}).get('id')
-                tier = {
-                    settings.STRIPE_PERSONAL_PRICE_ID: 'personal',
-                    settings.STRIPE_TEAM_PRICE_ID: 'team',
-                    settings.STRIPE_ENTERPRISE_PRICE_ID: 'enterprise',
-                }.get(price_id)
-
-        if customer_id and tier:
+        if customer_id:
             try:
                 user = User.objects.get(stripe_customer_id=customer_id)
-                user.Tier = tier
-                user.subscription_status = 'active'
-                user.retries_left = 0
-                user.save(update_fields=['Tier', 'subscription_status', 'retries_left'])
-
-                price_map = {'personal': '$6.00/mo', 'team': '$16.00/mo', 'enterprise': '$36.00/mo'}
-                current_period_end = subscription.get('current_period_end')
-                renews_at = ''
-                if current_period_end:
-                    from datetime import datetime as dt
-                    renews_at = dt.utcfromtimestamp(current_period_end).strftime('%B %d, %Y')
-                send_subscription_email.delay(
-                    user.email, user.username, tier,
-                    price_map.get(tier, ''), renews_at,
-                )
             except User.DoesNotExist:
-                pass
+                customer = stripe.Customer.retrieve(customer_id)
+                email = customer.get('email')
+                if email:
+                    try:
+                        user = User.objects.get(email=email)
+                        user.stripe_customer_id = customer_id
+                    except User.DoesNotExist:
+                        return HttpResponse(status=200)
+                else:
+                    return HttpResponse(status=200)
+
+            user.save(update_fields=['stripe_customer_id'])
 
     elif event['type'] == 'invoice.paid':
         invoice = event['data']['object']
@@ -1172,6 +1157,7 @@ def stripe_webhook(request):
                     user.Tier = tier
                 user.subscription_status = 'active'
                 user.retries_left = 0
+                Project.objects.filter(owner=user).update(tier=tier)
                 user.save(update_fields=['Tier', 'subscription_status', 'retries_left'])
             except User.DoesNotExist:
                 if tier:
@@ -1181,6 +1167,7 @@ def stripe_webhook(request):
                         user.stripe_customer_id = customer_id
                         user.subscription_status = 'active'
                         user.retries_left = 0
+                        Project.objects.filter(owner=user).update(tier=tier)
                         user.save(update_fields=['Tier', 'stripe_customer_id', 'subscription_status', 'retries_left'])
                     except User.DoesNotExist:
                         pass
@@ -1192,6 +1179,10 @@ def stripe_webhook(request):
         if customer_id:
             try:
                 user = User.objects.get(stripe_customer_id=customer_id)
+
+                if user.Tier == 'free':
+                    return HttpResponse(status=200)
+
                 user.retries_left = F('retries_left') + 1
                 user.subscription_status = 'past_due'
                 user.save(update_fields=['retries_left', 'subscription_status'])
@@ -1688,16 +1679,16 @@ def rename_document(request, project_id, doc_id):
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
     try:
         new_name = data.get('document_name', '').strip()
 
         if not new_name:
-            return JsonResponse({'success': False, 'error': 'Document name required'})
+            return JsonResponse({'success': False, 'error': 'Document name required'}, status=400)
 
         if len(new_name) > 255:
-            return JsonResponse({'success': False, 'error': 'Document name too long'})
+            return JsonResponse({'success': False, 'error': 'Document name too long'}, status=400)
 
         try:
             project = Project.objects.get(id=project_id)
@@ -1995,8 +1986,8 @@ def get_audits(request, project_id):
         } for audit in audits]
 
         return JsonResponse({'success': True, 'audits': audits_data})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -2765,14 +2756,14 @@ def password_reset_confirm(request):
 def get_viewer_access(request, project_id):
     try:
         if not isinstance(project_id, int) or project_id < 1:
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
         project = Project.objects.filter(id=project_id).first()
         if not project:
-            return render_error(request, 404)
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
         if request.user.id != project.owner_id:
-            return render_error(request, 403)
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
         doc_ids = list(
             ViewerDocumentAccess.objects.filter(project_id=project_id).values_list('document_id', flat=True)
@@ -2780,7 +2771,7 @@ def get_viewer_access(request, project_id):
 
         return JsonResponse({'success': True, 'document_ids': doc_ids})
     except Exception:
-        return render_error(request, 500)
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_POST
@@ -2791,27 +2782,27 @@ def save_viewer_access(request, project_id):
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
-        return render_error(request, 400)
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
     try:
         if not isinstance(project_id, int) or project_id < 1:
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
         project = Project.objects.filter(id=project_id).first()
         if not project:
-            return render_error(request, 404)
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
         if request.user.id != project.owner_id:
-            return render_error(request, 403)
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
 
         document_ids = data.get('document_ids', [])
 
         if not isinstance(document_ids, list):
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Invalid document_ids'}, status=400)
 
         for did in document_ids:
             if not isinstance(did, int) or did < 1:
-                return render_error(request, 400)
+                return JsonResponse({'success': False, 'error': 'Invalid document ID in list'}, status=400)
 
         valid_doc_ids = set(
             Documents.objects.filter(project_id=project_id, id__in=document_ids).values_list('id', flat=True)
@@ -2819,7 +2810,7 @@ def save_viewer_access(request, project_id):
 
         invalid = set(document_ids) - valid_doc_ids
         if invalid:
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Some document IDs are invalid'}, status=400)
 
         with transaction.atomic():
             ViewerDocumentAccess.objects.filter(project_id=project_id).delete()
@@ -2831,7 +2822,7 @@ def save_viewer_access(request, project_id):
 
         return JsonResponse({'success': True, 'count': len(document_ids)})
     except Exception:
-        return render_error(request, 500)
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -2841,11 +2832,11 @@ def save_viewer_access(request, project_id):
 def get_viewer_documents(request, project_id):
     try:
         if not isinstance(project_id, int) or project_id < 1:
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
         project = Project.objects.filter(id=project_id).first()
         if not project:
-            return render_error(request, 404)
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
         contributor = Contributor.objects.filter(
             project_id=project_id,
@@ -2854,7 +2845,7 @@ def get_viewer_documents(request, project_id):
         ).first()
 
         if not contributor:
-            return render_error(request, 403)
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
         accessible_doc_ids = ViewerDocumentAccess.objects.filter(
             project_id=project_id
@@ -2868,7 +2859,7 @@ def get_viewer_documents(request, project_id):
 
         return JsonResponse({'success': True, 'documents': docs_data})
     except Exception:
-        return render_error(request, 500)
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @require_GET
@@ -2878,13 +2869,13 @@ def get_viewer_documents(request, project_id):
 def get_viewer_document_content(request, project_id, doc_id):
     try:
         if not isinstance(project_id, int) or project_id < 1:
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
         if not isinstance(doc_id, int) or doc_id < 1:
-            return render_error(request, 400)
+            return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
 
         project = Project.objects.filter(id=project_id).first()
         if not project:
-            return render_error(request, 404)
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
 
         contributor = Contributor.objects.filter(
             project_id=project_id,
@@ -2893,7 +2884,7 @@ def get_viewer_document_content(request, project_id, doc_id):
         ).first()
 
         if not contributor:
-            return render_error(request, 403)
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
         has_access = ViewerDocumentAccess.objects.filter(
             project_id=project_id,
@@ -2901,11 +2892,11 @@ def get_viewer_document_content(request, project_id, doc_id):
         ).exists()
 
         if not has_access:
-            return render_error(request, 403)
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
         document = Documents.objects.filter(id=doc_id, project_id=project_id).first()
         if not document:
-            return render_error(request, 404)
+            return JsonResponse({'success': False, 'error': 'Document not found'}, status=404)
 
         return JsonResponse({
             'success': True,
@@ -2916,7 +2907,7 @@ def get_viewer_document_content(request, project_id, doc_id):
             }
         })
     except Exception:
-        return render_error(request, 500)
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 
