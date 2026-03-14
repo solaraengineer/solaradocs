@@ -98,7 +98,7 @@ groups:
     rules:
       - alert: RedisDown
         expr: redis_up == 0
-        for: 15s
+        for: 30s
         labels:
           severity: critical
         annotations:
@@ -126,7 +126,7 @@ groups:
     rules:
       - alert: PostgresDown
         expr: pg_up == 0
-        for: 15s
+        for: 1m
         labels:
           severity: critical
         annotations:
