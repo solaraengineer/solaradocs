@@ -46,7 +46,7 @@ groups:
           summary: "2+ 500 errors in last 5 minutes: {{ $value }} total"
 
       - alert: NotFoundSpike
-        expr: increase(django_http_responses_total_by_status_total{status="404"}[10m]) > 5
+        expr: increase(django_http_responses_total_by_status_total{status="404"}[10m]) > 15
         for: 0m
         labels:
           severity: info
