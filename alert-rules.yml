@@ -51,7 +51,7 @@ groups:
         labels:
           severity: info
         annotations:
-          summary: "5+ 404s in last 10 minutes: {{ $value }} total"
+          summary: "15+ 404s in last 10 minutes: {{ $value }} total"
 
   - name: log_silence
     rules:
