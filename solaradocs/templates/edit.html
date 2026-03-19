@@ -192,7 +192,7 @@
             font-weight: 500;
             font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: none;
             display: flex;
             align-items: center;
@@ -232,7 +232,12 @@
 
         .btn-primary:hover {
             background: #e0b285;
-            box-shadow: 0 4px 15px rgba(212, 165, 116, 0.3);
+            box-shadow: 0 4px 15px rgba(212, 165, 116, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
         }
 
         .btn-primary:disabled {
@@ -308,12 +313,20 @@
         }
 
         .sidebar-content::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: transparent;
         }
 
         .sidebar-content::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 2px;
+            background: rgba(61, 59, 53, 0.5);
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(61, 59, 53, 0.8);
         }
 
         .doc-item {
@@ -321,16 +334,18 @@
             align-items: center;
             gap: 0.625rem;
             padding: 0.625rem 0.75rem;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             color: var(--text-secondary);
             font-size: 0.9rem;
+            border: 1px solid transparent;
         }
 
         .doc-item:hover {
             background: var(--bg-tertiary);
             color: var(--text-primary);
+            transform: translateX(2px);
         }
 
         .doc-item.active {
@@ -525,12 +540,17 @@
             justify-content: center;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .toolbar-btn:hover {
             background: var(--bg-tertiary);
             color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn:active {
+            transform: translateY(0) scale(0.95);
         }
 
         .toolbar-btn.active {
@@ -606,16 +626,21 @@
         }
 
         .editor-container::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         .editor-container::-webkit-scrollbar-track {
-            background: var(--bg-primary);
+            background: transparent;
         }
 
         .editor-container::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
+            background: rgba(61, 59, 53, 0.6);
+            border-radius: 3px;
+            transition: background 0.2s ease;
+        }
+
+        .editor-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(61, 59, 53, 0.9);
         }
 
         .editor-wrapper {
@@ -625,11 +650,70 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
-            transition: max-width 0.3s ease;
+            transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .editor-wrapper.full-width {
-            max-width: none;
+            max-width: 100%;
+        }
+
+        /* Loading skeleton */
+        @keyframes shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+
+        .editor-loading .ql-editor {
+            position: relative;
+        }
+
+        .skeleton-line {
+            height: 14px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+            background-size: 400px 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            margin-bottom: 0.75rem;
+        }
+
+        .skeleton-line:nth-child(1) { width: 72%; }
+        .skeleton-line:nth-child(2) { width: 88%; }
+        .skeleton-line:nth-child(3) { width: 60%; }
+        .skeleton-line:nth-child(4) { width: 80%; height: 20px; margin-top: 1.5rem; }
+        .skeleton-line:nth-child(5) { width: 95%; }
+        .skeleton-line:nth-child(6) { width: 78%; }
+        .skeleton-line:nth-child(7) { width: 45%; }
+
+        /* Editor content fade-in */
+        .ql-editor {
+            transition: opacity 0.2s ease;
+        }
+
+        .editor-loading .ql-editor {
+            opacity: 0;
+        }
+
+        /* Autosave indicator */
+        .autosave-indicator {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: opacity 0.3s ease;
+        }
+
+        .autosave-indicator svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .autosave-indicator.saving {
+            color: var(--accent-orange);
+        }
+
+        .autosave-indicator.saved {
+            color: var(--accent-green);
         }
 
         /* Quill Overrides */
@@ -964,14 +1048,16 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.2s ease;
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.25s;
         }
 
         .modal-overlay.show {
@@ -982,15 +1068,18 @@
         .modal {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 14px;
             width: 100%;
             max-width: 420px;
-            transform: translateY(-20px);
-            transition: transform 0.2s ease;
+            transform: translateY(12px) scale(0.97);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            opacity: 0;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
         }
 
         .modal-overlay.show .modal {
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            opacity: 1;
         }
 
         .modal-header {
@@ -1112,7 +1201,7 @@
             position: fixed;
             bottom: 1.5rem;
             left: 50%;
-            transform: translateX(-50%) translateY(16px);
+            transform: translateX(-50%) translateY(10px) scale(0.95);
             padding: 0.625rem 1.25rem;
             border-radius: 10px;
             font-size: 0.85rem;
@@ -1128,23 +1217,25 @@
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
             pointer-events: none;
             white-space: nowrap;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .toast.show {
             opacity: 1;
             visibility: visible;
-            transform: translateX(-50%) translateY(0);
+            transform: translateX(-50%) translateY(0) scale(1);
         }
 
         .toast.success {
-            background: var(--bg-elevated);
-            border: 1px solid rgba(127, 176, 105, 0.4);
+            background: rgba(50, 49, 43, 0.9);
+            border: 1px solid rgba(127, 176, 105, 0.35);
             color: var(--accent-green);
         }
 
         .toast.error {
-            background: var(--bg-elevated);
-            border: 1px solid rgba(212, 106, 106, 0.4);
+            background: rgba(50, 49, 43, 0.9);
+            border: 1px solid rgba(212, 106, 106, 0.35);
             color: var(--accent-red);
         }
 
@@ -1459,7 +1550,7 @@
 
         .sidebar,
         .right-panel {
-            transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease, border 0.25s ease;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), border 0.3s ease;
         }
 
         /* Sidebar expand tab (visible when collapsed) */
@@ -2053,6 +2144,11 @@
                             <path d="M3 3l18 18"/>
                         </svg>
                     </button>
+                    <button class="toolbar-btn" id="printBtn" title="Print (Ctrl+P)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                    </button>
                 </div>
 
                 <button class="width-toggle-btn" id="widthToggleBtn" title="Toggle full width">
@@ -2131,7 +2227,12 @@
                     <span class="status-item" id="statusReadTime">0 min read</span>
                 </div>
                 <div class="status-bar-right">
+                    <span class="autosave-indicator" id="autosaveIndicator">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                        <span id="autosaveText">Saved</span>
+                    </span>
                     <span class="status-item"><kbd>Ctrl+S</kbd> Save</span>
+                    <span class="status-item"><kbd>Ctrl+P</kbd> Print</span>
                     <span class="status-item"><kbd>Ctrl+K</kbd> Link</span>
                     <span class="status-item"><kbd>Esc</kbd> Focus</span>
                 </div>
@@ -2802,6 +2903,27 @@
             });
         }
 
+        function showEditorSkeleton() {
+            const wrapper = document.querySelector('.editor-wrapper');
+            wrapper.classList.add('editor-loading');
+            let skeleton = wrapper.querySelector('.editor-skeleton');
+            if (!skeleton) {
+                skeleton = document.createElement('div');
+                skeleton.className = 'editor-skeleton';
+                skeleton.style.padding = '1.25rem 1.5rem';
+                skeleton.innerHTML = '<div class="skeleton-line"></div>'.repeat(7);
+                wrapper.appendChild(skeleton);
+            }
+            skeleton.style.display = 'block';
+        }
+
+        function hideEditorSkeleton() {
+            const wrapper = document.querySelector('.editor-wrapper');
+            wrapper.classList.remove('editor-loading');
+            const skeleton = wrapper.querySelector('.editor-skeleton');
+            if (skeleton) skeleton.style.display = 'none';
+        }
+
         async function selectDocument(docId, forceRefresh = false) {
             currentDocumentId = docId;
 
@@ -2810,17 +2932,20 @@
                 item.classList.toggle('active', parseInt(item.dataset.docId) === docId);
             });
 
+            // Show loading skeleton for non-cached docs
+            const cached = getCachedDocContent(docId);
+            if (!cached && !forceRefresh) showEditorSkeleton();
+
             // Load document content (uses cache)
             const data = await API.getDocument(docId, forceRefresh);
             if (data.success) {
                 quill.root.innerHTML = data.document.content || '';
                 updateWordCount();
-                if (data.fromCache) {
-                    console.log(`[Cache] Loaded document ${docId} from cache`);
-                }
             } else {
                 showToast('Failed to load document', 'error');
             }
+
+            hideEditorSkeleton();
         }
 
         // Search documents
@@ -2916,14 +3041,18 @@
         function openRenameModal(docId, docName) {
             renameDocId = docId;
             document.getElementById('renameDocName').value = docName;
+            quill.disable();
             renameModal.classList.add('show');
-            document.getElementById('renameDocName').focus();
-            document.getElementById('renameDocName').select();
+            setTimeout(() => {
+                document.getElementById('renameDocName').focus();
+                document.getElementById('renameDocName').select();
+            }, 350);
         }
 
         function closeRenameModal() {
             renameModal.classList.remove('show');
             renameDocId = null;
+            quill.enable();
         }
 
         document.getElementById('closeRenameModal').addEventListener('click', closeRenameModal);
@@ -2981,12 +3110,14 @@
         function openDeleteModal(docId, docName) {
             deleteDocId = docId;
             document.getElementById('deleteDocNameDisplay').textContent = docName;
+            quill.disable();
             deleteModal.classList.add('show');
         }
 
         function closeDeleteModal() {
             deleteModal.classList.remove('show');
             deleteDocId = null;
+            quill.enable();
         }
 
         document.getElementById('closeDeleteModal').addEventListener('click', closeDeleteModal);
@@ -3437,6 +3568,27 @@
             if (range) quill.removeFormat(range.index, range.length);
         };
 
+        // ==================== PRINT ====================
+        document.getElementById('printBtn').onclick = () => {
+            const content = quill.root.innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>{{ project.project_name }}</title>
+<style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #1a1a1a; }
+    h1 { font-size: 2rem; margin-bottom: 1rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.25rem; }
+    blockquote { border-left: 3px solid #d4a574; padding-left: 1rem; margin: 1rem 0; color: #666; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    code { background: #f0f0f0; padding: 0.15rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+    pre code { background: transparent; padding: 0; }
+    hr { border: none; border-top: 2px solid #eee; margin: 1.5rem 0; }
+    @media print { body { padding: 0; } }
+</style></head><body>${content}</body></html>`);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+        };
+
         // Width toggle
         const widthToggleBtn = document.getElementById('widthToggleBtn');
         const widthToggleLabel = document.getElementById('widthToggleLabel');
@@ -3578,11 +3730,13 @@
                     exportDd.classList.remove('show');
                     return;
                 }
-                const modals = document.querySelectorAll('.modal-overlay');
-                const anyModalOpen = Array.from(modals).some(m => m.classList.contains('show'));
-                if (!anyModalOpen) {
-                    setFocusMode(!mainLayout.classList.contains('focus-mode'));
-                }
+                // Close any open modal first
+                if (renameModal.classList.contains('show')) { closeRenameModal(); return; }
+                if (modal.classList.contains('show')) { closeNewDocModal(); return; }
+                if (deleteModal.classList.contains('show')) { closeDeleteModal(); return; }
+                if (pendingNoteModal.classList.contains('show')) { hidePendingNoteModal(); return; }
+                // No modal open — toggle focus mode
+                setFocusMode(!mainLayout.classList.contains('focus-mode'));
             }
         });
 
@@ -3817,6 +3971,10 @@
                     e.preventDefault();
                     document.getElementById('saveBtn').click();
                 }
+                if (e.key === 'p') {
+                    e.preventDefault();
+                    document.getElementById('printBtn').click();
+                }
                 if (e.key === 'k') {
                     e.preventDefault();
                     document.getElementById('linkBtn').click();
@@ -3921,26 +4079,94 @@
         let hasUnsavedChanges = false;
         let lastSavedContent = '';
 
-        // Track content changes
+        function updateAutosaveIndicator(state) {
+            const indicator = document.getElementById('autosaveIndicator');
+            const text = document.getElementById('autosaveText');
+            indicator.className = 'autosave-indicator';
+            if (state === 'saving') {
+                indicator.classList.add('saving');
+                text.textContent = 'Saving...';
+                indicator.querySelector('svg').innerHTML = '<path d="M21 12a9 9 0 1 1-6.219-8.56" style="animation: spin 1s linear infinite;"/>';
+            } else if (state === 'saved') {
+                indicator.classList.add('saved');
+                text.textContent = 'Saved';
+                indicator.querySelector('svg').innerHTML = '<path d="M20 6L9 17l-5-5"/>';
+            } else if (state === 'cached') {
+                indicator.classList.add('saving');
+                text.textContent = 'Cached locally';
+                indicator.querySelector('svg').innerHTML = '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>';
+            } else {
+                text.textContent = 'Unsaved';
+                indicator.querySelector('svg').innerHTML = '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>';
+            }
+        }
+
+        // Track content changes + autosave
+        let autosaveTimer = null;
+        const AUTOSAVE_DELAY = 3000; // 3 seconds after last change
+
         quill.on('text-change', () => {
             if (currentDocumentId) {
                 const currentContent = quill.root.innerHTML;
                 hasUnsavedChanges = currentContent !== lastSavedContent;
+
+                // Debounced autosave
+                if (autosaveTimer) clearTimeout(autosaveTimer);
+                if (hasUnsavedChanges) {
+                    updateAutosaveIndicator('unsaved');
+                    autosaveTimer = setTimeout(() => {
+                        if (!currentDocumentId || !hasUnsavedChanges) return;
+                        updateAutosaveIndicator('saving');
+                        const content = quill.root.innerHTML;
+                        API.saveDocument(currentDocumentId, content).then(data => {
+                            if (data.success && !data.requires_note) {
+                                lastSavedContent = content;
+                                hasUnsavedChanges = false;
+                                document.getElementById('lastModified').textContent = 'Just now';
+                                updateAutosaveIndicator('saved');
+                            } else {
+                                updateAutosaveIndicator('unsaved');
+                            }
+                        }).catch(() => {
+                            updateAutosaveIndicator('unsaved');
+                        });
+                    }, AUTOSAVE_DELAY);
+                }
             }
         });
 
-        // Update lastSavedContent when document is loaded
+        // Auto-save before switching documents
         const originalSelectDocument = selectDocument;
         selectDocument = async function(docId, forceRefresh = false) {
+            // Auto-save current doc before switching
             if (hasUnsavedChanges && currentDocumentId && currentDocumentId !== docId) {
-                showToast('Unsaved changes discarded', 'error');
+                if (autosaveTimer) clearTimeout(autosaveTimer);
+                const content = quill.root.innerHTML;
+                updateAutosaveIndicator('saving');
+                const data = await API.saveDocument(currentDocumentId, content);
+                if (data.success && !data.requires_note) {
+                    updateAutosaveIndicator('saved');
+                } else if (data.requires_note) {
+                    localStorage.setItem('unsaved_doc_' + currentDocumentId, content);
+                    updateAutosaveIndicator('cached');
+                }
             }
 
             await originalSelectDocument(docId, forceRefresh);
 
-            // Update saved content reference
-            lastSavedContent = quill.root.innerHTML;
-            hasUnsavedChanges = false;
+            // Restore locally cached content if any
+            const cachedContent = localStorage.getItem('unsaved_doc_' + docId);
+            if (cachedContent) {
+                quill.root.innerHTML = cachedContent;
+                localStorage.removeItem('unsaved_doc_' + docId);
+                hasUnsavedChanges = true;
+                updateAutosaveIndicator('unsaved');
+            } else {
+                hasUnsavedChanges = false;
+                updateAutosaveIndicator('saved');
+            }
+
+            lastSavedContent = hasUnsavedChanges ? '' : quill.root.innerHTML;
         };
 
         // ==================== PENDING NOTE MODAL ====================
@@ -4033,6 +4259,7 @@ function hidePendingNoteModal() {
                 document.getElementById('lastModified').textContent = 'Just now';
                 lastSavedContent = content;
                 hasUnsavedChanges = false;
+                updateAutosaveIndicator('saved');
             } else if (data.requires_note) {
                 // User needs to provide a note for pending review
                 pendingSaveContent = content;
