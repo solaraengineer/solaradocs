@@ -47,7 +47,7 @@ groups:
 
       - alert: NotFoundSpike
         expr: increase(django_http_responses_total_by_status_total{status="404"}[10m]) > 15
-        for: 0m
+        for: 2m
         labels:
           severity: info
         annotations:
