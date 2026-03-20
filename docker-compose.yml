@@ -2,6 +2,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis_service
+    restart: unless-stopped
     volumes:
       - redis_data:/data
     networks:
@@ -10,6 +11,7 @@ services:
 
   web:
     build: .
+    restart: unless-stopped
     command: gunicorn logic.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -
     volumes:
       - .:/app
@@ -30,6 +32,7 @@ services:
 
   celery:
     build: .
+    restart: unless-stopped
     command: celery -A logic worker --loglevel=info
     volumes:
       - .:/app
@@ -50,6 +53,7 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.96.0
+    restart: unless-stopped
     command: ["--config", "/etc/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
@@ -63,6 +67,7 @@ services:
 
   tempo:
     image: grafana/tempo:2.7.0
+    restart: unless-stopped
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
@@ -74,6 +79,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    restart: unless-stopped
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./alert-rules.yml:/etc/prometheus/alert-rules.yml
@@ -90,6 +96,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    restart: unless-stopped
     volumes:
       - grafana_data:/var/lib/grafana
     environment:

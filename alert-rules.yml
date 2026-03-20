@@ -45,14 +45,6 @@ groups:
         annotations:
           summary: "2+ 500 errors in last 5 minutes: {{ $value }} total"
 
-      - alert: NotFoundSpike
-        expr: increase(django_http_responses_total_by_status_total{status="404"}[10m]) > 15
-        for: 2m
-        labels:
-          severity: info
-        annotations:
-          summary: "15+ 404s in last 10 minutes: {{ $value }} total"
-
   - name: log_silence
     rules:
       - alert: NoNewLogs

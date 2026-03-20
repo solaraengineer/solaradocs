@@ -28,6 +28,7 @@ def admin_required(view_func):
 
 @csrf_exempt
 @ratelimit(key='ip', rate='30/m', block=True)
+@admin_required
 def admin_panel(request):
     now = timezone.now()
     week_ago = now - timedelta(days=7)
