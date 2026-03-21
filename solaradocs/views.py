@@ -1038,7 +1038,14 @@ def logout(request):
 
 @ratelimit(key='ip', rate='30/m', block=True)
 def home(request):
-    return render(request, 'index.html')
+    context = {}
+    alert_raw = cache.get('broadcast:alert')
+    if alert_raw:
+        try:
+            context['broadcast_alert'] = json.loads(alert_raw)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return render(request, 'index.html', context)
 
 
 PRICE_IDS = {

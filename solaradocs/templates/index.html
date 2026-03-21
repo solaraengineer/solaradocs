@@ -61,6 +61,28 @@
             color: var(--bg-primary);
         }
 
+        /* Broadcast alert banner */
+        .broadcast-banner {
+            background: linear-gradient(90deg, #3d2e10 0%, #4a3515 50%, #3d2e10 100%);
+            border-bottom: 1px solid #6b5a2e;
+            color: #f5d880;
+            padding: 10px 24px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 0.02em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            z-index: 50;
+        }
+        .broadcast-banner svg {
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
         /* Scrollbar - DataGrip style */
         ::-webkit-scrollbar {
             width: 8px;
@@ -942,6 +964,13 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if broadcast_alert %}
+            <div class="broadcast-banner" data-broadcast-title="{{ broadcast_alert.title }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                {{ broadcast_alert.title }}
+            </div>
+            {% endif %}
 
             <!-- Hero -->
             <section class="hero">

@@ -74,6 +74,7 @@ urlpatterns = [
     path('crypticA7X/update-changelog/', views_admin.admin_update_changelog, name='admin_update_changelog'),
     path('crypticA7X/delete-changelog/', views_admin.admin_delete_changelog, name='admin_delete_changelog'),
     path('crypticA7X/broadcast-announcement/', views_admin.admin_broadcast_announcement, name='admin_broadcast_announcement'),
+    path('crypticA7X/dismiss-alert/', views_admin.admin_dismiss_alert, name='admin_dismiss_alert'),
     path('error/400/', views.error_400, name='error_400'),
     path('error/401/', views.error_401, name='error_401'),
     path('error/403/', views.error_403, name='error_403'),

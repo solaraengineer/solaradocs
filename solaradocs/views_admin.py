@@ -7,12 +7,12 @@ from django.db.models.functions import TruncDate, TruncMonth
 from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
 from solaradocs.models import *
+from django.core.cache import cache
 import json
 from datetime import timedelta
 
 
 def admin_required(view_func):
-    """Decorator that checks user is authenticated and is a superuser."""
     from functools import wraps
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
@@ -275,18 +275,38 @@ def admin_delete_changelog(request):
 @csrf_exempt
 @require_POST
 @admin_required
-@ratelimit(key='ip', rate='2/m', block=True)
+@ratelimit(key='ip', rate='5/m', block=True)
 def admin_broadcast_announcement(request):
-    """Placeholder for sending announcements to all users."""
+    """Set a broadcast alert banner visible to all users, stored in redis with TTL."""
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    message = data.get('message', '').strip()
-    if not message:
-        return JsonResponse({'success': False, 'error': 'Message cannot be empty'}, status=400)
+    title = data.get('title', '').strip()
+    if not title:
+        return JsonResponse({'success': False, 'error': 'Alert title cannot be empty'}, status=400)
 
-    # TODO: hook into your notification/email system
-    # For now just acknowledge
-    return JsonResponse({'success': True, 'message': 'Announcement queued', 'recipients': User.objects.count()})
+    duration = data.get('duration')
+    if duration not in [30, 60, 120, 240, 480]:
+        return JsonResponse({'success': False, 'error': 'Invalid duration'}, status=400)
+
+    alert_data = json.dumps({
+        'title': title,
+        'created_at': timezone.now().isoformat(),
+    })
+    cache.set('broadcast:alert', alert_data, timeout=duration * 60)
+
+    return JsonResponse({'success': True, 'message': 'Broadcast alert is now live'})
+
+
+@csrf_exempt
+@require_POST
+@admin_required
+@ratelimit(key='ip', rate='5/m', block=True)
+def admin_dismiss_alert(request):
+    """Manually dismiss the active broadcast alert."""
+    deleted = cache.delete('broadcast:alert')
+    if deleted:
+        return JsonResponse({'success': True, 'message': 'Alert dismissed'})
+    return JsonResponse({'success': True, 'message': 'No active alert to dismiss'})
