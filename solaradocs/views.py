@@ -1029,8 +1029,9 @@ def collaborations(request):
         return render_error(request, 500)
 
 
-@csrf_exempt
+@csrf_protect
 @ratelimit(key='ip', rate='10/m', block=True)
+@login_required
 def logout(request):
     auth_logout(request)
     return redirect('login')
@@ -1656,6 +1657,9 @@ def save_document(request, project_id, doc_id):
 
                 if project.backups_enabled and tier_config.get('backups', False):
                     backup_document_to_r2.delay(document.id)
+                    data = document.id, document.title, document.content
+                    key = 'do.backups'
+                    value = 'data'
 
                 if tier_config.get('audit', False):
                     Audit.objects.create(
