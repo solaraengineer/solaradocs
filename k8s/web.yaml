@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: solaradocs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: solaradocs-web:latest
+          imagePullPolicy: IfNotPresent
+          command: ["gunicorn", "logic.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: solaradocs-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: solaradocs
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 8000
+      targetPort: 8000
