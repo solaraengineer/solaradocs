@@ -25,6 +25,9 @@ from .views_emails import send_welcome_email, send_subscription_email, send_canc
 from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
 
+import logging
+logger = logging.getLogger(__name__)
+
 PROJECT_NAME_REGEX = re.compile(r'^[a-zA-Z0-9\s@#$!]+$')
 USERNAME_REGEX = re.compile(r'^[a-zA-Z0-9_@#$!]+$')
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
@@ -133,6 +136,7 @@ def get_oauth_token(request):
         token = generate_auth_token(request.user.id)
         return JsonResponse({'success': True, 'token': token})
     except Exception:
+        logger.exception("get_oauth_token failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -196,6 +200,7 @@ def dashboard(request):
         projects = Project.objects.filter(owner_id=request.user.id).order_by('-created_at')
         return render(request, 'dashboard.html', {'projects': projects})
     except Exception:
+        logger.exception("dashboard failed")
         return render_error(request, 500)
 
 
@@ -209,6 +214,7 @@ def setup(request):
             tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
             return render(request, 'setup.html', {'tier': user_tier, 'tier_config': tier_config})
         except Exception:
+            logger.exception("setup failed")
             return render_error(request, 500)
 
     try:
@@ -295,6 +301,7 @@ def setup(request):
 
         return JsonResponse({'success': True, 'redirect': '/dashboard/'})
     except Exception:
+        logger.exception("setup failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -357,6 +364,7 @@ def change_roles(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("change_roles failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -434,6 +442,7 @@ def add_people(request):
 
         return JsonResponse({'success': True, 'added_count': len(new_people)})
     except Exception:
+        logger.exception("add_people failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -456,6 +465,7 @@ def changelog(request):
         changelogs = Changelog.objects.all().order_by('-created_at')
         return render(request, 'changelog.html', {'changelogs': changelogs})
     except Exception:
+        logger.exception("changelog failed")
         return render_error(request, 500)
 
 
@@ -494,6 +504,7 @@ def login(request):
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception:
+        logger.exception("login failed")
         return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
 
 
@@ -556,6 +567,7 @@ def register(request):
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception:
+        logger.exception("register failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -603,6 +615,7 @@ def deleteuser(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("deleteuser failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -615,6 +628,7 @@ def project_detail(request, project_id):
     except Project.DoesNotExist:
         return render_error(request, 404)
     except Exception:
+        logger.exception("project_detail failed")
         return render_error(request, 500)
 
     is_owner = project.owner_id == request.user.id
@@ -667,6 +681,7 @@ def delete_project(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("delete_project failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -742,6 +757,7 @@ def list_project_backups(request, project_id):
 
         return JsonResponse({'success': True, 'backups': data})
     except Exception:
+        logger.exception("list_project_backups failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -806,6 +822,7 @@ def revert_backup(request, project_id, backup_id):
         try:
             restore_document_from_backup(backup.id)
         except Exception:
+            logger.exception("revert_backup failed")
             return JsonResponse({'success': False, 'error': 'Failed to restore backup'}, status=500)
 
         if tier_config.get('audit', False):
@@ -822,6 +839,7 @@ def revert_backup(request, project_id, backup_id):
             'version': backup.version
         })
     except Exception:
+        logger.exception("revert_backup failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -861,6 +879,7 @@ def toggle_backups(request, project_id):
 
         return JsonResponse({'success': True, 'backups_enabled': enabled})
     except Exception:
+        logger.exception("toggle_backups failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -897,6 +916,7 @@ def get_collaborators(request, project_id):
 
         return JsonResponse({'success': True, 'collaborators': data})
     except Exception:
+        logger.exception("get_collaborators failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1012,6 +1032,7 @@ def handle_pending(request):
             'document_name': document_name
         })
     except Exception:
+        logger.exception("handle_pending failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1026,6 +1047,7 @@ def collaborations(request):
 
         return render(request, 'collaborations.html', {'collaborated_projects': collaborated_projects})
     except Exception:
+        logger.exception("collaborations failed")
         return render_error(request, 500)
 
 
@@ -1100,6 +1122,7 @@ def create_checkout_session(request):
             print(str(e))
             return JsonResponse({'success': False, 'error': str(e)}, status=503)
     except Exception:
+        logger.exception("create_checkout_session failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1366,6 +1389,7 @@ def get_documents(request, project_id):
 
         return JsonResponse({'success': True, 'documents': docs_data})
     except Exception:
+        logger.exception("get_documents failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1435,6 +1459,7 @@ def get_document(request, project_id, doc_id):
             }
         })
     except Exception:
+        logger.exception("get_document failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1547,6 +1572,7 @@ def add_document(request, project_id):
             }
         })
     except Exception:
+        logger.exception("add_document failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1676,6 +1702,7 @@ def save_document(request, project_id, doc_id):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("save_document failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1755,6 +1782,7 @@ def rename_document(request, project_id, doc_id):
             }
         })
     except Exception:
+        logger.exception("rename_document failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1820,6 +1848,7 @@ def delete_document(request, project_id, doc_id):
             }
         })
     except Exception:
+        logger.exception("delete_document failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1874,6 +1903,7 @@ def get_teams(request, project_id):
 
         return JsonResponse({'success': True, 'teams': teams_data})
     except Exception:
+        logger.exception("get_teams failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1947,6 +1977,7 @@ def get_pending_edits(request, project_id):
 
         return JsonResponse({'success': True, 'pending': pending_data})
     except Exception:
+        logger.exception("get_pending_edits failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -1995,6 +2026,7 @@ def get_audits(request, project_id):
 
         return JsonResponse({'success': True, 'audits': audits_data})
     except Exception:
+        logger.exception("get_audits failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2045,6 +2077,7 @@ def get_pending_actions(request, project_id):
 
         return JsonResponse({'success': True, 'pending_actions': actions_data})
     except Exception:
+        logger.exception("get_pending_actions failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2122,6 +2155,7 @@ def create_team(request, project_id):
             }
         })
     except Exception:
+        logger.exception("create_team failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2183,6 +2217,7 @@ def update_team(request, project_id, team_id):
             }
         })
     except Exception:
+        logger.exception("update_team failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2213,6 +2248,7 @@ def delete_team(request, project_id, team_id):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("delete_team failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2304,6 +2340,7 @@ def add_team_member(request, project_id, team_id):
             }
         })
     except Exception:
+        logger.exception("add_team_member failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2362,6 +2399,7 @@ def remove_team_member(request, project_id, team_id):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("remove_team_member failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2439,6 +2477,7 @@ def update_team_member_role(request, project_id, team_id):
             }
         })
     except Exception:
+        logger.exception("update_team_member_role failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2515,6 +2554,7 @@ def update_team_member_review(request, project_id, team_id):
             }
         })
     except Exception:
+        logger.exception("update_team_member_review failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2553,6 +2593,7 @@ def change_password(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("change_password failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2590,6 +2631,7 @@ def cancel_subscription(request):
         except stripe.error.StripeError:
             return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
     except Exception:
+        logger.exception("cancel_subscription failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2618,6 +2660,7 @@ def delete_account(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("delete_account failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 @ratelimit(key='ip', rate='3/m', block=True)
@@ -2658,6 +2701,7 @@ def password_reset_send(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("password_reset_send failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 @csrf_exempt
@@ -2710,6 +2754,7 @@ def password_reset_verify(request):
 
         return JsonResponse({'success': True, 'token': token})
     except Exception:
+        logger.exception("password_reset_verify failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2754,6 +2799,7 @@ def password_reset_confirm(request):
 
         return JsonResponse({'success': True})
     except Exception:
+        logger.exception("password_reset_confirm failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2779,6 +2825,7 @@ def get_viewer_access(request, project_id):
 
         return JsonResponse({'success': True, 'document_ids': doc_ids})
     except Exception:
+        logger.exception("get_viewer_access failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2830,6 +2877,7 @@ def save_viewer_access(request, project_id):
 
         return JsonResponse({'success': True, 'count': len(document_ids)})
     except Exception:
+        logger.exception("save_viewer_access failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2867,6 +2915,7 @@ def get_viewer_documents(request, project_id):
 
         return JsonResponse({'success': True, 'documents': docs_data})
     except Exception:
+        logger.exception("get_viewer_documents failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
@@ -2915,6 +2964,7 @@ def get_viewer_document_content(request, project_id, doc_id):
             }
         })
     except Exception:
+        logger.exception("get_viewer_document_content failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 

@@ -209,3 +209,37 @@ SOCIALACCOUNT_ADAPTER = 'solaradocs.adapters.CustomSocialAccountAdapter'
 
 # OAuth timeout settings (in seconds)
 OAUTH_REQUEST_TIMEOUT = int(os.getenv('OAUTH_REQUEST_TIMEOUT', '30'))
+
+# Admin notification for server errors
+ADMINS = [('Admin', os.getenv('ADMIN_EMAIL', ''))]
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'errors.log',
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'class': 'django.utils.log.AdminEmailHandler',
+            'level': 'ERROR',
+            'include_html': True,
+        },
+    },
+    'loggers': {
+        'solaradocs.views': {
+            'handlers': ['file', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
