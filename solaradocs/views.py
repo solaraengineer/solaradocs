@@ -443,9 +443,28 @@ def about(request):
     return render(request, 'about.html')
 
 
+from confluent_kafka import Producer
+from django.utils import timezone
+
+producer = Producer({'bootstrap.servers': 'host.docker.internal:9094'})
+
 @require_GET
-@cache_page(60 * 15)
+#@cache_page(60 * 15)
 def docs(request):
+    if request.user.is_authenticated:
+        def delivery_report(err, msg):
+            if err:
+                print(f'[KAFKA] FAILED: {err}', flush=True)
+            else:
+                print(f'[KAFKA] DELIVERED: {msg.topic()} [{msg.partition()}]', flush=True)
+
+        producer.produce(
+            topic='events',
+            key='visited.docs',
+            value=f'{request.user.email} visited docs at {timezone.now().isoformat()}',
+            callback=delivery_report,
+        )
+        producer.flush()
     return render(request, 'docs.html')
 
 
