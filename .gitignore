@@ -38,7 +38,6 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 /k8s/secrets.yaml
-/k8s
 #Clade
 .claude/skills
 .claude
