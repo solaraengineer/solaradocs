@@ -1667,7 +1667,12 @@ def save_document(request, project_id, doc_id):
                     return JsonResponse({'success': True, 'message': 'No changes'})
 
                 if project.backups_enabled and tier_config.get('backups', False):
-                    backup_document_to_r2.delay(document.id)
+                    producer.produce(
+                        topic='tasks',
+                        key='backup.create',
+                        value=json.dumps({'document_id': document.id}),
+                    )
+                    producer.flush()    
 
                 if tier_config.get('audit', False):
                     Audit.objects.create(
