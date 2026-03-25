@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from django_ratelimit.decorators import ratelimit
 from functools import wraps
 from .forms import LoginForm, RegisterForm
-
+from django.template.loader import render_to_string
 from django.contrib.auth import update_session_auth_hash
 from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, \
     PendingAction, ViewerDocumentAccess
@@ -510,6 +510,7 @@ def login(request):
 
         auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         token = generate_auth_token(request.user.id)
+
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception:
@@ -571,7 +572,21 @@ def register(request):
         user.backend = 'django.contrib.auth.backends.ModelBackend'
         auth_login(request, user)
         token = generate_auth_token(request.user.id)
-        send_welcome_email.delay(username, email)
+
+        producer.produce(
+            topic='events',
+            key='send_welcome_email',
+            value=json.dumps({
+                'email': user.email,
+                'subject': 'Welcome to SolaraDocs',
+                'html': render_to_string('emails/welcome.html', {
+                    'username': user.username,
+                }),
+            }),
+        )
+        producer.flush()
+        print(f'[KAFKA] Produced send_welcome_email for {user.email}', flush=True)
+
         return JsonResponse({'success': True, 'redirect': '/dashboard/', 'token': token})
 
     except Exception:
@@ -991,7 +1006,12 @@ def handle_pending(request):
                 document = Documents.objects.select_for_update().get(id=document.id)
 
                 if project.backups_enabled and tier_config.get('backups', False):
-                    backup_document_to_r2.delay(document.id)
+                    producer.produce(
+                        topic='tasks',
+                        key='backup.create',
+                        value=json.dumps({'document_id': document.id}),
+                    )
+                    producer.flush()  
 
                 document.content = pending.submitted_content
                 document.save(update_fields=['content'])
@@ -2599,7 +2619,20 @@ def cancel_subscription(request):
             request.user.subscription_status = 'canceled'
             request.user.save(update_fields=['subscription_status'])
 
-            send_cancellation_email.delay(request.user.email, request.user.username, tier_before)
+            producer.produce(
+                topic='events',
+                key='send_cancellation_email',
+                value=json.dumps({
+                    'email': request.user.email,
+                    'subject': 'Subscription Cancelled',
+                    'html': render_to_string('emails/cancellation.html', {
+                        'username': request.user.username,
+                        'tier_before': tier_before,
+                    }),
+                }),
+            )
+            producer.flush()
+            print(f'[KAFKA] Produced send_cancellation_email for {request.user.email}', flush=True)
 
             return JsonResponse({'success': True})
 
@@ -2670,7 +2703,20 @@ def password_reset_send(request):
             cache.set(f'pw_reset_attempts:{email}', 0, timeout=900)
             cache.delete(f'pw_reset_token:{email}')
 
-            send_password_reset_email(user.email, user.username, code)
+            producer.produce(
+                topic='events',
+                key='send_password_reset',
+                value=json.dumps({
+                    'email': user.email,
+                    'subject': 'Password Reset',
+                    'html': render_to_string('emails/password_reset.html', {
+                        'username': user.username,
+                        'code': code,
+                    }),
+                }),
+            )
+            producer.flush()
+            print(f'[KAFKA] Produced send_password_reset for {user.email}', flush=True)
 
         return JsonResponse({'success': True})
     except Exception:
