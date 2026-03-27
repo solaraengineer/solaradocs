@@ -160,7 +160,7 @@ REDIS_URL = os.getenv('REDIS_URL')
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://:Mucia850@@host.docker.internal:30379/0",
+        "LOCATION": "redis://:Mucia850@@host.docker.internal:30380/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
