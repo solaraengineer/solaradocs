@@ -1,7 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
-
+from django.utils.timezone import now
 class User(AbstractUser):
     Tier = models.CharField('Tier', max_length=20, default='free')
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
@@ -182,3 +181,18 @@ class Changelog(models.Model):
 
     def __str__(self):
         return f"v{self.version} - {self.title}"
+
+class InviteCode(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='invite_codes')
+    code = models.CharField(max_length=6, unique=True)
+    role = models.CharField(max_length=20, choices=Contributor.ROLE_CHOICES, default='EDITOR')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def is_expired(self):
+        if self.expires_at is None:
+            return False
+        return now() > self.expires_at
+
+    def __str__(self):
+        return f"{self.code} → {self.project.name} ({self.role})"

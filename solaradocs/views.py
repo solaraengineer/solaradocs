@@ -10,6 +10,7 @@ from django.db.models import Q, F
 from django.conf import settings
 import stripe
 import secrets
+import string
 import json
 import jwt
 from django.core.cache import cache
@@ -20,7 +21,7 @@ from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
 from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, \
-    PendingAction, ViewerDocumentAccess
+    PendingAction, ViewerDocumentAccess, InviteCode
 from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email, send_password_reset_email
 from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
@@ -3002,6 +3003,170 @@ def error_502(request):
 
 def error_503(request):
     return render_error(request, 503)
+
+
+INVITE_CODE_CHARS = string.ascii_uppercase + string.digits
+
+EXPIRY_DURATIONS = {
+    '15m': timedelta(minutes=15),
+    '30m': timedelta(minutes=30),
+    '1h': timedelta(hours=1),
+    '2h': timedelta(hours=2),
+    '4h': timedelta(hours=4),
+    '24h': timedelta(hours=24),
+    'never': None,
+}
+
+
+def generate_unique_code():
+    for _ in range(20):
+        code = ''.join(secrets.choice(INVITE_CODE_CHARS) for _ in range(6))
+        if not InviteCode.objects.filter(code=code).exists():
+            return code
+    return None
+
+
+@require_auth_token
+@ratelimit(key='ip', rate='30/m', block=True)
+def list_invite_codes(request, project_id):
+    try:
+        project = Project.objects.get(id=project_id)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only the project owner can view invite codes'}, status=403)
+
+        codes = InviteCode.objects.filter(project=project).order_by('-created_at')
+        result = []
+        for ic in codes:
+            if ic.is_expired():
+                ic.delete()
+                continue
+            result.append({
+                'id': ic.id,
+                'code': ic.code,
+                'role': ic.role,
+                'created_at': ic.created_at.isoformat(),
+                'expires_at': ic.expires_at.isoformat() if ic.expires_at else None,
+            })
+
+        return JsonResponse({'success': True, 'invite_codes': result})
+    except Project.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+    except Exception:
+        logger.exception("list_invite_codes failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_POST
+@require_auth_token
+@ratelimit(key='ip', rate='20/m', block=True)
+def delete_invite_code(request, project_id, code_id):
+    try:
+        project = Project.objects.get(id=project_id)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only the project owner can delete invite codes'}, status=403)
+
+        invite = InviteCode.objects.get(id=code_id, project=project)
+        invite.delete()
+        return JsonResponse({'success': True})
+    except Project.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+    except InviteCode.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Invite code not found'}, status=404)
+    except Exception:
+        logger.exception("delete_invite_code failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_POST
+@require_auth_token
+@ratelimit(key='ip', rate='20/m', block=True)
+def generate_invite_code(request, project_id):
+    try:
+        project = Project.objects.get(id=project_id)
+        if project.owner_id != request.user.id:
+            return JsonResponse({'success': False, 'error': 'Only the project owner can generate invite codes'}, status=403)
+
+        data = json.loads(request.body)
+        role = data.get('role', '').upper()
+        expiry = data.get('expiry', '')
+
+        if role not in ('VIEWER', 'EDITOR', 'ADMIN'):
+            return JsonResponse({'success': False, 'error': 'Invalid role'}, status=400)
+
+        if expiry not in EXPIRY_DURATIONS:
+            return JsonResponse({'success': False, 'error': 'Invalid expiry duration'}, status=400)
+
+        code = generate_unique_code()
+        if not code:
+            return JsonResponse({'success': False, 'error': 'Could not generate a unique code, try again'}, status=500)
+
+        from django.utils.timezone import now as tz_now
+        created = tz_now()
+        duration = EXPIRY_DURATIONS[expiry]
+        expires_at = created + duration if duration else None
+
+        invite = InviteCode.objects.create(
+            project=project,
+            code=code,
+            role=role,
+            expires_at=expires_at,
+        )
+
+        return JsonResponse({
+            'success': True,
+            'code': invite.code,
+            'role': invite.role,
+            'expires_at': invite.expires_at.isoformat() if invite.expires_at else None,
+        })
+    except Project.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+    except Exception:
+        logger.exception("generate_invite_code failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_POST
+@require_auth_token
+@ratelimit(key='ip', rate='20/m', block=True)
+def redeem_invite_code(request):
+    try:
+        data = json.loads(request.body)
+        code = data.get('code', '').strip().upper()
+
+        if not code or len(code) != 6:
+            return JsonResponse({'success': False, 'error': 'Invalid code format'}, status=400)
+
+        try:
+            invite = InviteCode.objects.select_related('project').get(code=code)
+        except InviteCode.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Invalid code'}, status=404)
+
+        if invite.is_expired():
+            invite.delete()
+            return JsonResponse({'success': False, 'error': 'Code expired'}, status=410)
+
+        project = invite.project
+
+        if project.owner_id == request.user.id:
+            return JsonResponse({'success': False, 'error': 'You are the owner of this project'}, status=400)
+
+        if Contributor.objects.filter(project=project, username=request.user.username).exists():
+            return JsonResponse({'success': False, 'error': 'You are already a collaborator on this project'}, status=409)
+
+        Contributor.objects.create(
+            project=project,
+            username=request.user.username,
+            role=invite.role,
+        )
+
+        return JsonResponse({
+            'success': True,
+            'project_name': project.project_name,
+            'role': invite.role,
+        })
+    except Exception:
+        logger.exception("redeem_invite_code failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 

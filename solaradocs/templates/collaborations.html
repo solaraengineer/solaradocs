@@ -596,6 +596,72 @@
             color: var(--accent-green);
         }
 
+        /* Invite Code */
+        .invite-code-section {
+            margin-bottom: 2rem;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .invite-code-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .invite-code-form {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .invite-code-input {
+            width: 160px;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        .invite-code-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+
+        .invite-code-input::placeholder {
+            text-transform: none;
+            letter-spacing: normal;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+        }
+
+        .invite-code-message {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+        }
+
+        .invite-code-message.success {
+            color: var(--accent-green);
+        }
+
+        .invite-code-message.error {
+            color: var(--accent-red);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .navbar {
@@ -782,6 +848,15 @@
                 <h1 class="page-title">My Collaborations</h1>
                 <p class="page-subtitle">Projects you've been invited to collaborate on</p>
             </div>
+        </div>
+
+        <div class="invite-code-section">
+            <div class="invite-code-label">Got a code?</div>
+            <div class="invite-code-form">
+                <input type="text" class="invite-code-input" id="inviteCodeInput" placeholder="Enter 6-character code" maxlength="6" autocomplete="off">
+                <button class="btn btn-primary" id="redeemCodeBtn" onclick="redeemInviteCode()">Join</button>
+            </div>
+            <div class="invite-code-message" id="inviteCodeMessage"></div>
         </div>
 
         {% if collaborated_projects %}
@@ -1327,6 +1402,52 @@
         function closeViewerDocContent(collabId) {
             const contentArea = document.getElementById(`viewer-doc-content-${collabId}`);
             if (contentArea) contentArea.style.display = 'none';
+        }
+
+        // ==================== INVITE CODE ====================
+
+        async function redeemInviteCode() {
+            const input = document.getElementById('inviteCodeInput');
+            const msgEl = document.getElementById('inviteCodeMessage');
+            const btn = document.getElementById('redeemCodeBtn');
+            const code = input.value.trim().toUpperCase();
+
+            msgEl.textContent = '';
+            msgEl.className = 'invite-code-message';
+
+            if (!code || code.length !== 6) {
+                msgEl.textContent = 'Please enter a 6-character code';
+                msgEl.classList.add('error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Joining...';
+
+            try {
+                const response = await authFetch('/api/invite-code/redeem', {
+                    method: 'POST',
+                    body: JSON.stringify({ code: code })
+                });
+                if (!response) return;
+                const data = await response.json();
+
+                if (data.success) {
+                    msgEl.textContent = `Joined "${data.project_name}" as ${data.role}`;
+                    msgEl.classList.add('success');
+                    input.value = '';
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    msgEl.textContent = data.error || 'Failed to redeem code';
+                    msgEl.classList.add('error');
+                }
+            } catch (err) {
+                msgEl.textContent = 'Something went wrong';
+                msgEl.classList.add('error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Join';
+            }
         }
 
         // Initialize token on page load
