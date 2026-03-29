@@ -1450,25 +1450,26 @@
                     const list = document.getElementById(`users-list-${projectId}`);
                     const noCollabsMsg = list.querySelector('.no-collabs-msg');
                     if (noCollabsMsg) noCollabsMsg.remove();
-                    usernames.split(/\s+/).forEach(username => {
-                        if (!username) return;
-                        const newId = Date.now() + Math.random();
-                        const roleClass = role.toLowerCase();
+                    (data.contributors || []).forEach(contrib => {
+                        const realId = contrib.id;
+                        const username = contrib.username;
+                        const assignedRole = contrib.role;
+                        const roleClass = assignedRole.toLowerCase();
                         const userHtml = `
-                            <div class="user-item" id="user-${projectId}-${newId}">
+                            <div class="user-item" id="user-${projectId}-${realId}">
                                 <div class="user-item-info">
                                     <div class="user-item-avatar">${username.charAt(0).toUpperCase()}</div>
                                     <span class="user-item-name">${username}</span>
-                                    <span class="role-badge role-badge--${roleClass}" id="role-badge-${projectId}-${newId}">${role}</span>
+                                    <span class="role-badge role-badge--${roleClass}" id="role-badge-${projectId}-${realId}">${assignedRole}</span>
                                 </div>
                                 <div class="user-item-controls">
-                                    <select class="role-select" id="role-${projectId}-${newId}">
-                                        <option value="VIEWER" ${role === 'VIEWER' ? 'selected' : ''}>Viewer</option>
-                                        <option value="EDITOR" ${role === 'EDITOR' ? 'selected' : ''}>Editor</option>
-                                        <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Admin</option>
+                                    <select class="role-select" id="role-${projectId}-${realId}">
+                                        <option value="VIEWER" ${assignedRole === 'VIEWER' ? 'selected' : ''}>Viewer</option>
+                                        <option value="EDITOR" ${assignedRole === 'EDITOR' ? 'selected' : ''}>Editor</option>
+                                        <option value="ADMIN" ${assignedRole === 'ADMIN' ? 'selected' : ''}>Admin</option>
                                     </select>
-                                    <button class="btn btn-secondary btn-sm" onclick="saveRole(${projectId}, ${newId})">Save</button>
-                                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${projectId}, ${newId})">
+                                    <button class="btn btn-secondary btn-sm" onclick="saveRole(${projectId}, ${realId})">Save</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${projectId}, ${realId})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                                         </svg>

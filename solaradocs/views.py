@@ -437,11 +437,14 @@ def add_people(request):
                     }, status=403)
 
         if new_people:
-            Contributor.objects.bulk_create(
-                [Contributor(project_id=project_id, username=p, role='VIEWER') for p in new_people]
+            created = Contributor.objects.bulk_create(
+                [Contributor(project_id=project_id, username=p, role=data.get('role', 'VIEWER')) for p in new_people]
             )
+            contributors = [{'id': c.id, 'username': c.username, 'role': c.role} for c in created]
+        else:
+            contributors = []
 
-        return JsonResponse({'success': True, 'added_count': len(new_people)})
+        return JsonResponse({'success': True, 'added_count': len(new_people), 'contributors': contributors})
     except Exception:
         logger.exception("add_people failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
