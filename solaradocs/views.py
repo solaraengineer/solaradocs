@@ -211,7 +211,7 @@ def dashboard(request):
 def setup(request):
     if request.method == 'GET':
         try:
-            user_tier = request.user.Tier
+            user_tier = request.user.tier
             tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
             return render(request, 'setup.html', {'tier': user_tier, 'tier_config': tier_config})
         except Exception:

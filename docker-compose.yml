@@ -151,6 +151,32 @@ services:
     depends_on:
       - redis
 
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    restart: unless-stopped
+    volumes:
+      - ./loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki_data:/loki
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks:
+      - backend
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml
+      - .:/var/log/django:ro
+    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    networks:
+      - backend
+    depends_on:
+      - loki
+
 networks:
   backend:
 
@@ -160,3 +186,4 @@ volumes:
   grafana_data:
   tempo_data:
   alertmanager_data:
+  loki_data:
