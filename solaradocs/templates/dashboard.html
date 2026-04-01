@@ -311,6 +311,33 @@
         .pending-icon svg { width: 14px; height: 14px; }
         .pending-actions { display: flex; gap: 0.5rem; }
 
+        /* === Diff Modal === */
+        .diff-modal { max-width: 900px; }
+        .diff-container { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .diff-side { flex: 1; min-width: 0; overflow-x: auto; }
+        .diff-side-header {
+            padding: 0.5rem 0.75rem; font-size: 0.75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
+        }
+        .diff-side-current { background: rgba(212,106,106,0.15); color: var(--accent-red); }
+        .diff-side-proposed { background: rgba(127,176,105,0.15); color: var(--accent-green); }
+        .diff-side-content {
+            max-height: 60vh; overflow-y: auto; padding: 0.75rem;
+            font-size: 0.8rem; line-height: 1.7; color: var(--text-secondary);
+            word-wrap: break-word;
+        }
+        .diff-side:first-child { border-right: 1px solid var(--border); }
+        .diff-side-content .diff-del {
+            background: rgba(212,106,106,0.2); color: var(--accent-red);
+            padding: 0.1rem 0.2rem; border-radius: 3px;
+        }
+        .diff-side-content .diff-add {
+            background: rgba(127,176,105,0.2); color: var(--accent-green);
+            padding: 0.1rem 0.2rem; border-radius: 3px;
+        }
+        .diff-no-changes { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 0.85rem; }
+        .diff-loading { text-align: center; padding: 2rem; color: var(--text-tertiary); }
+
         /* === Backups Toggle === */
         .backups-toggle-row {
             display: flex; align-items: center; justify-content: space-between;
@@ -964,6 +991,7 @@
                                         <span>{{ pending.user.username }} submitted changes</span>
                                     </div>
                                     <div class="pending-actions">
+                                        <button class="btn btn-ghost btn-sm" onclick="viewPendingDiff({{ project.id }}, {{ pending.id }})">View Changes</button>
                                         <button class="btn btn-success btn-sm" onclick="acceptPending({{ project.id }}, {{ pending.id }})">Accept</button>
                                         <button class="btn btn-danger btn-sm" onclick="declinePending({{ project.id }}, {{ pending.id }})">Decline</button>
                                     </div>
@@ -1137,6 +1165,23 @@
             <div class="confirm-actions">
                 <button class="confirm-btn-cancel" id="confirmBtnCancel">Cancel</button>
                 <button class="confirm-btn-confirm" id="confirmBtnConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diff Modal -->
+    <div class="modal-overlay" id="diffModal">
+        <div class="modal diff-modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="diffModalTitle">View Changes</h3>
+                <button class="modal-close" onclick="closeModal('diffModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="diffModalBody">
+                <div class="diff-loading">Loading diff...</div>
             </div>
         </div>
     </div>
@@ -1373,6 +1418,28 @@
                     updateStats();
                 } else { showToast(data.error || 'Failed to decline changes', 'error'); }
             } catch (error) { showToast('Failed to decline changes', 'error'); }
+        }
+
+        async function viewPendingDiff(projectId, pendingId) {
+            const modal = document.getElementById('diffModal');
+            const body = document.getElementById('diffModalBody');
+            const title = document.getElementById('diffModalTitle');
+            body.innerHTML = '<div class="diff-loading">Loading diff...</div>';
+            title.textContent = 'View Changes';
+            modal.classList.add('show');
+            try {
+                const response = await authFetch(`/api/project/${projectId}/pending/${pendingId}/diff`);
+                if (!response) { body.innerHTML = '<div class="diff-loading">Failed to load diff</div>'; return; }
+                const data = await response.json();
+                if (data.success) {
+                    title.textContent = `Changes — ${data.document_name} by ${data.username}`;
+                    body.innerHTML = data.diff_html;
+                } else {
+                    body.innerHTML = `<div class="diff-loading">${data.error || 'Failed to load diff'}</div>`;
+                }
+            } catch (err) {
+                body.innerHTML = '<div class="diff-loading">Failed to load diff</div>';
+            }
         }
 
         function updatePendingBadge(projectId) {

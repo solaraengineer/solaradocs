@@ -25,6 +25,8 @@ from .models import Project, Contributor, Pending, User, Backup, Audit, Document
 from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email, send_password_reset_email
 from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
+import difflib
+from django.utils.html import escape as html_escape
 
 import logging
 logger = logging.getLogger(__name__)
@@ -762,6 +764,193 @@ def list_project_backups(request, project_id):
         return JsonResponse({'success': True, 'backups': data})
     except Exception:
         logger.exception("list_project_backups failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+_HTML_TAG_RE = re.compile(r'<[^>]+>')
+
+def _strip_html(text):
+    text = _HTML_TAG_RE.sub(' ', text)
+    return ' '.join(text.split())
+
+def _generate_side_by_side_diff_html(current_text, proposed_text, current_label='Current', proposed_label='Proposed'):
+    current_words = _strip_html(current_text).split()
+    proposed_words = _strip_html(proposed_text).split()
+    sm = difflib.SequenceMatcher(None, current_words, proposed_words)
+
+    left_parts = []
+    right_parts = []
+    has_changes = False
+
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == 'equal':
+            text = html_escape(' '.join(current_words[i1:i2]))
+            left_parts.append(text)
+            right_parts.append(text)
+        elif tag == 'replace':
+            has_changes = True
+            old = html_escape(' '.join(current_words[i1:i2]))
+            new = html_escape(' '.join(proposed_words[j1:j2]))
+            left_parts.append(f'<span class="diff-del">{old}</span>')
+            right_parts.append(f'<span class="diff-add">{new}</span>')
+        elif tag == 'delete':
+            has_changes = True
+            old = html_escape(' '.join(current_words[i1:i2]))
+            left_parts.append(f'<span class="diff-del">{old}</span>')
+        elif tag == 'insert':
+            has_changes = True
+            new = html_escape(' '.join(proposed_words[j1:j2]))
+            right_parts.append(f'<span class="diff-add">{new}</span>')
+
+    if not has_changes:
+        return '<div class="diff-no-changes">No differences found</div>'
+
+    left_html = ' '.join(left_parts)
+    right_html = ' '.join(right_parts)
+
+    return f'''
+    <div class="diff-container">
+        <div class="diff-side">
+            <div class="diff-side-header diff-side-current">{html_escape(current_label)}</div>
+            <div class="diff-side-content">{left_html}</div>
+        </div>
+        <div class="diff-side">
+            <div class="diff-side-header diff-side-proposed">{html_escape(proposed_label)}</div>
+            <div class="diff-side-content">{right_html}</div>
+        </div>
+    </div>'''
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def pending_diff(request, project_id, pending_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(pending_id, int) or pending_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid pending ID'}, status=400)
+
+        pending = Pending.objects.select_related('project', 'document', 'user').filter(
+            id=pending_id, project_id=project_id
+        ).first()
+
+        if not pending:
+            return JsonResponse({'success': False, 'error': 'Pending edit not found'}, status=404)
+
+        project = pending.project
+        is_owner = project.owner_id == request.user.id
+        can_view = False
+
+        if is_owner:
+            can_view = True
+        else:
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id, username=request.user.username, role='ADMIN'
+            ).exists()
+            if is_project_admin:
+                can_view = True
+            else:
+                is_team_admin = TeamMember.objects.filter(
+                    team_id=pending.team_id, user=request.user, role='ADMIN'
+                ).exists()
+                if is_team_admin:
+                    can_view = True
+
+        if not can_view:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+        document = pending.document
+        if not document:
+            return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
+
+        current_content = document.content or ''
+        proposed_content = pending.submitted_content or ''
+
+        diff_html = _generate_side_by_side_diff_html(current_content, proposed_content, 'Current', 'Proposed')
+
+        return JsonResponse({
+            'success': True,
+            'diff_html': diff_html,
+            'document_name': document.document_name,
+            'username': pending.user.username,
+        })
+    except Exception:
+        logger.exception("pending_diff failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='20/m', block=True)
+def backup_diff(request, project_id, backup_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+        if not isinstance(backup_id, int) or backup_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid backup ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        tier = project.tier.lower()
+        tier_config = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+        if not tier_config.get('backups', False):
+            return JsonResponse({'success': False, 'error': 'Backups not available for this tier'}, status=403)
+
+        is_owner = project.owner_id == request.user.id
+        can_view = False
+
+        if is_owner:
+            can_view = True
+        else:
+            is_project_admin = Contributor.objects.filter(
+                project_id=project_id, username=request.user.username, role='ADMIN'
+            ).exists()
+            if is_project_admin:
+                can_view = True
+            else:
+                admin_teams = TeamMember.objects.filter(
+                    team__project_id=project_id, user=request.user, role='ADMIN'
+                ).values_list('team_id', flat=True)
+                if admin_teams.exists():
+                    can_view = True
+
+        if not can_view:
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+        backup = Backup.objects.select_related('document').filter(
+            id=backup_id, project_id=project_id
+        ).first()
+
+        if not backup:
+            return JsonResponse({'success': False, 'error': 'Backup not found'}, status=404)
+
+        document = backup.document
+        current_content = document.content or ''
+
+        response = settings.R2_CLIENT.get_object(
+            Bucket=settings.R2_BUCKET_NAME,
+            Key=backup.r2_key,
+        )
+        payload = json.loads(response['Body'].read().decode('utf-8'))
+        backup_content = payload.get('content', '')
+
+        diff_html = _generate_side_by_side_diff_html(
+            current_content, backup_content, 'Current', f'Backup v{backup.version}'
+        )
+
+        return JsonResponse({
+            'success': True,
+            'diff_html': diff_html,
+            'document_name': document.document_name,
+            'version': backup.version,
+        })
+    except Exception:
+        logger.exception("backup_diff failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 

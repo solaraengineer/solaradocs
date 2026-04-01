@@ -571,6 +571,61 @@
             cursor: not-allowed;
         }
 
+        /* Diff modal */
+        .diff-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000; opacity: 0; visibility: hidden;
+            transition: all 0.2s ease;
+        }
+        .diff-modal-overlay.show { opacity: 1; visibility: visible; }
+        .diff-modal {
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: 10px; width: 100%; max-width: 900px;
+            max-height: 90vh; overflow-y: auto;
+            transform: translateY(-20px); transition: transform 0.2s ease;
+        }
+        .diff-modal-overlay.show .diff-modal { transform: translateY(0); }
+        .diff-modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+        }
+        .diff-modal-title { font-size: 1.1rem; font-weight: 600; }
+        .diff-modal-close {
+            width: 32px; height: 32px; border-radius: 6px;
+            background: transparent; border: none;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-tertiary); cursor: pointer; transition: all 0.2s ease;
+        }
+        .diff-modal-close:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .diff-modal-close svg { width: 18px; height: 18px; }
+        .diff-modal-body { padding: 1.5rem; }
+        .diff-container { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .diff-side { flex: 1; min-width: 0; overflow-x: auto; }
+        .diff-side-header {
+            padding: 0.5rem 0.75rem; font-size: 0.75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
+        }
+        .diff-side-current { background: rgba(212,106,106,0.15); color: var(--accent-red); }
+        .diff-side-proposed { background: rgba(127,176,105,0.15); color: var(--accent-green); }
+        .diff-side-content {
+            max-height: 60vh; overflow-y: auto; padding: 0.75rem;
+            font-size: 0.8rem; line-height: 1.7; color: var(--text-secondary);
+            word-wrap: break-word;
+        }
+        .diff-side:first-child { border-right: 1px solid var(--border); }
+        .diff-side-content .diff-del {
+            background: rgba(212,106,106,0.2); color: var(--accent-red);
+            padding: 0.1rem 0.2rem; border-radius: 3px;
+        }
+        .diff-side-content .diff-add {
+            background: rgba(127,176,105,0.2); color: var(--accent-green);
+            padding: 0.1rem 0.2rem; border-radius: 3px;
+        }
+        .diff-no-changes { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 0.85rem; }
+        .diff-loading { text-align: center; padding: 2rem; color: var(--text-tertiary); }
+
         .admin-toast {
             position: fixed;
             bottom: 2rem;
@@ -1010,6 +1065,23 @@
         {% endif %}
 
         <form style="display:none;">{% csrf_token %}</form>
+
+        <!-- Diff Modal -->
+        <div class="diff-modal-overlay" id="diffModal">
+            <div class="diff-modal">
+                <div class="diff-modal-header">
+                    <h3 class="diff-modal-title" id="diffModalTitle">View Differences</h3>
+                    <button class="diff-modal-close" onclick="document.getElementById('diffModal').classList.remove('show')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="diff-modal-body" id="diffModalBody">
+                    <div class="diff-loading">Loading diff...</div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -1225,6 +1297,32 @@
             }
         }
 
+        // ==================== DIFF MODAL ====================
+
+        async function openDiffModal(url, title) {
+            const modal = document.getElementById('diffModal');
+            const body = document.getElementById('diffModalBody');
+            const titleEl = document.getElementById('diffModalTitle');
+            body.innerHTML = '<div class="diff-loading">Loading diff...</div>';
+            titleEl.textContent = title || 'View Differences';
+            modal.classList.add('show');
+            try {
+                const response = await authFetch(url);
+                if (!response) { body.innerHTML = '<div class="diff-loading">Failed to load diff</div>'; return; }
+                const data = await response.json();
+                if (data.success) {
+                    if (data.document_name) {
+                        titleEl.textContent = title || `Differences — ${data.document_name}`;
+                    }
+                    body.innerHTML = data.diff_html;
+                } else {
+                    body.innerHTML = `<div class="diff-loading">${escapeHtml(data.error || 'Failed to load diff')}</div>`;
+                }
+            } catch (err) {
+                body.innerHTML = '<div class="diff-loading">Failed to load diff</div>';
+            }
+        }
+
         // ==================== PROJECT BACKUPS ====================
 
         async function loadProjectBackups(projectId) {
@@ -1268,14 +1366,23 @@
                                     <span class="backup-version">v${b.version}</span>
                                     <span class="backup-time">${time}</span>
                                 </div>
-                                <button class="backup-revert-btn"
-                                        data-project-id="${projectId}"
-                                        data-backup-id="${b.id}"
-                                        data-version="${b.version}"
-                                        data-doc-name="${escapeHtml(b.document_name)}"
-                                        data-time="${time}">
-                                    REVERT TO BACKUP AT ${time}, VERSION: v${b.version}
-                                </button>
+                                <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                    <button class="backup-revert-btn backup-diff-btn"
+                                            data-project-id="${projectId}"
+                                            data-backup-id="${b.id}"
+                                            data-version="${b.version}"
+                                            data-doc-name="${escapeHtml(b.document_name)}">
+                                        View Differences
+                                    </button>
+                                    <button class="backup-revert-btn"
+                                            data-project-id="${projectId}"
+                                            data-backup-id="${b.id}"
+                                            data-version="${b.version}"
+                                            data-doc-name="${escapeHtml(b.document_name)}"
+                                            data-time="${time}">
+                                        REVERT TO BACKUP AT ${time}, VERSION: v${b.version}
+                                    </button>
+                                </div>
                             </div>
                         `;
                     });
@@ -1285,7 +1392,7 @@
                 container.innerHTML = html;
 
                 // Attach revert handlers
-                container.querySelectorAll('.backup-revert-btn').forEach(btn => {
+                container.querySelectorAll('.backup-revert-btn:not(.backup-diff-btn)').forEach(btn => {
                     btn.addEventListener('click', async () => {
                         const backupId = parseInt(btn.dataset.backupId);
                         const pId = parseInt(btn.dataset.projectId);
@@ -1316,6 +1423,17 @@
                             btn.disabled = false;
                             btn.textContent = `REVERT TO BACKUP AT ${btn.dataset.time}, VERSION: v${version}`;
                         }
+                    });
+                });
+
+                // Attach diff handlers
+                container.querySelectorAll('.backup-diff-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const backupId = parseInt(btn.dataset.backupId);
+                        const pId = parseInt(btn.dataset.projectId);
+                        const version = btn.dataset.version;
+                        const docName = btn.dataset.docName;
+                        openDiffModal(`/api/project/${pId}/backups/${backupId}/diff`, `Differences — ${docName} v${version} vs Current`);
                     });
                 });
             } catch (err) {
