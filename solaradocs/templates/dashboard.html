@@ -988,10 +988,10 @@
                                                 <polyline points="12 6 12 12 16 14"/>
                                             </svg>
                                         </div>
-                                        <span>{{ pending.user.username }} submitted changes</span>
+                                        <span>{{ pending.user.username }} submitted changes to <strong>{{ pending.document.document_name }}</strong></span>
                                     </div>
                                     <div class="pending-actions">
-                                        <button class="btn btn-ghost btn-sm" onclick="viewPendingDiff({{ project.id }}, {{ pending.id }})">View Changes</button>
+                                        <button class="btn btn-ghost btn-sm" onclick="viewPendingDiff({{ project.id }}, {{ pending.id }}, '{{ pending.document.document_name|escapejs }}', '{{ pending.user.username|escapejs }}')">View Changes</button>
                                         <button class="btn btn-success btn-sm" onclick="acceptPending({{ project.id }}, {{ pending.id }})">Accept</button>
                                         <button class="btn btn-danger btn-sm" onclick="declinePending({{ project.id }}, {{ pending.id }})">Decline</button>
                                     </div>
@@ -1420,12 +1420,12 @@
             } catch (error) { showToast('Failed to decline changes', 'error'); }
         }
 
-        async function viewPendingDiff(projectId, pendingId) {
+        async function viewPendingDiff(projectId, pendingId, docName, username) {
             const modal = document.getElementById('diffModal');
             const body = document.getElementById('diffModalBody');
             const title = document.getElementById('diffModalTitle');
             body.innerHTML = '<div class="diff-loading">Loading diff...</div>';
-            title.textContent = 'View Changes';
+            title.textContent = docName && username ? `Changes — ${docName} by ${username}` : 'View Changes';
             modal.classList.add('show');
             try {
                 const response = await authFetch(`/api/project/${projectId}/pending/${pendingId}/diff`);

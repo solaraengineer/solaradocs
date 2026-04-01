@@ -1315,13 +1315,13 @@
             opacity: 0.9;
         }
 
-        .pending-btn-preview {
+        .pending-btn-diff {
             background: var(--bg-elevated);
             color: var(--text-secondary);
             border: 1px solid var(--border);
         }
 
-        .pending-btn-preview:hover {
+        .pending-btn-diff:hover {
             background: var(--border);
             color: var(--text-primary);
         }
@@ -3276,7 +3276,6 @@
                     </div>
                     ${p.note ? `<div class="pending-note" style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-elevated); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 2px solid var(--accent-orange);">"${escapeHtml(p.note)}"</div>` : ''}
                     <div class="pending-actions">
-                        <button class="pending-btn pending-btn-preview" data-pending-id="${p.id}" data-content="${encodeURIComponent(p.submitted_content)}">Preview</button>
                         <button class="pending-btn pending-btn-diff" data-pending-id="${p.id}" data-doc-name="${escapeHtml(p.document_name)}" data-username="${escapeHtml(p.username)}">View Changes</button>
                         <button class="pending-btn pending-btn-accept" data-pending-id="${p.id}" data-action="accept">Accept</button>
                         <button class="pending-btn pending-btn-reject" data-pending-id="${p.id}" data-action="reject">Reject</button>
