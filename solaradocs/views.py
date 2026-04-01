@@ -2207,7 +2207,7 @@ def get_audits(request, project_id):
 
         audits = Audit.objects.filter(
             project_id=project_id
-        ).select_related('document', 'user').order_by('-created_at')[:100]
+        ).select_related('document', 'user').order_by('-created_at')[:500]
 
         audits_data = [{
             'id': audit.id,

@@ -608,6 +608,118 @@
         .viewer-doc-name { font-size: 0.85rem; color: var(--text-primary); flex: 1; }
         .viewer-doc-team { font-size: 0.7rem; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; }
 
+        /* === Audit Log === */
+        .audit-toolbar {
+            display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;
+            align-items: center;
+        }
+        .audit-toolbar select,
+        .audit-toolbar input {
+            padding: 0.4rem 0.625rem; font-size: 0.8rem; font-family: inherit;
+            background: var(--bg-secondary); color: var(--text-primary);
+            border: 1px solid var(--border-subtle); border-radius: 6px;
+            outline: none; transition: border-color 0.15s;
+        }
+        .audit-toolbar select:focus,
+        .audit-toolbar input:focus { border-color: var(--accent-orange); }
+        .audit-toolbar select { cursor: pointer; min-width: 130px; }
+        .audit-toolbar input { min-width: 140px; }
+        .audit-time-btns { display: flex; gap: 0; }
+        .audit-time-btns button {
+            padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 500;
+            font-family: inherit; cursor: pointer;
+            background: var(--bg-secondary); color: var(--text-secondary);
+            border: 1px solid var(--border-subtle); transition: all 0.15s;
+        }
+        .audit-time-btns button:first-child { border-radius: 6px 0 0 6px; }
+        .audit-time-btns button:last-child { border-radius: 0 6px 6px 0; }
+        .audit-time-btns button:not(:first-child) { border-left: none; }
+        .audit-time-btns button.active {
+            background: var(--accent-orange); color: var(--bg-primary);
+            border-color: var(--accent-orange);
+        }
+        .audit-list { display: flex; flex-direction: column; }
+        .audit-list-wrap {
+            position: relative; padding-left: 1.5rem;
+        }
+        .audit-list-wrap::before {
+            content: ''; position: absolute; left: 0.625rem; top: 0; bottom: 0;
+            width: 1.5px; background: var(--border);
+        }
+        .audit-entry {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.625rem 0.75rem; position: relative;
+            border-radius: 4px; transition: background 0.15s;
+        }
+        .audit-entry:hover { background: rgba(255,255,255,0.03); }
+        .audit-entry.grouped { opacity: 0.75; }
+        .audit-entry.act-bg-delete { background: rgba(212,106,106,0.06); }
+        .audit-entry.act-bg-delete:hover { background: rgba(212,106,106,0.1); }
+        .audit-entry.act-bg-revert { background: rgba(212,160,64,0.06); }
+        .audit-entry.act-bg-revert:hover { background: rgba(212,160,64,0.1); }
+        .audit-entry.act-bg-create { background: rgba(127,176,105,0.06); }
+        .audit-entry.act-bg-create:hover { background: rgba(127,176,105,0.1); }
+        .audit-entry.act-bg-pending { background: rgba(157,124,216,0.06); }
+        .audit-entry.act-bg-pending:hover { background: rgba(157,124,216,0.1); }
+        .audit-action-icon {
+            width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 1; margin-left: -0.75rem;
+        }
+        .audit-action-icon svg { width: 12px; height: 12px; stroke-width: 2.5; }
+        .audit-action-icon.action-edit { background: var(--bg-primary); color: var(--accent-blue); border: 1.5px solid var(--accent-blue); }
+        .audit-action-icon.action-create { background: var(--bg-primary); color: var(--accent-green); border: 1.5px solid var(--accent-green); }
+        .audit-action-icon.action-delete { background: var(--bg-primary); color: var(--accent-red); border: 1.5px solid var(--accent-red); }
+        .audit-action-icon.action-revert { background: var(--bg-primary); color: #d4a040; border: 1.5px solid #d4a040; }
+        .audit-action-icon.action-pending { background: var(--bg-primary); color: var(--accent-purple); border: 1.5px solid var(--accent-purple); }
+        .audit-action-icon.action-team { background: var(--bg-primary); color: var(--accent-teal); border: 1.5px solid var(--accent-teal); }
+        .audit-action-icon.action-rename { background: var(--bg-primary); color: var(--accent-orange); border: 1.5px solid var(--accent-orange); }
+        .audit-body { flex: 1; min-width: 0; }
+        .audit-summary {
+            font-size: 0.8125rem; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .audit-summary .audit-user { font-weight: 600; color: var(--accent-orange); }
+        .audit-summary .audit-action-label { font-weight: 500; }
+        .audit-summary .audit-action-label.act-delete { color: var(--accent-red); }
+        .audit-summary .audit-action-label.act-revert { color: #d4a040; }
+        .audit-summary .audit-doc { color: var(--accent-blue); font-family: 'JetBrains Mono', monospace; font-size: 0.775rem; }
+        .audit-time {
+            font-size: 0.7rem; color: var(--text-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; flex-shrink: 0; cursor: default;
+            position: relative;
+        }
+        .audit-time .audit-time-exact {
+            display: none; position: absolute; right: 0; top: -1.75rem;
+            background: var(--bg-elevated); color: var(--text-primary);
+            padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.675rem;
+            white-space: nowrap; z-index: 10; pointer-events: none;
+            border: 1px solid var(--border);
+        }
+        .audit-time:hover .audit-time-exact { display: block; }
+        .audit-pagination {
+            display: flex; justify-content: center; align-items: center;
+            gap: 0.5rem; margin-top: 1rem; padding-top: 0.75rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .audit-pagination button {
+            padding: 0.375rem 0.75rem; font-size: 0.775rem; font-weight: 500;
+            font-family: inherit; cursor: pointer;
+            background: var(--bg-secondary); color: var(--text-secondary);
+            border: 1px solid var(--border-subtle); border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .audit-pagination button:hover:not(:disabled) {
+            border-color: var(--border); color: var(--text-primary);
+        }
+        .audit-pagination button:disabled { opacity: 0.4; cursor: default; }
+        .audit-page-info { font-size: 0.75rem; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; }
+        .audit-empty {
+            text-align: center; padding: 2rem; color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
         /* === Responsive === */
         @media (max-width: 900px) {
             .stats-row { grid-template-columns: 1fr; }
@@ -792,6 +904,9 @@
                         <button class="detail-tab" data-tab="people" onclick="switchTab({{ project.id }}, 'people')">People</button>
                         <button class="detail-tab" data-tab="pending" onclick="switchTab({{ project.id }}, 'pending')">Pending <span class="tab-badge" id="pending-badge-{{ project.id }}">{{ project.pendings.count }}</span></button>
                         <button class="detail-tab" data-tab="settings" onclick="switchTab({{ project.id }}, 'settings')">Settings</button>
+                        {% if project.tier.lower == 'team' or project.tier.lower == 'enterprise' %}
+                        <button class="detail-tab" data-tab="audit" onclick="switchTab({{ project.id }}, 'audit')">Audit Log</button>
+                        {% endif %}
                     </div>
                     <div class="detail-tab-panels">
 
@@ -1002,6 +1117,52 @@
                                 {% endif %}
                             </div>
                         </div>
+
+                        <!-- TAB: Audit Log -->
+                        {% if project.tier.lower == 'team' or project.tier.lower == 'enterprise' %}
+                        <div class="detail-tab-panel" id="tab-audit-{{ project.id }}">
+                            <div class="section-header">
+                                <span class="section-title">Audit Log</span>
+                            </div>
+                            <div class="audit-toolbar" id="audit-toolbar-{{ project.id }}">
+                                <select id="audit-sort-{{ project.id }}" onchange="loadAuditLog({{ project.id }})">
+                                    <option value="newest">Newest first</option>
+                                    <option value="oldest">Oldest first</option>
+                                    <option value="user-az">User A-Z</option>
+                                    <option value="user-za">User Z-A</option>
+                                    <option value="action">Action type</option>
+                                </select>
+                                <select id="audit-filter-user-{{ project.id }}" onchange="loadAuditLog({{ project.id }})">
+                                    <option value="">All users</option>
+                                </select>
+                                <select id="audit-filter-action-{{ project.id }}" onchange="loadAuditLog({{ project.id }})">
+                                    <option value="">All actions</option>
+                                    <option value="edit">Edit</option>
+                                    <option value="create">Create</option>
+                                    <option value="delete">Delete</option>
+                                    <option value="revert">Revert</option>
+                                    <option value="rename">Rename</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="team">Team</option>
+                                </select>
+                                <input type="text" id="audit-filter-doc-{{ project.id }}" placeholder="Filter by document..." oninput="loadAuditLog({{ project.id }})">
+                                <div class="audit-time-btns" id="audit-time-btns-{{ project.id }}">
+                                    <button onclick="setAuditTimeRange({{ project.id }}, '24h')" data-range="24h">24h</button>
+                                    <button onclick="setAuditTimeRange({{ project.id }}, '7d')" data-range="7d">7d</button>
+                                    <button onclick="setAuditTimeRange({{ project.id }}, '30d')" data-range="30d">30d</button>
+                                    <button class="active" onclick="setAuditTimeRange({{ project.id }}, 'all')" data-range="all">All</button>
+                                </div>
+                            </div>
+                            <div class="audit-list" id="audit-list-{{ project.id }}">
+                                <div class="loading-state"><span class="spinner"></span>Loading audit log...</div>
+                            </div>
+                            <div class="audit-pagination" id="audit-pagination-{{ project.id }}" style="display:none;">
+                                <button onclick="auditPageChange({{ project.id }}, -1)" id="audit-prev-{{ project.id }}">Prev</button>
+                                <span class="audit-page-info" id="audit-page-info-{{ project.id }}"></span>
+                                <button onclick="auditPageChange({{ project.id }}, 1)" id="audit-next-{{ project.id }}">Next</button>
+                            </div>
+                        </div>
+                        {% endif %}
 
                         <!-- TAB: Settings (Backups + Viewer Access) -->
                         <div class="detail-tab-panel" id="tab-settings-{{ project.id }}">
@@ -1354,6 +1515,7 @@
             // Lazy-load data for specific tabs
             if (tabName === 'settings') loadViewerAccessDocs(projectId);
             if (tabName === 'people') loadInviteCodes(projectId);
+            if (tabName === 'audit') loadAuditLog(projectId);
 
             // Recalculate max-height since content changed
             if (details.classList.contains('expanded')) {
@@ -1871,6 +2033,210 @@
                     }
                 } else { showToast(data.error || 'Failed to delete code', 'error'); }
             } catch (err) { showToast('Failed to delete code', 'error'); }
+        }
+
+        // === Audit Log ===
+        const auditCache = {};
+        const auditState = {};
+        const AUDIT_PAGE_SIZE = 25;
+
+        function getAuditState(pid) {
+            if (!auditState[pid]) auditState[pid] = { page: 1, timeRange: 'all', data: [] };
+            return auditState[pid];
+        }
+
+        function setAuditTimeRange(pid, range) {
+            const state = getAuditState(pid);
+            state.timeRange = range;
+            state.page = 1;
+            const btns = document.querySelectorAll(`#audit-time-btns-${pid} button`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.range === range));
+            loadAuditLog(pid);
+        }
+
+        function auditPageChange(pid, delta) {
+            const state = getAuditState(pid);
+            state.page += delta;
+            renderAuditEntries(pid);
+        }
+
+        async function loadAuditLog(pid) {
+            const listEl = document.getElementById(`audit-list-${pid}`);
+            const state = getAuditState(pid);
+            state.page = 1;
+
+            if (!auditCache[pid]) {
+                listEl.innerHTML = '<div class="loading-state"><span class="spinner"></span>Loading audit log...</div>';
+                try {
+                    const resp = await authFetch(`/api/project/${pid}/audits`);
+                    if (!resp) { listEl.innerHTML = '<div class="audit-empty">Failed to load audit log</div>'; return; }
+                    const data = await resp.json();
+                    if (!data.success) { listEl.innerHTML = `<div class="audit-empty">${data.error || 'Failed to load'}</div>`; return; }
+                    auditCache[pid] = data.audits;
+                    populateUserFilter(pid, data.audits);
+                } catch (e) { listEl.innerHTML = '<div class="audit-empty">Failed to load audit log</div>'; return; }
+            }
+
+            const filtered = applyAuditFilters(pid, auditCache[pid]);
+            const sorted = applyAuditSort(pid, filtered);
+            state.data = sorted;
+            renderAuditEntries(pid);
+        }
+
+        function populateUserFilter(pid, audits) {
+            const sel = document.getElementById(`audit-filter-user-${pid}`);
+            if (!sel) return;
+            const users = [...new Set(audits.map(a => a.username))].sort();
+            const current = sel.value;
+            sel.innerHTML = '<option value="">All users</option>' + users.map(u => `<option value="${u}">${u}</option>`).join('');
+            sel.value = current;
+        }
+
+        function classifyAction(action) {
+            if (action === 'edit') return 'edit';
+            if (action === 'create') return 'create';
+            if (action === 'rename') return 'rename';
+            if (action.startsWith('delete:')) return 'delete';
+            if (action.startsWith('revert:')) return 'revert';
+            if (action === 'pending_accept' || action === 'pending_reject') return 'pending';
+            if (action === 'create_team') return 'team';
+            return 'edit';
+        }
+
+        function applyAuditFilters(pid, audits) {
+            const state = getAuditState(pid);
+            const userFilter = document.getElementById(`audit-filter-user-${pid}`)?.value || '';
+            const actionFilter = document.getElementById(`audit-filter-action-${pid}`)?.value || '';
+            const docFilter = (document.getElementById(`audit-filter-doc-${pid}`)?.value || '').toLowerCase().trim();
+
+            let result = audits;
+
+            if (userFilter) result = result.filter(a => a.username === userFilter);
+            if (actionFilter) result = result.filter(a => classifyAction(a.action) === actionFilter);
+            if (docFilter) result = result.filter(a => (a.document_name || '').toLowerCase().includes(docFilter));
+
+            if (state.timeRange !== 'all') {
+                const now = Date.now();
+                const ranges = { '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
+                const cutoff = now - (ranges[state.timeRange] || 0);
+                result = result.filter(a => new Date(a.created_at).getTime() >= cutoff);
+            }
+
+            return result;
+        }
+
+        function applyAuditSort(pid, audits) {
+            const sortVal = document.getElementById(`audit-sort-${pid}`)?.value || 'newest';
+            const arr = [...audits];
+            switch (sortVal) {
+                case 'newest': arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
+                case 'oldest': arr.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); break;
+                case 'user-az': arr.sort((a, b) => a.username.localeCompare(b.username) || new Date(b.created_at) - new Date(a.created_at)); break;
+                case 'user-za': arr.sort((a, b) => b.username.localeCompare(a.username) || new Date(b.created_at) - new Date(a.created_at)); break;
+                case 'action': arr.sort((a, b) => classifyAction(a.action).localeCompare(classifyAction(b.action)) || new Date(b.created_at) - new Date(a.created_at)); break;
+            }
+            return arr;
+        }
+
+        function formatAuditRelTime(iso) {
+            const diff = Date.now() - new Date(iso).getTime();
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+            return new Date(iso).toLocaleDateString();
+        }
+
+        function formatAuditExact(iso) {
+            return new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function escapeAudit(s) {
+            const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+        }
+
+        function formatAuditSummary(audit) {
+            const user = `<span class="audit-user">${escapeAudit(audit.username)}</span>`;
+            const doc = audit.document_name && audit.document_name !== 'N/A' ? `<span class="audit-doc">${escapeAudit(audit.document_name)}</span>` : '';
+            const action = audit.action;
+
+            if (action === 'edit') return `${user} <span class="audit-action-label">edited</span> ${doc}`;
+            if (action === 'create') return `${user} <span class="audit-action-label">created</span> ${doc}`;
+            if (action === 'rename') return `${user} <span class="audit-action-label">renamed</span> ${doc}`;
+            if (action === 'create_team') return `${user} <span class="audit-action-label">created a team</span>`;
+            if (action === 'pending_accept') return `${user} <span class="audit-action-label">accepted pending edit</span> ${doc}`;
+            if (action === 'pending_reject') return `${user} <span class="audit-action-label">rejected pending edit</span> ${doc}`;
+            if (action.startsWith('delete:')) {
+                const name = action.substring(7);
+                return `${user} <span class="audit-action-label act-delete">deleted</span> <span class="audit-doc">${escapeAudit(name)}</span>`;
+            }
+            if (action.startsWith('revert:')) {
+                const ver = action.substring(7);
+                return `${user} <span class="audit-action-label act-revert">reverted to ${escapeAudit(ver)}</span> ${doc}`;
+            }
+            return `${user} <span class="audit-action-label">${escapeAudit(action)}</span> ${doc}`;
+        }
+
+        function renderAuditEntries(pid) {
+            const state = getAuditState(pid);
+            const listEl = document.getElementById(`audit-list-${pid}`);
+            const pagEl = document.getElementById(`audit-pagination-${pid}`);
+            const entries = state.data;
+
+            if (!entries.length) {
+                listEl.innerHTML = '<div class="audit-empty">No audit entries match your filters</div>';
+                pagEl.style.display = 'none';
+                return;
+            }
+
+            const totalPages = Math.ceil(entries.length / AUDIT_PAGE_SIZE);
+            state.page = Math.max(1, Math.min(state.page, totalPages));
+            const start = (state.page - 1) * AUDIT_PAGE_SIZE;
+            const page = entries.slice(start, start + AUDIT_PAGE_SIZE);
+
+            const icons = {
+                edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+                create: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+                delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+                revert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+                pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+                team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+                rename: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+            };
+
+            let html = '';
+            let lastUser = null;
+
+            for (const entry of page) {
+                const cls = classifyAction(entry.action);
+                const grouped = entry.username === lastUser ? ' grouped' : '';
+                const bgClass = ['delete','revert','create','pending'].includes(cls) ? ` act-bg-${cls}` : '';
+                const icon = icons[cls] || icons.edit;
+
+                html += `<div class="audit-entry${grouped}${bgClass}">
+                    <span class="audit-action-icon action-${cls}">${icon}</span>
+                    <div class="audit-body">
+                        <div class="audit-summary">${formatAuditSummary(entry)}</div>
+                    </div>
+                    <div class="audit-time">
+                        ${formatAuditRelTime(entry.created_at)}
+                        <span class="audit-time-exact">${formatAuditExact(entry.created_at)}</span>
+                    </div>
+                </div>`;
+                lastUser = entry.username;
+            }
+
+            listEl.innerHTML = `<div class="audit-list-wrap">${html}</div>`;
+
+            // Pagination
+            if (totalPages > 1) {
+                pagEl.style.display = 'flex';
+                document.getElementById(`audit-prev-${pid}`).disabled = state.page <= 1;
+                document.getElementById(`audit-next-${pid}`).disabled = state.page >= totalPages;
+                document.getElementById(`audit-page-info-${pid}`).textContent = `${state.page} / ${totalPages} (${entries.length} entries)`;
+            } else {
+                pagEl.style.display = 'none';
+            }
         }
 
         // === Token Init ===
