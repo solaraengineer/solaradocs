@@ -81,6 +81,7 @@ urlpatterns = [
     path('api/project/<int:project_id>/invite-code/generate', views.generate_invite_code, name='generate_invite_code'),
     path('api/project/<int:project_id>/invite-code/<int:code_id>/delete', views.delete_invite_code, name='delete_invite_code'),
     path('api/invite-code/redeem', views.redeem_invite_code, name='redeem_invite_code'),
+    path('500/', lambda r: 1/0),
     path('error/400/', views.error_400, name='error_400'),
     path('error/401/', views.error_401, name='error_401'),
     path('error/403/', views.error_403, name='error_403'),
