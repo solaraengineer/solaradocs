@@ -52,15 +52,6 @@ groups:
           severity: warning
         annotations:
           summary: "2+ unauthorized access attempts in 5min: {{ $value }} total ({{ $labels.status }})"
-
-      - alert: Excessive404s
-        expr: increase(django_http_responses_total_by_status_total{status="404"}[5m]) >= 20
-        for: 0m
-        labels:
-          severity: warning
-        annotations:
-          summary: "20+ 404s in 5min: {{ $value }} — possible path scanning"
-
   - name: traffic_anomaly
     rules:
       - alert: TrafficSpike
