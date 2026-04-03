@@ -223,7 +223,7 @@ def setup(request):
     try:
         user_tier = request.user.Tier
         if user_tier not in TIER_LIMITS:
-            return JsonResponse({'success': False, 'error': 'Invalid tier'}, status=400)
+            return JsonResponse({'success': False, 'error': 'Invalid tier contact support'}, status=400)
 
         tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
 
@@ -242,53 +242,19 @@ def setup(request):
 
         backups_enabled = backups_raw in ('true', '1', 'on', True) and tier_config.get('backups', False)
 
-        raw_people = request.POST.get('people', '')
-        people = []
-
-        if raw_people.strip():
-            for username in raw_people.split():
-                username = username.strip()
-                if not username:
-                    continue
-
-                clean_username, error = sanitize_string(
-                    username,
-                    max_length=50,
-                    pattern=USERNAME_REGEX,
-                    field_name='Username'
-                )
-                if error:
-                    return JsonResponse({'success': False, 'error': f'Invalid username: {username}'}, status=400)
-
-                if not User.objects.filter(username=clean_username).exists():
-                    return JsonResponse({'success': False, 'error': f'User not found: {clean_username}'}, status=404)
-
-                people.append(clean_username)
-
-        people = list(dict.fromkeys(people))
-
         current_project_count = Project.objects.filter(owner=request.user).count()
         max_projects = tier_config.get('projects')
         if max_projects is not None and current_project_count >= max_projects:
             return JsonResponse({'success': False, 'error': 'Project limit reached for your tier'}, status=403)
 
-        max_collaborators = tier_config.get('members')
-        if max_collaborators is not None and len(people) > max_collaborators:
-            return JsonResponse({'success': False, 'error': f'Collaborator limit is {max_collaborators} for your tier'},
-                                status=403)
-
         with transaction.atomic():
             project = Project.objects.create(
                 owner=request.user,
                 project_name=project_name,
-                people=','.join(people),
+                people='',
                 backups_enabled=backups_enabled,
                 tier=user_tier,
             )
-            if people:
-                Contributor.objects.bulk_create(
-                    [Contributor(project=project, username=p, role='VIEWER') for p in people]
-                )
 
             public_team = Teams.objects.create(
                 project=project,
