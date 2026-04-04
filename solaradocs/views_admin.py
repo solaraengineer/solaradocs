@@ -325,6 +325,9 @@ PROMO_EXPIRY_DURATIONS = {
     '2h': timedelta(hours=2),
     '4h': timedelta(hours=4),
     '24h': timedelta(hours=24),
+    '1d': timedelta(days=1),
+    '3d': timedelta(days=3),
+    '7d': timedelta(days=7),
     'never': None,
 }
 
