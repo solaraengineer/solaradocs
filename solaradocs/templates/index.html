@@ -879,21 +879,6 @@
                     </a>
                 </div>
 
-                <div class="nav-section">
-                    <div class="nav-section-title">Community</div>
-                    <a href="https://github.com" class="nav-item">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
-                        </svg>
-                        GitHub
-                    </a>
-                    <a href="/discord" class="nav-item">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                        </svg>
-                        Discord
-                    </a>
-                </div>
             </nav>
 
             <div class="sidebar-footer">
@@ -1055,22 +1040,21 @@
                     </div>
                 </div>
 
-                <!-- Terminal example -->
+                <!-- Quick start info -->
                 <div class="code-example">
                     <div class="code-line">
-                        <span class="code-prompt">$</span>
-                        <span class="code-command">npx</span>
-                        <span class="code-string">solara-docs</span>
-                        <span class="code-flag">init</span>
+                        <span class="code-prompt">&rarr;</span>
+                        <span class="code-command">Sign up</span>
+                        <span class="code-string">for free</span>
                     </div>
                     <div class="code-line">
-                        <span class="code-comment"># Creating your workspace...</span>
+                        <span class="code-comment"># Create your first document in seconds</span>
                     </div>
                     <div class="code-line">
-                        <span class="code-comment"># Project initialized</span>
+                        <span class="code-comment"># Share with your team instantly</span>
                     </div>
                     <div class="code-line">
-                        <span class="code-comment"># Ready at http://localhost:3000</span>
+                        <span class="code-comment"># No setup required</span>
                     </div>
                 </div>
             </section>
@@ -1095,8 +1079,8 @@
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">></div>
-                        <h3 class="feature-title">Instant publishing</h3>
-                        <p class="feature-desc">One click to go live. Custom domains and SEO optimization.</p>
+                        <h3 class="feature-title">Team collaboration</h3>
+                        <p class="feature-desc">Create teams, assign roles, and invite members with shareable codes.</p>
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">~</div>
@@ -1105,8 +1089,8 @@
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">&</div>
-                        <h3 class="feature-title">API access</h3>
-                        <p class="feature-desc">Full REST API. Automate your docs workflow.</p>
+                        <h3 class="feature-title">Review workflow</h3>
+                        <p class="feature-desc">Pending edits, side-by-side diffs, and approval flows built in.</p>
                     </div>
                 </div>
             </section>
@@ -1162,12 +1146,25 @@
                 <div class="footer-links">
                     <a href="/privacy" class="footer-link">Privacy</a>
                     <a href="/terms" class="footer-link">Terms</a>
-                    <a href="/security" class="footer-link">Security</a>
-                    <a href="https://github.com" class="footer-link">GitHub</a>
-                    <a href="/contact" class="footer-link">Contact</a>
+                    <a href="#" class="footer-link" onclick="document.getElementById('contact-modal').style.display='flex'; return false;">Contact</a>
                 </div>
             </footer>
         </main>
+    </div>
+    <!-- Contact Modal -->
+    <div id="contact-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:32px; max-width:460px; width:90%; position:relative;">
+            <button onclick="document.getElementById('contact-modal').style.display='none'" style="position:absolute; top:12px; right:16px; background:none; border:none; color:var(--text-tertiary); font-size:1.4rem; cursor:pointer;">&times;</button>
+            <h3 style="font-family:'JetBrains Mono',monospace; font-size:1.1rem; color:var(--text-primary); margin-bottom:16px;">Contact Us</h3>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:12px;">
+                <strong style="color:var(--accent-orange);">Personal / Marketing Offers</strong><br>
+                <a href="mailto:solaradeveloper@gmail.com" style="color:var(--accent-blue); text-decoration:none;">solaradeveloper@gmail.com</a>
+            </p>
+            <p style="color:var(--text-secondary); font-size:0.9rem;">
+                <strong style="color:var(--accent-red);">Technical Support / Real Problems</strong><br>
+                <a href="mailto:support@solaradocs.net" style="color:var(--accent-blue); text-decoration:none;">support@solaradocs.net</a>
+            </p>
+        </div>
     </div>
 </body>
 </html>

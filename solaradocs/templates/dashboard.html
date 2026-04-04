@@ -339,6 +339,11 @@
         .diff-loading { text-align: center; padding: 2rem; color: var(--text-tertiary); }
 
         /* === Backups Toggle === */
+        .rename-project-row {
+            display: flex; align-items: center; gap: 0.75rem;
+        }
+        .rename-project-row .form-input { flex: 1; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+        .rename-project-row .btn { white-space: nowrap; }
         .backups-toggle-row {
             display: flex; align-items: center; justify-content: space-between;
             padding: 0.75rem 1rem; background: var(--bg-secondary);
@@ -837,7 +842,7 @@
                         <div class="project-info">
                             <h2 class="project-name">
                                 <span class="project-name-icon">&#x1f4dd;</span>
-                                {{ project.project_name }}
+                                <span id="card-name-{{ project.id }}">{{ project.project_name }}</span>
                                 {% if project.pendings.count %}
                                 <span class="project-pending-badge">{{ project.pendings.count }} pending</span>
                                 {% endif %}
@@ -1166,6 +1171,21 @@
 
                         <!-- TAB: Settings (Backups + Viewer Access) -->
                         <div class="detail-tab-panel" id="tab-settings-{{ project.id }}">
+                            {% if project.owner_id == request.user.id %}
+                            <div class="section-header">
+                                <span class="section-title">Project Name</span>
+                            </div>
+                            <div class="rename-project-row">
+                                <input type="text" class="form-input" id="rename-input-{{ project.id }}"
+                                       value="{{ project.project_name }}" maxlength="100"
+                                       placeholder="Project name">
+                                <button class="btn btn-primary btn-sm" onclick="renameProject({{ project.id }})" id="rename-btn-{{ project.id }}">
+                                    Change
+                                </button>
+                            </div>
+                            <hr class="section-divider">
+                            {% endif %}
+
                             <div class="section-header">
                                 <span class="section-title">Backups</span>
                             </div>
@@ -1626,6 +1646,29 @@
                 } else { showToast(data.error || 'Failed to toggle backups', 'error'); toggle.checked = !enabled; }
             } catch (error) { showToast('Failed to toggle backups', 'error'); toggle.checked = !enabled; }
             toggle.disabled = false;
+        }
+
+        // === Rename Project ===
+        async function renameProject(projectId) {
+            const input = document.getElementById(`rename-input-${projectId}`);
+            const btn = document.getElementById(`rename-btn-${projectId}`);
+            const newName = input.value.trim();
+            if (!newName) { showToast('Project name is required', 'error'); return; }
+            btn.disabled = true;
+            try {
+                const response = await authFetch(`/api/project/${projectId}/rename`, { method: 'POST', body: JSON.stringify({ project_name: newName }) });
+                if (!response) { btn.disabled = false; return; }
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Project name updated');
+                    input.value = data.project_name;
+                    const nameEl = document.querySelector(`[data-project-id="${projectId}"] .project-name, #project-name-${projectId}`);
+                    if (nameEl) nameEl.textContent = data.project_name;
+                    const cardName = document.getElementById(`card-name-${projectId}`);
+                    if (cardName) cardName.textContent = data.project_name;
+                } else { showToast(data.error || 'Failed to rename project', 'error'); }
+            } catch (error) { showToast('Failed to rename project', 'error'); }
+            btn.disabled = false;
         }
 
         // === Collaborators ===

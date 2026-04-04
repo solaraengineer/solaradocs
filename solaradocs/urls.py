@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/project/<int:project_id>/pending/<int:pending_id>/diff', views.pending_diff, name='pending_diff'),
     path('api/project/<int:project_id>/backups/<int:backup_id>/diff', views.backup_diff, name='backup_diff'),
     path('api/project/<int:project_id>/toggle-backups', views.toggle_backups, name='toggle_backups'),
+    path('api/project/<int:project_id>/rename', views.rename_project, name='rename_project'),
     path('api/project/<int:project_id>/collaborators', views.get_collaborators, name='get_collaborators'),
     path('logout/', views.logout, name='logout'),
     path('create-checkout-session/', views.create_checkout_session, name='create-checkout-session'),

@@ -1042,6 +1042,42 @@ def toggle_backups(request, project_id):
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
+@require_POST
+@require_auth_token
+@login_required
+@csrf_protect
+@ratelimit(key='ip', rate='10/m', block=True)
+def rename_project(request, project_id):
+    try:
+        if not isinstance(project_id, int) or project_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if not project:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+
+        if request.user.id != project.owner_id:
+            return JsonResponse({'success': False, 'error': 'Only the project owner can rename the project'}, status=403)
+
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+        raw_name = data.get('project_name', '')
+        project_name, err = sanitize_string(raw_name, 100, PROJECT_NAME_REGEX, 'Project name')
+        if err:
+            return JsonResponse({'success': False, 'error': err}, status=400)
+
+        project.project_name = project_name
+        project.save(update_fields=['project_name'])
+
+        return JsonResponse({'success': True, 'project_name': project_name})
+    except Exception:
+        logger.exception("rename_project failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
 @require_GET
 @require_auth_token
 @login_required
@@ -1236,7 +1272,6 @@ PRICE_IDS = {
     'enterprise': settings.STRIPE_ENTERPRISE_PRICE_ID,
 }
 
-
 @login_required
 @require_POST
 @transaction.atomic
@@ -1260,11 +1295,26 @@ def create_checkout_session(request):
                 request.user.stripe_customer_id = customer_id
                 request.user.save(update_fields=['stripe_customer_id'])
 
+            existing_subs = stripe.Subscription.list(
+                customer=customer_id,
+                status='active',
+                limit=10
+            )
+
+            if existing_subs.data:
+                for sub in existing_subs.auto_paging_iter():
+                    try:
+                        stripe.Subscription.cancel(sub.id)
+                    except stripe.error.StripeError:
+                        logger.exception(
+                            f"Failed to cancel old sub {sub.id} for user {request.user.id} "
+                            f"on customer {customer_id}"
+                        )
+
             subscription = stripe.Subscription.create(
                 customer=customer_id,
                 items=[{'price': PRICE_IDS[tier]}],
                 payment_behavior='default_incomplete',
-                payment_settings={'save_default_payment_method': 'on_subscription'},
                 expand=['latest_invoice.confirmation_secret'],
                 metadata={
                     'user_id': str(request.user.id),
@@ -1278,11 +1328,12 @@ def create_checkout_session(request):
             })
 
         except stripe.error.StripeError as e:
-            print(str(e))
+            logger.exception("Stripe error in create_checkout_session")
             return JsonResponse({'success': False, 'error': str(e)}, status=503)
     except Exception:
         logger.exception("create_checkout_session failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
 
 
 @csrf_exempt
@@ -1314,12 +1365,11 @@ def stripe_webhook(request):
                     try:
                         user = User.objects.get(email=email)
                         user.stripe_customer_id = customer_id
+                        user.save(update_fields=['stripe_customer_id'])
                     except User.DoesNotExist:
                         return HttpResponse(status=200)
                 else:
                     return HttpResponse(status=200)
-
-            user.save(update_fields=['stripe_customer_id'])
 
     elif event['type'] == 'invoice.paid':
         invoice = event['data']['object']
@@ -1345,9 +1395,9 @@ def stripe_webhook(request):
                 user = User.objects.get(stripe_customer_id=customer_id)
                 if tier:
                     user.Tier = tier
+                    Project.objects.filter(owner=user).update(tier=tier)
                 user.subscription_status = 'active'
                 user.retries_left = 0
-                Project.objects.filter(owner=user).update(tier=tier)
                 user.save(update_fields=['Tier', 'subscription_status', 'retries_left'])
             except User.DoesNotExist:
                 if tier:
@@ -1362,6 +1412,17 @@ def stripe_webhook(request):
                     except User.DoesNotExist:
                         pass
 
+            # duplicate detection — only log when something is actually wrong
+            active_subs = stripe.Subscription.list(
+                customer=customer_id,
+                status='active'
+            )
+            if len(active_subs.data) > 1:
+                logger.critical(
+                    f"DUPLICATE SUBS: User {user.id} has {len(active_subs.data)} "
+                    f"active subs on customer {customer_id}. "
+                    f"Sub IDs: {[s.id for s in active_subs.data]}"
+                )
     elif event['type'] == 'invoice.payment_failed':
         invoice = event['data']['object']
         customer_id = invoice.get('customer')
@@ -1402,6 +1463,46 @@ def stripe_webhook(request):
         if customer_id:
             try:
                 user = User.objects.get(stripe_customer_id=customer_id)
+
+                # check for any active subs — if one exists, sync tier from it
+                active_subs = stripe.Subscription.list(
+                    customer=customer_id,
+                    status='active',
+                    limit=10
+                )
+                if active_subs.data:
+                    # active sub exists — set tier from it, don't downgrade
+                    active_sub = active_subs.data[0]
+                    tier = active_sub.metadata.get('tier')
+                    if not tier:
+                        items = active_sub.get('items', {}).get('data', [])
+                        if items:
+                            price_id = items[0].get('price', {}).get('id')
+                            tier = {
+                                settings.STRIPE_PERSONAL_PRICE_ID: 'personal',
+                                settings.STRIPE_TEAM_PRICE_ID: 'team',
+                                settings.STRIPE_ENTERPRISE_PRICE_ID: 'enterprise',
+                            }.get(price_id)
+                    if tier:
+                        user.Tier = tier
+                        user.subscription_status = 'active'
+                        user.save(update_fields=['Tier', 'subscription_status'])
+                        Project.objects.filter(owner=user).update(tier=tier)
+                    return HttpResponse(status=200)
+
+                # check for incomplete subs — cleanup dead checkouts
+                incomplete_subs = stripe.Subscription.list(
+                    customer=customer_id,
+                    status='incomplete',
+                    limit=10
+                )
+                for inc_sub in incomplete_subs.auto_paging_iter():
+                    try:
+                        stripe.Subscription.cancel(inc_sub.id)
+                    except stripe.error.StripeError:
+                        logger.exception(f"Failed to cancel incomplete sub {inc_sub.id}")
+
+                # nothing left — downgrade to free
                 user.Tier = 'free'
                 user.subscription_status = 'canceled'
                 user.retries_left = 0
@@ -3325,8 +3426,5 @@ def redeem_invite_code(request):
     except Exception:
         logger.exception("redeem_invite_code failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
-
-
-
 
 
