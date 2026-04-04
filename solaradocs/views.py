@@ -15,13 +15,14 @@ import json
 import jwt
 from django.core.cache import cache
 from datetime import datetime, timedelta
+from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
 from functools import wraps
 from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
 from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, \
-    PendingAction, ViewerDocumentAccess, InviteCode
+    PendingAction, ViewerDocumentAccess, InviteCode, PromoCodes
 from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email, send_password_reset_email
 from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 PROJECT_NAME_REGEX = re.compile(r'^[a-zA-Z0-9\s@#$!]+$')
 USERNAME_REGEX = re.compile(r'^[a-zA-Z0-9_@#$!]+$')
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+PROMO_CODE_REGEX = re.compile(r'^[A-Z0-9]{1,8}$')
 
 
 ERROR_PAGES = {
@@ -3427,4 +3429,43 @@ def redeem_invite_code(request):
         logger.exception("redeem_invite_code failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
+
+@require_POST
+@login_required
+@ratelimit(key='ip', rate='5/m', block=True)
+def redeem_promo(request):
+    try:
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+        raw_code = data.get('code', '')
+        if not isinstance(raw_code, str):
+            return JsonResponse({'success': False, 'error': 'Invalid code'}, status=400)
+
+        code = raw_code.strip().upper()
+        if not PROMO_CODE_REGEX.match(code):
+            return JsonResponse({'success': False, 'error': 'Invalid code'}, status=400)
+
+        with transaction.atomic():
+            promo = PromoCodes.objects.select_for_update().filter(code=code).first()
+            if not promo:
+                return JsonResponse({'success': False, 'error': 'Invalid code'}, status=404)
+
+            if promo.expires_at and promo.expires_at < timezone.now():
+                return JsonResponse({'success': False, 'error': "Sorry, you're late"}, status=400)
+
+            if promo.left_uses == 0:
+                return JsonResponse({'success': False, 'error': 'Code fully redeemed'}, status=400)
+
+            promo.left_uses = F('left_uses') - 1
+            promo.save(update_fields=['left_uses'])
+            request.user.Tier = promo.tier
+            request.user.save(update_fields=['Tier'])
+
+        return JsonResponse({'success': True, 'tier': promo.tier})
+    except Exception:
+        logger.exception("redeem_promo failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 

@@ -9,6 +9,8 @@ from django_ratelimit.decorators import ratelimit
 from solaradocs.models import *
 from django.core.cache import cache
 import json
+import string
+import random
 from datetime import timedelta
 
 
@@ -37,6 +39,7 @@ def admin_panel(request):
     users = User.objects.all().prefetch_related('owned_projects')
     projects = Project.objects.all().select_related('owner').prefetch_related('project_documents', 'project_teams')
     changelogs = Changelog.objects.all().order_by('-created_at')
+    promo_codes = PromoCodes.objects.all().order_by('-created_at')
 
     # signups per day (last 30 days)
     signups_by_day = (
@@ -70,6 +73,7 @@ def admin_panel(request):
         'users': users,
         'projects': projects,
         'changelogs': changelogs,
+        'promo_codes': promo_codes,
         'stats': stats,
         'signups_by_day': json.dumps([
             {'day': str(s['day']), 'count': s['count']} for s in signups_by_day
@@ -310,3 +314,77 @@ def admin_dismiss_alert(request):
     if deleted:
         return JsonResponse({'success': True, 'message': 'Alert dismissed'})
     return JsonResponse({'success': True, 'message': 'No active alert to dismiss'})
+
+
+# ─── Promo Code Management ─────────────────────────────────
+
+PROMO_EXPIRY_DURATIONS = {
+    '15m': timedelta(minutes=15),
+    '30m': timedelta(minutes=30),
+    '1h': timedelta(hours=1),
+    '2h': timedelta(hours=2),
+    '4h': timedelta(hours=4),
+    '24h': timedelta(hours=24),
+    'never': None,
+}
+
+PROMO_CODE_CHARS = string.ascii_uppercase + string.digits
+
+
+@csrf_exempt
+@require_POST
+@admin_required
+@ratelimit(key='ip', rate='10/m', block=True)
+def admin_create_promo(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    code = data.get('code', '').strip().upper()
+    if not code or len(code) > 8 or not all(c in PROMO_CODE_CHARS for c in code):
+        return JsonResponse({'success': False, 'error': 'Code must be 1-8 characters, A-Z and 0-9 only'}, status=400)
+
+    tier = data.get('tier', '')
+    valid_tiers = [t[0] for t in TIER_CHOICES]
+    if tier not in valid_tiers:
+        return JsonResponse({'success': False, 'error': f'Invalid tier. Must be one of: {", ".join(valid_tiers)}'}, status=400)
+
+    expiry_key = data.get('expires', 'never')
+    if expiry_key not in PROMO_EXPIRY_DURATIONS:
+        return JsonResponse({'success': False, 'error': 'Invalid expiry duration'}, status=400)
+
+    duration = PROMO_EXPIRY_DURATIONS[expiry_key]
+    expires_at = timezone.now() + duration if duration else None
+
+    left_uses = data.get('left_uses', 1)
+    if not isinstance(left_uses, int) or left_uses < 1 or left_uses > 100000:
+        return JsonResponse({'success': False, 'error': 'Uses must be between 1 and 100,000'}, status=400)
+
+    if PromoCodes.objects.filter(code=code).exists():
+        return JsonResponse({'success': False, 'error': 'Code already exists'}, status=400)
+
+    promo = PromoCodes.objects.create(
+        code=code,
+        tier=tier,
+        expires_at=expires_at,
+        left_uses=left_uses,
+    )
+
+    return JsonResponse({'success': True, 'id': promo.id})
+
+
+@csrf_exempt
+@require_POST
+@admin_required
+@ratelimit(key='ip', rate='10/m', block=True)
+def admin_delete_promo(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    deleted, _ = PromoCodes.objects.filter(id=data.get('promo_id')).delete()
+    if not deleted:
+        return JsonResponse({'success': False, 'error': 'Promo code not found'}, status=404)
+    return JsonResponse({'success': True})

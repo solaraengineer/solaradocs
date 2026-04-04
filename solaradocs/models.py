@@ -18,6 +18,12 @@ TIER_LIMITS = {
     'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
                    'backups': True, 'audit': True, 'pending': True},
 }
+TIER_CHOICES = [
+    ('free', 'Free'),
+    ('personal', 'Personal'),
+    ('team', 'Team'),
+    ('enterprise', 'Enterprise'),
+]
 
 TEAM_ROLES = [
     ('EDITOR', 'Editor'),
@@ -196,3 +202,11 @@ class InviteCode(models.Model):
 
     def __str__(self):
         return f"{self.code} → {self.project.name} ({self.role})"
+
+class PromoCodes(models.Model):
+    code = models.CharField(max_length=8, unique=True)
+    tier = models.CharField(choices=TIER_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    left_uses = models.PositiveIntegerField(default=0)
+

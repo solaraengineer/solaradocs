@@ -170,6 +170,20 @@
 
         .checkout-cancel-note { text-align: center; font-size: 0.72rem; color: var(--accent-green); margin-top: 0.6rem; font-weight: 500; }
 
+        .checkout-promo { padding: 1rem 0 0; margin-top: 1rem; border-top: 1px solid var(--border-subtle); }
+        .promo-title { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-orange); margin-bottom: 0.5rem; }
+        .promo-desc { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.5; }
+        .promo-input-row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .promo-input { flex: 1; padding: 0.6rem 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; outline: none; transition: border-color 0.15s ease; }
+        .promo-input:focus { border-color: var(--accent-orange); }
+        .promo-input::placeholder { color: var(--text-tertiary); font-weight: 400; letter-spacing: 0; text-transform: none; font-family: 'Inter', sans-serif; font-size: 0.8rem; }
+        .promo-apply { padding: 0.6rem 1rem; background: var(--accent-orange); color: var(--bg-primary); border: none; border-radius: 8px; font-size: 0.8rem; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+        .promo-apply:hover:not(:disabled) { background: #e0b285; }
+        .promo-apply:disabled { opacity: 0.6; cursor: not-allowed; }
+        .promo-msg { font-size: 0.78rem; padding: 0.5rem 0.65rem; border-radius: 6px; display: none; }
+        .promo-msg.success { display: block; background: rgba(127, 176, 105, 0.1); border: 1px solid rgba(127, 176, 105, 0.25); color: var(--accent-green); }
+        .promo-msg.error { display: block; background: rgba(212, 106, 106, 0.1); border: 1px solid rgba(212, 106, 106, 0.25); color: var(--accent-red); }
+
         .checkout-payment-logos { display: flex; align-items: center; gap: 0.6rem; opacity: 0.6; }
 
         .checkout-legal { font-size: 0.62rem; color: var(--text-tertiary); line-height: 1.5; }
@@ -430,6 +444,16 @@
                         </button>
 
                         <p class="checkout-cancel-note">Cancel anytime. You'll keep access until your billing period ends.</p>
+
+                        <!-- Promo code -->
+                        <div class="checkout-promo">
+                            <div class="promo-title">Got a promo code?</div>
+                            <div class="promo-input-row">
+                                <input type="text" class="promo-input" id="promo-code-input" maxlength="8" placeholder="e.g. ABCD1234" oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()">
+                                <button class="promo-apply" id="promo-apply-btn" onclick="redeemPromo()">Apply</button>
+                            </div>
+                            <div class="promo-msg" id="promo-msg"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -585,6 +609,41 @@
 
         document.getElementById('checkout-overlay').addEventListener('click', function(e) { if (e.target === this) closeCheckout(); });
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeCheckout(); });
+
+        async function redeemPromo() {
+            var input = document.getElementById('promo-code-input');
+            var btn = document.getElementById('promo-apply-btn');
+            var msg = document.getElementById('promo-msg');
+            var code = input.value.trim().toUpperCase();
+
+            msg.className = 'promo-msg';
+            msg.textContent = '';
+
+            if (!code) { msg.className = 'promo-msg error'; msg.textContent = 'Enter a promo code'; return; }
+
+            btn.disabled = true;
+            try {
+                var res = await fetch('/redeem-promo/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ code: code })
+                });
+                var data = await res.json();
+                if (data.success) {
+                    msg.className = 'promo-msg success';
+                    msg.textContent = 'Upgraded to ' + data.tier.charAt(0).toUpperCase() + data.tier.slice(1) + '! Redirecting...';
+                    input.disabled = true;
+                    setTimeout(function() { window.location.href = '/dashboard'; }, 1500);
+                } else {
+                    msg.className = 'promo-msg error';
+                    msg.textContent = data.error || 'Invalid code';
+                }
+            } catch (e) {
+                msg.className = 'promo-msg error';
+                msg.textContent = 'Something went wrong';
+            }
+            btn.disabled = false;
+        }
     </script>
 </body>
 </html>

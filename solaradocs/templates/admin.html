@@ -731,15 +731,293 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* ── Dashboard Redesign ─────────────────── */
+        .dash-header { margin-bottom: 28px; }
+        .dash-greeting {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        .dash-greeting-accent { color: var(--accent); }
+        .dash-date { color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; }
+
+        .dash-stats {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .dash-stat {
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-left: 3px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dash-stat:hover { border-color: var(--border-mid); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .dash-stat.orange { border-left-color: var(--accent); }
+        .dash-stat.green { border-left-color: var(--green); }
+        .dash-stat.blue { border-left-color: var(--blue); }
+        .dash-stat.teal { border-left-color: var(--teal); }
+        .dash-stat.purple { border-left-color: var(--purple); }
+        .dash-stat.yellow { border-left-color: var(--yellow); }
+
+        .dash-stat-icon {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .dash-stat-icon svg { width: 14px; height: 14px; }
+        .dash-stat.orange .dash-stat-icon { background: var(--accent-dim); color: var(--accent); }
+        .dash-stat.green .dash-stat-icon { background: var(--green-dim); color: var(--green); }
+        .dash-stat.blue .dash-stat-icon { background: var(--blue-dim); color: var(--blue); }
+        .dash-stat.teal .dash-stat-icon { background: var(--teal-dim); color: var(--teal); }
+        .dash-stat.purple .dash-stat-icon { background: var(--purple-dim); color: var(--purple); }
+        .dash-stat.yellow .dash-stat-icon { background: var(--yellow-dim); color: var(--yellow); }
+
+        .dash-stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .dash-stat-label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .dash-stat-sub {
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-top: 6px;
+            padding: 2px 7px;
+            border-radius: 100px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .dash-stat-sub.up { background: var(--green-dim); color: var(--green); }
+        .dash-stat-sub.neutral { background: var(--bg-overlay); color: var(--text-muted); }
+
+        .dash-charts {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .dash-card {
+            background: var(--bg-base);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .dash-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .dash-card-title { font-weight: 600; font-size: 0.85rem; }
+        .dash-card-body { padding: 18px; }
+
+        .dash-chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 160px;
+            padding-top: 8px;
+            position: relative;
+        }
+
+        .dash-chart-bars::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent,
+                transparent calc(25% - 1px),
+                var(--border-dim) calc(25% - 1px),
+                var(--border-dim) 25%
+            );
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .dash-bar {
+            flex: 1;
+            border-radius: 3px 3px 0 0;
+            min-height: 4px;
+            transition: all 0.15s ease;
+            position: relative;
+            background: linear-gradient(to top, rgba(212, 165, 116, 0.3), rgba(212, 165, 116, 0.7));
+        }
+
+        .dash-bar:hover { background: linear-gradient(to top, var(--accent), var(--accent-glow)); }
+
+        .dash-bar:hover::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            background: var(--bg-overlay);
+            padding: 3px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .dash-donut-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+
+        .dash-donut {
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dash-donut-hole {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: var(--bg-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+        }
+
+        .dash-donut-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .dash-donut-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+
+        .dash-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+        .dash-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+
+        .dash-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dash-legend-count { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-muted); font-size: 0.68rem; }
+
+        .dash-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .dash-feed { display: flex; flex-direction: column; }
+
+        .dash-feed-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border-dim);
+            transition: background 0.1s ease;
+        }
+
+        .dash-feed-item:last-child { border-bottom: none; }
+        .dash-feed-item:hover { background: var(--bg-surface); }
+
+        .dash-feed-avatar {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.72rem;
+            color: var(--bg-void);
+            flex-shrink: 0;
+        }
+
+        .dash-feed-info { flex: 1; min-width: 0; }
+        .dash-feed-name { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); }
+        .dash-feed-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+        .dash-feed-time { font-size: 0.68rem; color: var(--text-ghost); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+
+        .dash-action-list { display: flex; flex-direction: column; gap: 6px; }
+
+        .dash-action-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .dash-action-item:hover { border-color: var(--border-mid); background: var(--bg-raised); transform: translateX(2px); }
+
+        .dash-action-icon {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .dash-action-icon svg { width: 16px; height: 16px; }
+        .dash-action-text { font-size: 0.82rem; font-weight: 600; }
+        .dash-action-desc { font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; }
+        .dash-action-arrow { margin-left: auto; color: var(--text-ghost); font-size: 0.8rem; transition: transform 0.15s ease; }
+        .dash-action-item:hover .dash-action-arrow { transform: translateX(3px); color: var(--text-muted); }
+
         /* ── Responsive ─────────────────────────── */
         @media (max-width: 1200px) {
             .stats-grid { grid-template-columns: repeat(3, 1fr); }
             .quick-actions { grid-template-columns: repeat(2, 1fr); }
+            .dash-stats { grid-template-columns: repeat(3, 1fr); }
+            .dash-charts { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 900px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .content-grid { grid-template-columns: 1fr; }
+            .dash-stats { grid-template-columns: repeat(2, 1fr); }
+            .dash-bottom { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 768px) {
@@ -747,6 +1025,7 @@
             .main { margin-left: 0; padding: 20px 16px; }
             .stats-grid { grid-template-columns: 1fr; }
             .quick-actions { grid-template-columns: 1fr; }
+            .dash-stats { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -799,6 +1078,11 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
                     Announcements
                 </div>
+                <div class="nav-item" onclick="showTab('promos', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    Promo Codes
+                    <span class="nav-badge">{{ promo_codes|length }}</span>
+                </div>
 
                 <div class="nav-section">
                     <div class="nav-section-label">System</div>
@@ -823,78 +1107,132 @@
 
             <!-- ── Dashboard Tab ────────────────── -->
             <div id="dashboard-tab" class="tab-content active">
-                <div class="page-header">
-                    <h1 class="page-title">Dashboard</h1>
-                    <p class="page-subtitle">SolaraDocs instance overview</p>
+
+                <!-- Greeting -->
+                <div class="dash-header">
+                    <h1 class="dash-greeting" id="dashGreeting">Dashboard</h1>
+                    <p class="dash-date" id="dashDate"></p>
                 </div>
 
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">Total Users</div>
-                        <div class="stat-value orange">{{ stats.total_users }}</div>
-                        <div class="stat-change up">+{{ stats.new_users_week }} this week</div>
+                <!-- Stats -->
+                <div class="dash-stats">
+                    <div class="dash-stat orange">
+                        <div class="dash-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                        <div class="dash-stat-value">{{ stats.total_users }}</div>
+                        <div class="dash-stat-label">Total Users</div>
+                        <div class="dash-stat-sub up">+{{ stats.new_users_week }} this week</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Projects</div>
-                        <div class="stat-value blue">{{ stats.total_projects }}</div>
+                    <div class="dash-stat green">
+                        <div class="dash-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                        <div class="dash-stat-value">{{ stats.paid_users }}</div>
+                        <div class="dash-stat-label">Paid Users</div>
+                        <div class="dash-stat-sub neutral" id="conversionRate"></div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Documents</div>
-                        <div class="stat-value teal">{{ stats.total_documents }}</div>
+                    <div class="dash-stat blue">
+                        <div class="dash-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+                        <div class="dash-stat-value">{{ stats.total_projects }}</div>
+                        <div class="dash-stat-label">Projects</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Paid Users</div>
-                        <div class="stat-value green">{{ stats.paid_users }}</div>
+                    <div class="dash-stat teal">
+                        <div class="dash-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                        <div class="dash-stat-value">{{ stats.total_documents }}</div>
+                        <div class="dash-stat-label">Documents</div>
                     </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="quick-actions">
-                    <div class="quick-action" onclick="showTab('users', document.querySelectorAll('.nav-item')[1])">
-                        <div class="quick-action-icon" style="background: var(--accent-dim); color: var(--accent);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-                        </div>
-                        <div>
-                            <div class="quick-action-label">Manage Users</div>
-                            <div class="quick-action-desc">View, edit tiers, ban users</div>
-                        </div>
+                    <div class="dash-stat purple">
+                        <div class="dash-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+                        <div class="dash-stat-value">{{ stats.new_users_month }}</div>
+                        <div class="dash-stat-label">New This Month</div>
                     </div>
-                    <div class="quick-action" onclick="openChangelogModal()">
-                        <div class="quick-action-icon" style="background: var(--green-dim); color: var(--green);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        </div>
-                        <div>
-                            <div class="quick-action-label">New Release</div>
-                            <div class="quick-action-desc">Push a changelog entry</div>
-                        </div>
-                    </div>
-                    <div class="quick-action" onclick="openAnnouncementModal()">
-                        <div class="quick-action-icon" style="background: var(--purple-dim); color: var(--purple);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
-                        </div>
-                        <div>
-                            <div class="quick-action-label">Broadcast</div>
-                            <div class="quick-action-desc">Send announcement to all</div>
-                        </div>
+                    <div class="dash-stat yellow">
+                        <div class="dash-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+                        <div class="dash-stat-value">{{ promo_codes|length }}</div>
+                        <div class="dash-stat-label">Active Promos</div>
                     </div>
                 </div>
 
-                <!-- Charts Row -->
-                <div class="content-grid">
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-title">Signups (30 days)</span>
+                <!-- Charts -->
+                <div class="dash-charts">
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span class="dash-card-title">Signups (30 days)</span>
+                            <span style="font-size: 0.7rem; color: var(--text-ghost);">+{{ stats.new_users_month }} total</span>
                         </div>
-                        <div class="card-body">
-                            <div class="chart-bars" id="signupsChart"></div>
+                        <div class="dash-card-body">
+                            <div class="dash-chart-bars" id="dashSignupsChart"></div>
                         </div>
                     </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-title">Tier Breakdown</span>
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span class="dash-card-title">Tier Breakdown</span>
                         </div>
-                        <div class="card-body">
-                            <div class="tier-list" id="tierBreakdown"></div>
+                        <div class="dash-card-body">
+                            <div class="dash-donut-wrap" id="dashTierDonut"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity + Quick Actions -->
+                <div class="dash-bottom">
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span class="dash-card-title">Recent Signups</span>
+                            <span style="font-size: 0.68rem; color: var(--text-ghost); cursor: pointer;" onclick="showTab('users', document.querySelectorAll('.nav-item')[1])">View all &rarr;</span>
+                        </div>
+                        <div class="dash-feed">
+                            {% for user in users|dictsortreversed:"date_joined"|slice:":5" %}
+                            <div class="dash-feed-item">
+                                <div class="dash-feed-avatar" style="background: {% cycle 'var(--purple)' 'var(--blue)' 'var(--teal)' 'var(--accent)' 'var(--green)' %};">{{ user.username|slice:":1"|upper }}</div>
+                                <div class="dash-feed-info">
+                                    <div class="dash-feed-name">{{ user.username }}</div>
+                                    <div class="dash-feed-meta">
+                                        <span class="badge badge-{{ user.Tier }}" style="font-size: 0.58rem; padding: 1px 6px;">{{ user.Tier }}</span>
+                                        &middot; {{ user.email }}
+                                    </div>
+                                </div>
+                                <div class="dash-feed-time" data-joined="{{ user.date_joined|date:'c' }}"></div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <span class="dash-card-title">Quick Actions</span>
+                        </div>
+                        <div class="dash-card-body">
+                            <div class="dash-action-list">
+                                <div class="dash-action-item" onclick="showTab('users', document.querySelectorAll('.nav-item')[1])">
+                                    <div class="dash-action-icon" style="background: var(--accent-dim); color: var(--accent);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+                                    <div>
+                                        <div class="dash-action-text">Manage Users</div>
+                                        <div class="dash-action-desc">View, edit tiers, ban users</div>
+                                    </div>
+                                    <span class="dash-action-arrow">&rsaquo;</span>
+                                </div>
+                                <div class="dash-action-item" onclick="openChangelogModal()">
+                                    <div class="dash-action-icon" style="background: var(--green-dim); color: var(--green);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                                    <div>
+                                        <div class="dash-action-text">New Release</div>
+                                        <div class="dash-action-desc">Push a changelog entry</div>
+                                    </div>
+                                    <span class="dash-action-arrow">&rsaquo;</span>
+                                </div>
+                                <div class="dash-action-item" onclick="showTab('announcements', document.querySelectorAll('.nav-item')[5])">
+                                    <div class="dash-action-icon" style="background: var(--purple-dim); color: var(--purple);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg></div>
+                                    <div>
+                                        <div class="dash-action-text">Broadcast</div>
+                                        <div class="dash-action-desc">Send announcement to all</div>
+                                    </div>
+                                    <span class="dash-action-arrow">&rsaquo;</span>
+                                </div>
+                                <div class="dash-action-item" onclick="showTab('promos', document.querySelectorAll('.nav-item')[6])">
+                                    <div class="dash-action-icon" style="background: var(--yellow-dim); color: var(--yellow);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+                                    <div>
+                                        <div class="dash-action-text">Promo Codes</div>
+                                        <div class="dash-action-desc">Create and manage promos</div>
+                                    </div>
+                                    <span class="dash-action-arrow">&rsaquo;</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1170,6 +1508,108 @@
                             </button>
                         </form>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── Promo Codes Tab ───────────────── -->
+            <div id="promos-tab" class="tab-content">
+                <div class="page-header">
+                    <div class="page-header-row">
+                        <div>
+                            <h1 class="page-title">Promo Codes</h1>
+                            <p class="page-subtitle">Create and manage promotional codes</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create form -->
+                <div class="card" style="margin-bottom: 16px;">
+                    <div class="card-header">
+                        <span class="card-title">Create Promo Code</span>
+                    </div>
+                    <div class="card-body">
+                        <form id="promo-form">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div class="form-group">
+                                    <label class="form-label">Code</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" class="form-input" id="promo-code" maxlength="8" placeholder="e.g. SUMMER24" style="flex: 1; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em;" oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()">
+                                        <button type="button" class="btn btn-ghost" onclick="generatePromoCode()" title="Generate random code" style="padding: 9px 12px;">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Tier</label>
+                                    <select class="form-select" id="promo-tier">
+                                        <option value="free">Free</option>
+                                        <option value="personal">Personal</option>
+                                        <option value="team" selected>Team</option>
+                                        <option value="enterprise">Enterprise</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Expires After</label>
+                                    <select class="form-select" id="promo-expires">
+                                        <option value="15m">15 minutes</option>
+                                        <option value="30m">30 minutes</option>
+                                        <option value="1h">1 hour</option>
+                                        <option value="2h">2 hours</option>
+                                        <option value="4h">4 hours</option>
+                                        <option value="24h">24 hours</option>
+                                        <option value="never" selected>Never</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Uses</label>
+                                    <input type="number" class="form-input" id="promo-uses" min="1" max="100000" value="1" placeholder="Max 100,000">
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Create Code
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Existing codes list -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <span class="table-title">All Promo Codes ({{ promo_codes|length }})</span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Tier</th>
+                                <th>Uses Left</th>
+                                <th>Expires</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="promos-tbody">
+                            {% for promo in promo_codes %}
+                            <tr>
+                                <td><span style="font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 600; letter-spacing: 0.05em;">{{ promo.code }}</span></td>
+                                <td><span class="badge badge-{{ promo.tier }}">{{ promo.tier }}</span></td>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">{{ promo.left_uses }}</td>
+                                <td style="font-size: 0.78rem;">{% if promo.expires_at %}{{ promo.expires_at|date:"M d, Y H:i" }}{% else %}<span style="color: var(--text-muted);">Never</span>{% endif %}</td>
+                                <td style="font-size: 0.78rem;">{{ promo.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <button class="action-btn danger" onclick="deletePromo({{ promo.id }}, '{{ promo.code }}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 32px;">No promo codes yet</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -1580,38 +2020,114 @@
             }
         });
 
-        // ── Charts ──────────────────────────────
-        (function renderSignupsChart() {
+        // ── Promo Code Actions ───────────────────
+        function generatePromoCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            document.getElementById('promo-code').value = code;
+        }
+
+        async function deletePromo(id, code) {
+            if (await showConfirm(`Delete promo code "${code}"?`, 'Delete')) {
+                const res = await api('delete-promo', { promo_id: id });
+                if (res) { toast('Promo code deleted'); location.reload(); }
+            }
+        }
+
+        document.getElementById('promo-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const code = document.getElementById('promo-code').value.trim().toUpperCase();
+            const tier = document.getElementById('promo-tier').value;
+            const expires = document.getElementById('promo-expires').value;
+            const leftUses = parseInt(document.getElementById('promo-uses').value) || 1;
+
+            if (!code) { toast('Enter a promo code', 'error'); return; }
+
+            const res = await api('create-promo', { code, tier, expires, left_uses: leftUses });
+            if (res) { toast('Promo code created'); location.reload(); }
+        });
+
+        // ── Dashboard: Greeting ─────────────────
+        (function initGreeting() {
+            const h = new Date().getHours();
+            const greet = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+            document.getElementById('dashGreeting').innerHTML = `${greet}, <span class="dash-greeting-accent">Solara</span>`;
+            const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-US', opts);
+        })();
+
+        // ── Dashboard: Conversion rate ──────────
+        (function initConversion() {
+            const total = {{ stats.total_users }};
+            const paid = {{ stats.paid_users }};
+            const pct = total > 0 ? ((paid / total) * 100).toFixed(1) : '0.0';
+            document.getElementById('conversionRate').textContent = pct + '% conversion';
+        })();
+
+        // ── Dashboard: Signups chart ────────────
+        (function renderDashSignups() {
             const raw = JSON.parse('{{ signups_by_day|escapejs }}');
-            const container = document.getElementById('signupsChart');
-            if (!raw.length) { container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;display:flex;align-items:center;height:100%;">No signup data</div>'; return; }
+            const container = document.getElementById('dashSignupsChart');
+            if (!raw.length) { container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;display:flex;align-items:center;height:100%;">No signup data yet</div>'; return; }
             const max = Math.max(...raw.map(d => d.count), 1);
             raw.forEach(d => {
                 const bar = document.createElement('div');
-                bar.className = 'chart-bar';
+                bar.className = 'dash-bar';
                 bar.style.height = `${(d.count / max) * 100}%`;
                 bar.dataset.label = `${d.day.slice(5)}: ${d.count}`;
                 container.appendChild(bar);
             });
         })();
 
-        (function renderTierBreakdown() {
+        // ── Dashboard: Tier donut ───────────────
+        (function renderDashDonut() {
             const raw = JSON.parse('{{ tier_breakdown|escapejs }}');
-            const container = document.getElementById('tierBreakdown');
+            const container = document.getElementById('dashTierDonut');
             if (!raw.length) { container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;">No data</div>'; return; }
-            const max = Math.max(...raw.map(t => t.count), 1);
-            const colors = { free: 'var(--text-muted)', student: 'var(--blue)', team: 'var(--purple)', enterprise: 'var(--accent)' };
+
+            const colors = { free: '#6e6b63', personal: '#6b9ece', student: '#6b9ece', team: '#a07de0', enterprise: '#d4a574' };
+            const total = raw.reduce((s, t) => s + t.count, 0);
+
+            // Build conic-gradient
+            let angle = 0;
+            const stops = [];
             raw.forEach(t => {
-                const row = document.createElement('div');
-                row.className = 'tier-row';
-                row.innerHTML = `
-                    <span class="tier-row-label" style="color: ${colors[t.tier] || 'var(--text-muted)'}">${t.tier}</span>
-                    <div class="tier-row-bar-bg">
-                        <div class="tier-row-bar" style="width: ${(t.count / max) * 100}%; background: ${colors[t.tier] || 'var(--text-muted)'}"></div>
-                    </div>
-                    <span class="tier-row-count">${t.count}</span>
-                `;
-                container.appendChild(row);
+                const slice = (t.count / total) * 360;
+                const color = colors[t.tier] || '#6e6b63';
+                stops.push(`${color} ${angle}deg ${angle + slice}deg`);
+                angle += slice;
+            });
+
+            const donut = document.createElement('div');
+            donut.className = 'dash-donut';
+            donut.style.background = `conic-gradient(${stops.join(', ')})`;
+            donut.innerHTML = `<div class="dash-donut-hole"><span class="dash-donut-total">${total}</span><span class="dash-donut-label">Users</span></div>`;
+            container.appendChild(donut);
+
+            // Legend
+            const legend = document.createElement('div');
+            legend.className = 'dash-legend';
+            raw.forEach(t => {
+                const color = colors[t.tier] || '#6e6b63';
+                legend.innerHTML += `<div class="dash-legend-item"><span class="dash-legend-dot" style="background:${color}"></span>${t.tier}<span class="dash-legend-count">${t.count}</span></div>`;
+            });
+            container.appendChild(legend);
+        })();
+
+        // ── Dashboard: Relative time feed ───────
+        (function initFeedTimes() {
+            document.querySelectorAll('.dash-feed-time[data-joined]').forEach(el => {
+                const joined = new Date(el.dataset.joined);
+                const diff = Date.now() - joined.getTime();
+                const mins = Math.floor(diff / 60000);
+                const hours = Math.floor(mins / 60);
+                const days = Math.floor(hours / 24);
+                if (days > 30) el.textContent = joined.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                else if (days > 0) el.textContent = days + 'd ago';
+                else if (hours > 0) el.textContent = hours + 'h ago';
+                else if (mins > 0) el.textContent = mins + 'm ago';
+                else el.textContent = 'Just now';
             });
         })();
     </script>
