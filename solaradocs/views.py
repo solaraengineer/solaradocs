@@ -1265,6 +1265,11 @@ def home(request):
             context['broadcast_alert'] = json.loads(alert_raw)
         except (json.JSONDecodeError, TypeError):
             pass
+    try:
+        promo = PromoCodes.objects.get(code='SOLARADC')
+        context['promo_left_uses'] = promo.left_uses
+    except PromoCodes.DoesNotExist:
+        context['promo_left_uses'] = 0
     return render(request, 'index.html', context)
 
 
@@ -3448,6 +3453,9 @@ def redeem_promo(request):
         if not PROMO_CODE_REGEX.match(code):
             return JsonResponse({'success': False, 'error': 'Invalid code'}, status=400)
 
+        if request.user.promo:
+            return JsonResponse({'success': False, 'error': 'You already used a promo code'}, status=400)
+
         with transaction.atomic():
             promo = PromoCodes.objects.select_for_update().filter(code=code).first()
             if not promo:
@@ -3462,7 +3470,8 @@ def redeem_promo(request):
             promo.left_uses = F('left_uses') - 1
             promo.save(update_fields=['left_uses'])
             request.user.Tier = promo.tier
-            request.user.save(update_fields=['Tier'])
+            request.user.promo = True
+            request.user.save(update_fields=['Tier', 'promo'])
 
         return JsonResponse({'success': True, 'tier': promo.tier})
     except Exception:

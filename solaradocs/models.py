@@ -6,6 +6,7 @@ class User(AbstractUser):
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
     subscription_status = models.CharField(max_length=50, default='none')
     retries_left = models.PositiveIntegerField(default=0)
+    promo = models.BooleanField(default=False)
 
 
 TIER_LIMITS = {
