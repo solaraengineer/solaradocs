@@ -22,6 +22,8 @@ db.sqlite3
 db.sqlite3-journal
 /media
 /staticfiles
+/logic/test_settings.py
+/solaradocs/tests.py
 .env
 
 # IDE

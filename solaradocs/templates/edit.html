@@ -3559,7 +3559,7 @@
             if (!authData.authenticated) {
                 // Redirect to Google OAuth
                 closeImportModal();
-                window.location.href = authData.reauth_url || '/accounts/google/login/?process=login';
+                window.location.href = authData.reauth_url || '/accounts/google/login/';
                 return;
             }
 
@@ -3568,7 +3568,7 @@
             if (!docsData.success) {
                 if (docsData.reauth_required) {
                     closeImportModal();
-                    window.location.href = '/accounts/google/login/?process=login&auth_params=prompt%3Dconsent';
+                    window.location.href = '/accounts/google/login/';
                     return;
                 }
                 showImportError(docsData.error || 'Failed to load Google Docs');

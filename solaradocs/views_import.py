@@ -13,6 +13,7 @@ from .google_import import (
     list_user_google_docs,
     get_import_job_status,
     get_import_job,
+    get_import_state,
     set_import_state,
     set_import_job,
     import_google_docs_task,
@@ -52,34 +53,12 @@ def check_google_auth(request, project_id):
         if not _check_import_permission(request, project):
             return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
-        reauth_url = '/accounts/google/login/?process=login&auth_params=prompt%3Dconsent'
-
         creds = get_google_credentials(request.user)
-        if creds is None:
-            return JsonResponse({
-                'success': True,
-                'authenticated': False,
-                'reauth_url': reauth_url,
-            })
-
-        from googleapiclient.discovery import build
-        from googleapiclient.errors import HttpError
-        try:
-            service = build('drive', 'v3', credentials=creds, cache_discovery=False)
-            service.files().list(pageSize=1, fields='files(id)').execute()
-        except HttpError as e:
-            if e.resp.status in (401, 403):
-                return JsonResponse({
-                    'success': True,
-                    'authenticated': False,
-                    'reauth_url': reauth_url,
-                })
-            raise
 
         return JsonResponse({
             'success': True,
-            'authenticated': True,
-            'reauth_url': None,
+            'authenticated': creds is not None,
+            'reauth_url': '/accounts/google/login/' if creds is None else None,
         })
     except Exception:
         logger.exception("check_google_auth failed")

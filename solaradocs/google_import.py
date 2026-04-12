@@ -88,10 +88,10 @@ def get_import_job_status(project_id):
 
 
 def get_google_credentials(user):
-    from allauth.socialaccount.models import SocialToken, SocialApp
+    from allauth.socialaccount.models import SocialToken
 
     try:
-        token_obj = SocialToken.objects.select_related('app', 'account').filter(
+        token_obj = SocialToken.objects.select_related('account').filter(
             account__user=user,
             account__provider='google',
         ).first()
@@ -102,20 +102,20 @@ def get_google_credentials(user):
     if token_obj is None:
         return None
 
-    app = token_obj.app
-    if app is None:
-        try:
-            app = SocialApp.objects.get(provider='google')
-        except SocialApp.DoesNotExist:
-            logger.error("No Google SocialApp configured")
-            return None
+    google_cfg = settings.SOCIALACCOUNT_PROVIDERS.get('google', {}).get('APP', {})
+    client_id = google_cfg.get('client_id', '')
+    client_secret = google_cfg.get('secret', '')
+
+    if not client_id or not client_secret:
+        logger.error("Google OAuth client_id/secret missing from settings")
+        return None
 
     creds = Credentials(
         token=token_obj.token,
-        refresh_token=token_obj.token_secret,
+        refresh_token=token_obj.token_secret or None,
         token_uri='https://oauth2.googleapis.com/token',
-        client_id=app.client_id,
-        client_secret=app.secret,
+        client_id=client_id,
+        client_secret=client_secret,
     )
 
     if creds.expired and creds.refresh_token:
