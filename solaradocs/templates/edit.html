@@ -3138,10 +3138,14 @@
                         })
                     });
                     if (!response) return { success: false };
+                    const ct = response.headers.get('content-type');
+                    if (!ct || !ct.includes('application/json')) {
+                        return { success: false, error: 'Import failed. Check your tier limits.' };
+                    }
                     return await response.json();
                 } catch (error) {
                     console.error('Failed to start Google import:', error);
-                    return { success: false, error };
+                    return { success: false, error: 'Import failed' };
                 }
             },
 
@@ -3223,7 +3227,14 @@
             });
 
             if (response.status === 401) {
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    TokenManager.clearToken();
+                    window.location.href = '/login/';
+                    return null;
+                }
                 if (data.new_token) {
                     TokenManager.setToken(data.new_token);
                     headers['Authorization'] = `Bearer ${data.new_token}`;
