@@ -74,6 +74,7 @@ class Documents(models.Model):
     document_name = models.CharField(max_length=255)
     content = models.TextField(blank=True, default='')
     team_assigned = models.ForeignKey(Teams, on_delete=models.CASCADE, related_name='team_documents')
+    google_doc_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

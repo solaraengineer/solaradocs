@@ -185,9 +185,11 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'profile',
             'email',
+            'https://www.googleapis.com/auth/documents.readonly',
+            'https://www.googleapis.com/auth/drive.readonly',
         ],
         'AUTH_PARAMS': {
-            'access_type': 'online',
+            'access_type': 'offline',
         },
         'OAUTH_PKCE_ENABLED': True,
     }

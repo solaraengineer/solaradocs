@@ -495,6 +495,176 @@
             height: 16px;
         }
 
+        .import-gdocs-btn {
+            width: 100%;
+            padding: 0.625rem;
+            background: var(--bg-tertiary);
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+        }
+
+        .import-gdocs-btn:hover {
+            background: var(--bg-elevated);
+            border-color: #4285F4;
+            color: var(--text-primary);
+        }
+
+        .import-gdocs-btn svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .gdocs-list {
+            max-height: 320px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .gdocs-list-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.625rem 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .gdocs-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .gdocs-list-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .gdocs-list-item input[type="checkbox"] {
+            accent-color: #4285F4;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .gdocs-list-item .doc-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .gdocs-list-item .doc-info .doc-title {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gdocs-list-item .doc-info .doc-date {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .gdocs-select-all {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .gdocs-select-all:hover {
+            color: var(--text-primary);
+        }
+
+        .import-progress-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .import-progress-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .import-progress-item .status-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .import-progress-item .status-icon.pending { color: var(--text-tertiary); }
+        .import-progress-item .status-icon.in-progress { color: #4285F4; }
+        .import-progress-item .status-icon.done { color: var(--accent-green); }
+        .import-progress-item .status-icon.failed { color: var(--accent-red); }
+
+        .import-progress-item .doc-title {
+            flex: 1;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .import-progress-item .status-label {
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-tertiary);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        .import-modal-wide {
+            max-width: 520px !important;
+        }
+
+        .gdocs-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            gap: 0.5rem;
+        }
+
+        .import-selected-count {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin-top: 0.25rem;
+        }
+
         /* Editor Area */
         .editor-area {
             flex: 1;
@@ -2112,6 +2282,17 @@
                     </svg>
                     New Document
                 </button>
+                <button class="import-gdocs-btn" id="importGDocsBtn">
+                    <svg viewBox="0 0 48 48" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M29 4H13a4 4 0 0 0-4 4v32a4 4 0 0 0 4 4h22a4 4 0 0 0 4-4V14L29 4z" fill="#4285F4"/>
+                        <path d="M29 4v10h10" fill="#A1C2FA"/>
+                        <path d="M29 4l10 10" fill="none" stroke="#A1C2FA" stroke-width="0"/>
+                        <rect x="15" y="22" width="18" height="2" rx="1" fill="#fff"/>
+                        <rect x="15" y="27" width="18" height="2" rx="1" fill="#fff"/>
+                        <rect x="15" y="32" width="12" height="2" rx="1" fill="#fff"/>
+                    </svg>
+                    Import Docs
+                </button>
             </div>
         </div>
 
@@ -2528,6 +2709,69 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="importGDocsModal">
+        <div class="modal import-modal-wide">
+            <div class="modal-header">
+                <h3 class="modal-title">Import from Google Docs</h3>
+                <button class="modal-close" id="closeImportModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="importDocsLoading" class="gdocs-loading">
+                    <svg class="spinner-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                    Loading your Google Docs...
+                </div>
+                <div id="importDocsList" style="display:none;">
+                    <div class="gdocs-select-all" id="selectAllDocs">
+                        <input type="checkbox" id="selectAllCheckbox">
+                        <label for="selectAllCheckbox">Select all</label>
+                    </div>
+                    <div class="gdocs-list" id="gdocsListContainer"></div>
+                    <div class="import-selected-count" id="importSelectedCount">0 selected</div>
+                    <div class="form-group" style="margin-top: 0.75rem;">
+                        <label class="form-label">Assign to Team</label>
+                        <select class="form-select" id="importDocTeam">
+                            <option value="">Loading teams...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="importDocsError" style="display:none; padding: 1rem; text-align: center; color: var(--accent-red); font-size: 0.85rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelImport">Cancel</button>
+                <button class="btn btn-primary" id="startImportBtn" disabled>Import Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="importProgressModal">
+        <div class="modal import-modal-wide">
+            <div class="modal-header">
+                <h3 class="modal-title">Importing Documents</h3>
+                <button class="modal-close" id="closeProgressModal" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="import-progress-list" id="importProgressList"></div>
+            </div>
+            <div class="modal-footer" id="importProgressFooter">
+                <div id="importProgressStatus" style="font-size: 0.8rem; color: var(--text-tertiary); flex: 1;">Importing...</div>
+                <button class="btn btn-ghost" id="retryImportBtn" style="display:none;">Retry Failed</button>
+                <button class="btn btn-primary" id="doneImportBtn" style="display:none;">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Rename Document Modal -->
     <div class="modal-overlay" id="renameDocModal">
         <div class="modal">
@@ -2859,6 +3103,71 @@
                     console.error('Failed to revert backup:', error);
                     return { success: false, error };
                 }
+            },
+
+            async checkGoogleAuth() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/google/check-auth`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to check Google auth:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async listGoogleDocs() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/google/docs`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to list Google Docs:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async startGoogleImport(docIds, docTitles, teamId) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/google/import`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            doc_ids: docIds,
+                            doc_titles: docTitles,
+                            team_id: parseInt(teamId)
+                        })
+                    });
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to start Google import:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async getImportStatus() {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/google/import/status`);
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to get import status:', error);
+                    return { success: false, error };
+                }
+            },
+
+            async retryImport(teamId) {
+                try {
+                    const response = await authFetch(`/api/project/${projectId}/google/import/retry`, {
+                        method: 'POST',
+                        body: JSON.stringify({ team_id: parseInt(teamId) })
+                    });
+                    if (!response) return { success: false };
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to retry import:', error);
+                    return { success: false, error };
+                }
             }
         };
 
@@ -3185,6 +3494,301 @@
                 selectDocument(data.document.id);
             } else {
                 showToast(data.error || 'Failed to create document', 'error');
+            }
+        });
+
+        const importModal = document.getElementById('importGDocsModal');
+        const progressModal = document.getElementById('importProgressModal');
+        let importPollInterval = null;
+        let importTeamId = null;
+
+        function openImportModal() {
+            importModal.classList.add('show');
+            quill.disable();
+            document.getElementById('importDocsLoading').style.display = 'flex';
+            document.getElementById('importDocsList').style.display = 'none';
+            document.getElementById('importDocsError').style.display = 'none';
+            document.getElementById('startImportBtn').disabled = true;
+            loadImportData();
+        }
+
+        function closeImportModal() {
+            importModal.classList.remove('show');
+            quill.enable();
+        }
+
+        function openProgressModal() {
+            progressModal.classList.add('show');
+            quill.disable();
+            document.getElementById('closeProgressModal').style.display = 'none';
+            document.getElementById('retryImportBtn').style.display = 'none';
+            document.getElementById('doneImportBtn').style.display = 'none';
+            document.getElementById('importProgressStatus').textContent = 'Importing...';
+        }
+
+        function closeProgressModal() {
+            progressModal.classList.remove('show');
+            quill.enable();
+            if (importPollInterval) {
+                clearInterval(importPollInterval);
+                importPollInterval = null;
+            }
+        }
+
+        async function loadImportData() {
+            // Load teams into import team selector
+            const teamsData = await API.getTeams();
+            if (teamsData.success) {
+                const select = document.getElementById('importDocTeam');
+                if (teamsData.teams.length === 0) {
+                    select.innerHTML = '<option value="">No teams available</option>';
+                } else {
+                    select.innerHTML = teamsData.teams.map(team =>
+                        `<option value="${team.id}">${escapeHtml(team.team_name)}</option>`
+                    ).join('');
+                }
+            }
+
+            // Check Google auth first
+            const authData = await API.checkGoogleAuth();
+            if (!authData.success) {
+                showImportError('Failed to check authentication');
+                return;
+            }
+
+            if (!authData.authenticated) {
+                // Redirect to Google OAuth
+                closeImportModal();
+                window.location.href = authData.reauth_url || '/accounts/google/login/?process=login';
+                return;
+            }
+
+            // Fetch Google Docs list
+            const docsData = await API.listGoogleDocs();
+            if (!docsData.success) {
+                if (docsData.reauth_required) {
+                    closeImportModal();
+                    window.location.href = '/accounts/google/login/?process=login&auth_params=prompt%3Dconsent';
+                    return;
+                }
+                showImportError(docsData.error || 'Failed to load Google Docs');
+                return;
+            }
+
+            if (docsData.docs.length === 0) {
+                showImportError('No Google Docs found in your account');
+                return;
+            }
+
+            renderGDocsList(docsData.docs);
+        }
+
+        function showImportError(msg) {
+            document.getElementById('importDocsLoading').style.display = 'none';
+            document.getElementById('importDocsList').style.display = 'none';
+            const errEl = document.getElementById('importDocsError');
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
+        }
+
+        function renderGDocsList(docs) {
+            document.getElementById('importDocsLoading').style.display = 'none';
+            document.getElementById('importDocsList').style.display = 'block';
+
+            const container = document.getElementById('gdocsListContainer');
+            container.innerHTML = docs.map(doc => {
+                const modDate = doc.modified_time ? new Date(doc.modified_time).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                }) : '';
+                return `
+                    <label class="gdocs-list-item">
+                        <input type="checkbox" class="gdoc-checkbox" data-doc-id="${escapeHtml(doc.id)}" data-doc-title="${escapeHtml(doc.name)}">
+                        <div class="doc-info">
+                            <div class="doc-title">${escapeHtml(doc.name)}</div>
+                            <div class="doc-date">${modDate}</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+
+            updateSelectedCount();
+
+            // Checkbox change events
+            container.addEventListener('change', updateSelectedCount);
+        }
+
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('.gdoc-checkbox:checked');
+            const countEl = document.getElementById('importSelectedCount');
+            countEl.textContent = `${checked.length} selected`;
+            document.getElementById('startImportBtn').disabled = checked.length === 0;
+
+            // Update select-all checkbox state
+            const all = document.querySelectorAll('.gdoc-checkbox');
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+            if (all.length > 0) {
+                selectAllCb.checked = checked.length === all.length;
+                selectAllCb.indeterminate = checked.length > 0 && checked.length < all.length;
+            }
+        }
+
+        // Select all checkbox
+        document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.gdoc-checkbox');
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+            updateSelectedCount();
+        });
+
+        // Import button click
+        document.getElementById('importGDocsBtn').addEventListener('click', openImportModal);
+        document.getElementById('closeImportModal').addEventListener('click', closeImportModal);
+        document.getElementById('cancelImport').addEventListener('click', closeImportModal);
+        importModal.addEventListener('click', (e) => {
+            if (e.target === importModal) closeImportModal();
+        });
+
+        // Start import
+        document.getElementById('startImportBtn').addEventListener('click', async () => {
+            const checked = document.querySelectorAll('.gdoc-checkbox:checked');
+            if (checked.length === 0) {
+                showToast('No documents selected', 'error');
+                return;
+            }
+
+            const teamId = document.getElementById('importDocTeam').value;
+            if (!teamId) {
+                showToast('Please select a team', 'error');
+                return;
+            }
+
+            importTeamId = parseInt(teamId);
+            const docIds = [];
+            const docTitles = {};
+            checked.forEach(cb => {
+                const id = cb.dataset.docId;
+                docIds.push(id);
+                docTitles[id] = cb.dataset.docTitle || '';
+            });
+
+            const data = await API.startGoogleImport(docIds, docTitles, teamId);
+            if (!data.success) {
+                showToast(data.error || 'Failed to start import', 'error');
+                return;
+            }
+
+            closeImportModal();
+            openProgressModal();
+
+            // Initialize progress UI
+            renderProgressList(docIds.map(id => ({
+                doc_id: id,
+                title: docTitles[id] || id,
+                state: 'pending',
+                reason: ''
+            })));
+
+            // Start polling
+            startImportPolling();
+        });
+
+        function renderProgressList(docs) {
+            const container = document.getElementById('importProgressList');
+            container.innerHTML = docs.map(doc => {
+                const icon = getStatusIcon(doc.state);
+                const label = doc.state === 'failed' && doc.reason ? doc.reason : doc.state;
+                return `
+                    <div class="import-progress-item" data-doc-id="${escapeHtml(doc.doc_id)}">
+                        <div class="status-icon ${doc.state}">${icon}</div>
+                        <div class="doc-title">${escapeHtml(doc.title || doc.doc_id)}</div>
+                        <div class="status-label">${escapeHtml(label)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusIcon(state) {
+            switch (state) {
+                case 'pending':
+                    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`;
+                case 'in-progress':
+                    return `<svg class="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+                case 'done':
+                    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>`;
+                case 'failed':
+                    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+                default:
+                    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
+            }
+        }
+
+        function startImportPolling() {
+            if (importPollInterval) clearInterval(importPollInterval);
+
+            importPollInterval = setInterval(async () => {
+                const data = await API.getImportStatus();
+                if (!data.success) return;
+                if (!data.has_job) {
+                    clearInterval(importPollInterval);
+                    importPollInterval = null;
+                    return;
+                }
+
+                renderProgressList(data.docs);
+
+                if (data.all_done) {
+                    clearInterval(importPollInterval);
+                    importPollInterval = null;
+                    document.getElementById('importProgressStatus').textContent = 'All documents imported!';
+                    document.getElementById('closeProgressModal').style.display = '';
+                    document.getElementById('doneImportBtn').style.display = '';
+                    await loadDocuments();
+                } else if (data.has_failures) {
+                    // Check if nothing is still pending/in-progress
+                    const stillRunning = data.docs.some(d => d.state === 'pending' || d.state === 'in-progress');
+                    if (!stillRunning) {
+                        clearInterval(importPollInterval);
+                        importPollInterval = null;
+                        const doneCount = data.docs.filter(d => d.state === 'done').length;
+                        const failCount = data.docs.filter(d => d.state === 'failed').length;
+                        document.getElementById('importProgressStatus').textContent = `${doneCount} imported, ${failCount} failed`;
+                        document.getElementById('closeProgressModal').style.display = '';
+                        document.getElementById('retryImportBtn').style.display = '';
+                        document.getElementById('doneImportBtn').style.display = '';
+                        await loadDocuments();
+                    }
+                }
+            }, 3000);
+        }
+
+        // Retry failed imports
+        document.getElementById('retryImportBtn').addEventListener('click', async () => {
+            if (!importTeamId) {
+                showToast('Team information missing', 'error');
+                return;
+            }
+
+            const data = await API.retryImport(importTeamId);
+            if (!data.success) {
+                showToast(data.error || 'Failed to retry import', 'error');
+                return;
+            }
+
+            showToast(`Retrying ${data.retrying} document${data.retrying !== 1 ? 's' : ''}...`);
+            document.getElementById('retryImportBtn').style.display = 'none';
+            document.getElementById('doneImportBtn').style.display = 'none';
+            document.getElementById('closeProgressModal').style.display = 'none';
+            document.getElementById('importProgressStatus').textContent = 'Retrying...';
+            startImportPolling();
+        });
+
+        // Done button
+        document.getElementById('doneImportBtn').addEventListener('click', closeProgressModal);
+        document.getElementById('closeProgressModal').addEventListener('click', closeProgressModal);
+        progressModal.addEventListener('click', (e) => {
+            if (e.target === progressModal) {
+                // Only allow closing if import is done
+                const closeBtn = document.getElementById('closeProgressModal');
+                if (closeBtn.style.display !== 'none') closeProgressModal();
             }
         });
 
