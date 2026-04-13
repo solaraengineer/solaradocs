@@ -470,6 +470,19 @@
     </div>
 
     <script>
+        async function safeJson(response) {
+            const ct = response.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                return await response.json();
+            }
+            let error = 'Something went wrong';
+            if (response.status === 403) error = 'Access denied';
+            else if (response.status === 404) error = 'Not found';
+            else if (response.status === 429) error = 'Too many requests. Please try again later.';
+            else if (response.status >= 500) error = 'Server error. Please try again later.';
+            return { success: false, error };
+        }
+
         var stripe = Stripe('{{ stripe_publishable_key }}');
 
         var elementStyle = {
@@ -548,7 +561,7 @@
                     body: 'tier=' + encodeURIComponent(tier)
                 });
 
-                var data = await res.json();
+                var data = await safeJson(res);
                 if (!data.client_secret) throw new Error(data.error || 'Failed to create subscription');
 
                 clientSecret = data.client_secret;
@@ -628,7 +641,7 @@
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
                     body: JSON.stringify({ code: code })
                 });
-                var data = await res.json();
+                var data = await safeJson(res);
                 if (data.success) {
                     msg.className = 'promo-msg success';
                     msg.textContent = 'Upgraded to ' + data.tier.charAt(0).toUpperCase() + data.tier.slice(1) + '! Redirecting...';

@@ -730,7 +730,7 @@
             async refreshToken() {
                 try {
                     const res = await fetch('/gen/token', { credentials: 'include' });
-                    const data = await res.json();
+                    const data = await safeJson(res);
                     if (data.success && data.token) {
                         this.setToken(data.token);
                         return data.token;
@@ -788,7 +788,7 @@
             });
 
             if (response.status === 401) {
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.new_token) {
                     TokenManager.setToken(data.new_token);
                     headers['Authorization'] = `Bearer ${data.new_token}`;
@@ -807,6 +807,19 @@
                 }
             }
             return response;
+        }
+
+        async function safeJson(response) {
+            const ct = response.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                return await safeJson(response);
+            }
+            let error = 'Something went wrong';
+            if (response.status === 403) error = 'Access denied';
+            else if (response.status === 404) error = 'Not found';
+            else if (response.status === 429) error = 'Too many requests. Please try again later.';
+            else if (response.status >= 500) error = 'Server error. Please try again later.';
+            return { success: false, error };
         }
 
         // Form submission
@@ -845,7 +858,7 @@
 
                 if (!response) return;
 
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     submitBtn.textContent = 'Success!';
                     window.location.href = data.redirect || '/dashboard/';

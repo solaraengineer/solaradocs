@@ -1686,11 +1686,12 @@ class GoogleImportViewTests(BaseTestCase):
     def test_start_import_tier_limit(self, mock_task):
         self.project.tier = 'free'
         self.project.save()
-        # models.py free tier: documents=2; we have 1 doc already
-        Documents.objects.create(
-            project=self.project, document_name='D2',
-            team_assigned=self.public_team,
-        )
+        # models.py free tier: documents=5; we have 1 doc already from setUp
+        for i in range(2, 6):
+            Documents.objects.create(
+                project=self.project, document_name=f'D{i}',
+                team_assigned=self.public_team,
+            )
         r = self._post(
             f'/api/project/{self.project.id}/google/import',
             {'doc_ids': ['doc1'], 'team_id': self.public_team.id},
@@ -1849,17 +1850,14 @@ class GoogleImportTaskTests(TestCase):
         mock_creds.return_value = MagicMock()
         mock_fetch.return_value = ('Title', 'Content')
 
-        # Set to free tier (models.py: documents=2) and fill up
+        # Set to free tier (models.py: documents=5) and fill up
         self.project.tier = 'free'
         self.project.save()
-        Documents.objects.create(
-            project=self.project, document_name='Existing1',
-            team_assigned=self.team,
-        )
-        Documents.objects.create(
-            project=self.project, document_name='Existing2',
-            team_assigned=self.team,
-        )
+        for i in range(1, 6):
+            Documents.objects.create(
+                project=self.project, document_name=f'Existing{i}',
+                team_assigned=self.team,
+            )
 
         from solaradocs.google_import import (
             import_google_docs_task, get_import_state,

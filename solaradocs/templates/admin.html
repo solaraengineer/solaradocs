@@ -1845,6 +1845,19 @@
         }
 
         // ── API Helper ──────────────────────────
+        async function safeJson(response) {
+            const ct = response.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                return await response.json();
+            }
+            let error = 'Something went wrong';
+            if (response.status === 403) error = 'Access denied';
+            else if (response.status === 404) error = 'Not found';
+            else if (response.status === 429) error = 'Too many requests. Please try again later.';
+            else if (response.status >= 500) error = 'Server error. Please try again later.';
+            return { success: false, error };
+        }
+
         async function api(endpoint, data) {
             try {
                 const res = await fetch(`${BASE}/${endpoint}/`, {
@@ -1852,7 +1865,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                const json = await res.json();
+                const json = await safeJson(res);
                 if (!json.success) { toast(json.error || 'Something went wrong', 'error'); return null; }
                 return json;
             } catch (e) {

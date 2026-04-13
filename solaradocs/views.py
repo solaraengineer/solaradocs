@@ -22,7 +22,7 @@ from .forms import LoginForm, RegisterForm
 
 from django.contrib.auth import update_session_auth_hash
 from .models import Project, Contributor, Pending, User, Backup, Audit, Documents, Teams, TeamMember, Changelog, \
-    PendingAction, ViewerDocumentAccess, InviteCode, PromoCodes
+    PendingAction, ViewerDocumentAccess, InviteCode, PromoCodes, TIER_LIMITS
 from .views_emails import send_welcome_email, send_subscription_email, send_cancellation_email, send_password_reset_email
 from .r2_backups import backup_document_to_r2, restore_document_from_backup
 import re
@@ -118,17 +118,6 @@ if not JWT_PRIVATE_KEY or not JWT_PUBLIC_KEY:
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.public_key = settings.STRIPE_PUBLIC_KEY
-
-TIER_LIMITS = {
-    'free': {'projects': 2, 'documents': 5, 'teams': 2, 'members': 3, 'collaborations': 2,
-             'backups': False, 'audit': False, 'pending': False},
-    'personal': {'projects': 4, 'documents': 10, 'teams': 4, 'members': 6, 'collaborations': 5,
-                 'backups': True, 'audit': False, 'pending': False},
-    'team': {'projects': 8, 'documents': 20, 'teams': 6, 'members': 20, 'collaborations': 8,
-             'backups': True, 'audit': True, 'pending': True},
-    'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
-                   'backups': True, 'audit': True, 'pending': True},
-}
 
 
 @require_GET

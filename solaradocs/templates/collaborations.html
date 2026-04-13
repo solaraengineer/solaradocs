@@ -1101,7 +1101,7 @@
             async refreshToken() {
                 try {
                     const res = await fetch('/gen/token', { credentials: 'include' });
-                    const data = await res.json();
+                    const data = await safeJson(res);
                     if (data.success && data.token) {
                         this.setToken(data.token);
                         return data.token;
@@ -1153,7 +1153,7 @@
             });
 
             if (response.status === 401) {
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.new_token) {
                     TokenManager.setToken(data.new_token);
                     headers['Authorization'] = `Bearer ${data.new_token}`;
@@ -1171,6 +1171,19 @@
                 }
             }
             return response;
+        }
+
+        async function safeJson(response) {
+            const ct = response.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                return await safeJson(response);
+            }
+            let error = 'Something went wrong';
+            if (response.status === 403) error = 'Access denied';
+            else if (response.status === 404) error = 'Not found';
+            else if (response.status === 429) error = 'Too many requests. Please try again later.';
+            else if (response.status >= 500) error = 'Server error. Please try again later.';
+            return { success: false, error };
         }
 
         // Utility
@@ -1231,7 +1244,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/collaborators`);
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
 
                 if (!data.success) {
                     container.innerHTML = `<div class="admin-loading">${escapeHtml(data.error || 'Failed to load')}</div>`;
@@ -1278,7 +1291,7 @@
                                 })
                             });
                             if (!response) return;
-                            const data = await response.json();
+                            const data = await safeJson(response);
                             if (data.success) {
                                 select.dataset.originalRole = newRole;
                                 showAdminToast('Role updated', 'success');
@@ -1309,7 +1322,7 @@
             try {
                 const response = await authFetch(url);
                 if (!response) { body.innerHTML = '<div class="diff-loading">Failed to load diff</div>'; return; }
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     if (data.document_name) {
                         titleEl.textContent = title || `Differences — ${data.document_name}`;
@@ -1333,7 +1346,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/backups`);
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
 
                 if (!data.success) {
                     container.innerHTML = `<div class="admin-loading">${escapeHtml(data.error || 'Failed to load')}</div>`;
@@ -1409,7 +1422,7 @@
                                 method: 'POST'
                             });
                             if (!response) return;
-                            const data = await response.json();
+                            const data = await safeJson(response);
                             if (data.success) {
                                 showAdminToast(`Reverted "${docName}" to v${data.version}`, 'success');
                                 await loadProjectBackups(pId);
@@ -1464,7 +1477,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/viewer-documents`);
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
 
                 if (!data.success) {
                     container.innerHTML = `<div class="viewer-no-docs">${escapeHtml(data.error || 'Failed to load')}</div>`;
@@ -1503,7 +1516,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/viewer-document/${docId}/content`);
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
 
                 if (!data.success) {
                     bodyEl.innerHTML = `<div class="viewer-no-docs">${escapeHtml(data.error || 'Failed to load')}</div>`;
@@ -1548,7 +1561,7 @@
                     body: JSON.stringify({ code: code })
                 });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
 
                 if (data.success) {
                     msgEl.textContent = `Joined "${data.project_name}" as ${data.role}`;

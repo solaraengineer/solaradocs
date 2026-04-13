@@ -1393,7 +1393,7 @@
             async refreshToken() {
                 try {
                     const res = await fetch('/gen/token', { credentials: 'include' });
-                    const data = await res.json();
+                    const data = await safeJson(res);
                     if (data.success && data.token) { this.setToken(data.token); return data.token; }
                 } catch (e) { console.error('Token refresh failed:', e); }
                 return null;
@@ -1425,7 +1425,7 @@
             if (token) headers['Authorization'] = `Bearer ${token}`;
             let response = await fetch(url, { ...options, headers, credentials: 'include' });
             if (response.status === 401) {
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.new_token) {
                     TokenManager.setToken(data.new_token);
                     headers['Authorization'] = `Bearer ${data.new_token}`;
@@ -1443,6 +1443,19 @@
                 }
             }
             return response;
+        }
+
+        async function safeJson(response) {
+            const ct = response.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                return await safeJson(response);
+            }
+            let error = 'Something went wrong';
+            if (response.status === 403) error = 'Access denied';
+            else if (response.status === 404) error = 'Not found';
+            else if (response.status === 429) error = 'Too many requests. Please try again later.';
+            else if (response.status >= 500) error = 'Server error. Please try again later.';
+            return { success: false, error };
         }
 
         // === Notifications ===
@@ -1564,7 +1577,7 @@
             try {
                 const response = await authFetch('/deleteproject/', { method: 'POST', body: JSON.stringify({ project_id: projectId }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Project deleted');
                     document.getElementById(`project-card-${projectId}`).remove();
@@ -1578,7 +1591,7 @@
             try {
                 const response = await authFetch('/handlepending/', { method: 'POST', body: JSON.stringify({ pending_id: pendingId, action: 'accept' }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Changes accepted');
                     document.getElementById(`pending-${pendingId}`).remove();
@@ -1592,7 +1605,7 @@
             try {
                 const response = await authFetch('/handlepending/', { method: 'POST', body: JSON.stringify({ pending_id: pendingId, action: 'reject' }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Changes declined');
                     document.getElementById(`pending-${pendingId}`).remove();
@@ -1612,7 +1625,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/pending/${pendingId}/diff`);
                 if (!response) { body.innerHTML = '<div class="diff-loading">Failed to load diff</div>'; return; }
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     title.textContent = `Changes — ${data.document_name} by ${data.username}`;
                     body.innerHTML = data.diff_html;
@@ -1639,7 +1652,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/toggle-backups`, { method: 'POST', body: JSON.stringify({ enabled: enabled }) });
                 if (!response) { toggle.checked = !enabled; toggle.disabled = false; return; }
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast(enabled ? 'Backups enabled' : 'Backups paused');
                     desc.textContent = enabled ? 'Snapshots are created on each save' : 'Backups are paused \u2014 existing snapshots are preserved';
@@ -1658,7 +1671,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/rename`, { method: 'POST', body: JSON.stringify({ project_name: newName }) });
                 if (!response) { btn.disabled = false; return; }
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Project name updated');
                     input.value = data.project_name;
@@ -1677,7 +1690,7 @@
             try {
                 const response = await authFetch('/changeroles/', { method: 'POST', body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Role updated');
                     document.getElementById(`role-badge-${projectId}-${contributorId}`).textContent = newRole;
@@ -1690,7 +1703,7 @@
             try {
                 const response = await authFetch('/deleteuser/', { method: 'POST', body: JSON.stringify({ project_id: projectId, contributor_id: contributorId }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Collaborator removed');
                     document.getElementById(`user-${projectId}-${contributorId}`).remove();
@@ -1715,7 +1728,7 @@
             try {
                 const response = await authFetch('/addpeople/', { method: 'POST', body: JSON.stringify({ project_id: projectId, usernames: usernames, role: role }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('People added');
                     input.value = '';
@@ -1788,7 +1801,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/add`, { method: 'POST', body: JSON.stringify({ team_name: teamName }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Team created!');
                     closeModal('createTeamModal');
@@ -1843,7 +1856,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/update`, { method: 'POST', body: JSON.stringify({ team_name: teamName }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Team updated!');
                     closeModal('editTeamModal');
@@ -1857,7 +1870,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/delete`, { method: 'POST' });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) { showToast('Team deleted'); document.getElementById(`team-card-${teamId}`).remove(); }
                 else { showToast(data.error || 'Failed to delete team', 'error'); }
             } catch (error) { showToast('Failed to delete team', 'error'); }
@@ -1871,7 +1884,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/add`, { method: 'POST', body: JSON.stringify({ username: username, role: role }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Member added!');
                     input.value = '';
@@ -1911,7 +1924,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/remove`, { method: 'POST', body: JSON.stringify({ username: username }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Member removed');
                     const membersList = document.getElementById(`team-members-${teamId}`);
@@ -1929,7 +1942,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/role`, { method: 'POST', body: JSON.stringify({ username: username, role: newRole }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Role updated!');
                     const membersList = document.getElementById(`team-members-${teamId}`);
@@ -1943,7 +1956,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/review`, { method: 'POST', body: JSON.stringify({ username: username, can_direct_save: canDirectSave }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast(canDirectSave ? 'Direct save enabled' : 'Review required');
                 } else {
@@ -1977,12 +1990,12 @@
             try {
                 const docsResponse = await authFetch(`/api/project/${projectId}/documents`);
                 if (!docsResponse) return;
-                const docsData = await docsResponse.json();
+                const docsData = await safeJson(docsResponse);
                 if (!docsData.success) { container.innerHTML = '<p class="detail-value muted">Failed to load documents</p>'; return; }
                 if (!docsData.documents || docsData.documents.length === 0) { container.innerHTML = '<p class="detail-value muted">No documents in this project</p>'; return; }
                 const accessResponse = await authFetch(`/api/project/${projectId}/viewer-access`);
                 if (!accessResponse) return;
-                const accessData = await accessResponse.json();
+                const accessData = await safeJson(accessResponse);
                 const checkedIds = new Set(accessData.success ? accessData.document_ids : []);
                 container.innerHTML = docsData.documents.map(doc => `
                     <label class="viewer-doc-item">
@@ -2003,7 +2016,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/viewer-access/save`, { method: 'POST', body: JSON.stringify({ document_ids: documentIds }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) { showToast(`Viewer access updated (${documentIds.length} document${documentIds.length !== 1 ? 's' : ''})`); }
                 else { showToast(data.error || 'Failed to save viewer access', 'error'); }
             } catch (err) { showToast('Failed to save viewer access', 'error'); }
@@ -2018,7 +2031,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/invite-codes`);
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (!data.success) { container.innerHTML = `<p class="detail-value muted">${escapeHtml(data.error || 'Failed to load')}</p>`; return; }
                 if (!data.invite_codes || data.invite_codes.length === 0) { container.innerHTML = '<p class="detail-value muted">No active invite codes</p>'; return; }
                 container.innerHTML = data.invite_codes.map(ic => {
@@ -2052,7 +2065,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/invite-code/generate`, { method: 'POST', body: JSON.stringify({ role: role, expiry: expiry }) });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) { showToast('Invite code generated', 'success'); loadInviteCodes(projectId); }
                 else { showToast(data.error || 'Failed to generate code', 'error'); }
             } catch (err) { showToast('Failed to generate code', 'error'); }
@@ -2066,7 +2079,7 @@
             try {
                 const response = await authFetch(`/api/project/${projectId}/invite-code/${codeId}/delete`, { method: 'POST' });
                 if (!response) return;
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     showToast('Invite code deleted');
                     document.getElementById(`invite-code-${codeId}`)?.remove();
@@ -2113,7 +2126,7 @@
                 try {
                     const resp = await authFetch(`/api/project/${pid}/audits`);
                     if (!resp) { listEl.innerHTML = '<div class="audit-empty">Failed to load audit log</div>'; return; }
-                    const data = await resp.json();
+                    const data = await safeJson(resp);
                     if (!data.success) { listEl.innerHTML = `<div class="audit-empty">${data.error || 'Failed to load'}</div>`; return; }
                     auditCache[pid] = data.audits;
                     populateUserFilter(pid, data.audits);

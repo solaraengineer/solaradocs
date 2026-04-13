@@ -2913,7 +2913,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/documents`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to load documents:', error);
                     return { success: false, error };
@@ -2932,7 +2932,7 @@
                     const response = await authFetch(`/api/project/${projectId}/documents/${docId}`);
                     if (!response) return { success: false };
 
-                    const data = await response.json();
+                    const data = await safeJson(response);
                     if (data.success) {
                         cacheDocContent(docId, data.document);
                     }
@@ -2947,7 +2947,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/teams`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to load teams:', error);
                     return { success: false, error };
@@ -2958,7 +2958,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/audits`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to load audits:', error);
                     return { success: false, error };
@@ -2973,7 +2973,7 @@
                     });
                     if (!response) return { success: false };
 
-                    const data = await response.json();
+                    const data = await safeJson(response);
                     if (data.success && !data.pending) {
                         const cached = getCachedDocContent(docId);
                         if (cached) {
@@ -2998,7 +2998,7 @@
                         })
                     });
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to create document:', error);
                     return { success: false, error };
@@ -3013,7 +3013,7 @@
                     });
                     if (!response) return { success: false };
 
-                    const data = await response.json();
+                    const data = await safeJson(response);
                     if (data.success) {
                         const cached = getCachedDocContent(docId);
                         if (cached) {
@@ -3035,7 +3035,7 @@
                     });
                     if (!response) return { success: false };
 
-                    const data = await response.json();
+                    const data = await safeJson(response);
                     if (data.success) {
                         invalidateDocContent(docId);
                     }
@@ -3050,7 +3050,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/pending`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to load pending edits:', error);
                     return { success: false, error };
@@ -3065,7 +3065,7 @@
                     });
                     if (!response) return { success: false };
 
-                    const data = await response.json();
+                    const data = await safeJson(response);
                     if (data.success && action === 'accept' && data.document_id) {
                         invalidateDocContent(data.document_id);
                     }
@@ -3080,7 +3080,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/backups`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to load backups:', error);
                     return { success: false, error };
@@ -3094,7 +3094,7 @@
                     });
                     if (!response) return { success: false };
 
-                    const data = await response.json();
+                    const data = await safeJson(response);
                     if (data.success && data.document_id) {
                         invalidateDocContent(data.document_id);
                     }
@@ -3109,7 +3109,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/google/check-auth`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to check Google auth:', error);
                     return { success: false, error };
@@ -3120,7 +3120,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/google/docs`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to list Google Docs:', error);
                     return { success: false, error };
@@ -3138,11 +3138,7 @@
                         })
                     });
                     if (!response) return { success: false };
-                    const ct = response.headers.get('content-type');
-                    if (!ct || !ct.includes('application/json')) {
-                        return { success: false, error: 'Import failed. Check your tier limits.' };
-                    }
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to start Google import:', error);
                     return { success: false, error: 'Import failed' };
@@ -3153,7 +3149,7 @@
                 try {
                     const response = await authFetch(`/api/project/${projectId}/google/import/status`);
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to get import status:', error);
                     return { success: false, error };
@@ -3167,7 +3163,7 @@
                         body: JSON.stringify({ team_id: parseInt(teamId) })
                     });
                     if (!response) return { success: false };
-                    return await response.json();
+                    return await safeJson(response);
                 } catch (error) {
                     console.error('Failed to retry import:', error);
                     return { success: false, error };
@@ -3191,7 +3187,7 @@
             async refreshToken() {
                 try {
                     const res = await fetch('/gen/token', { credentials: 'include' });
-                    const data = await res.json();
+                    const data = await safeJson(res);
                     if (data.success && data.token) {
                         this.setToken(data.token);
                         return data.token;
@@ -3229,7 +3225,7 @@
             if (response.status === 401) {
                 let data;
                 try {
-                    data = await response.json();
+                    data = await safeJson(response);
                 } catch (e) {
                     TokenManager.clearToken();
                     window.location.href = '/login/';
@@ -3252,6 +3248,19 @@
                 }
             }
             return response;
+        }
+
+        async function safeJson(response) {
+            const ct = response.headers.get('content-type');
+            if (ct && ct.includes('application/json')) {
+                return await safeJson(response);
+            }
+            let error = 'Something went wrong';
+            if (response.status === 403) error = 'Access denied';
+            else if (response.status === 404) error = 'Not found';
+            else if (response.status === 429) error = 'Too many requests. Please try again later.';
+            else if (response.status >= 500) error = 'Server error. Please try again later.';
+            return { success: false, error };
         }
 
         // Initialize Quill with syntax highlighting
@@ -3939,7 +3948,7 @@
             try {
                 const response = await authFetch(url);
                 if (!response) { body.innerHTML = '<div class="diff-loading">Failed to load diff</div>'; return; }
-                const data = await response.json();
+                const data = await safeJson(response);
                 if (data.success) {
                     if (data.document_name) {
                         titleEl.textContent = title || `Changes — ${data.document_name}`;
