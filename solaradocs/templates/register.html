@@ -514,7 +514,7 @@
         async function safeJson(response) {
             const ct = response.headers.get('content-type');
             if (ct && ct.includes('application/json')) {
-                return await safeJson(response);
+                return await response.json();
             }
             let error = 'Something went wrong';
             if (response.status === 403) error = 'Access denied';
