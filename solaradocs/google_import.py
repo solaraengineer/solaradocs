@@ -1,3 +1,4 @@
+import html
 import json
 import logging
 
@@ -168,15 +169,82 @@ def fetch_google_doc_text(creds, doc_id):
 
     title = doc.get('title', 'Untitled')
     body = doc.get('body', {})
+    lists_data = doc.get('lists', {})
     content_parts = []
+    list_stack = []
+
+    HEADING_MAP = {
+        'HEADING_1': 'h1',
+        'HEADING_2': 'h2',
+        'HEADING_3': 'h3',
+        'HEADING_4': 'h4',
+    }
+
+    def get_list_tag(list_id, nesting_level):
+        list_def = lists_data.get(list_id, {})
+        nesting_levels = list_def.get('listProperties', {}).get('nestingLevels', [])
+        if 0 <= nesting_level < len(nesting_levels):
+            glyph_type = nesting_levels[nesting_level].get('glyphType', '')
+            if glyph_type and glyph_type not in ('NONE', 'GLYPH_TYPE_UNSPECIFIED'):
+                return 'ol'
+        return 'ul'
+
+    def close_all_lists():
+        while list_stack:
+            _, _, top_tag = list_stack.pop()
+            content_parts.append(f'</li></{top_tag}>')
+
+    def render_inline(para):
+        parts = []
+        for para_element in para.get('elements', []):
+            text_run = para_element.get('textRun')
+            if not text_run:
+                continue
+            raw = text_run.get('content', '')
+            if not raw:
+                continue
+            raw = raw.rstrip('\n')
+            if not raw:
+                continue
+            escaped = html.escape(raw).replace('\x0b', '<br>')
+            style = text_run.get('textStyle', {})
+            if style.get('underline'):
+                escaped = f'<u>{escaped}</u>'
+            if style.get('italic'):
+                escaped = f'<em>{escaped}</em>'
+            if style.get('bold'):
+                escaped = f'<strong>{escaped}</strong>'
+            parts.append(escaped)
+        return ''.join(parts)
 
     def walk_elements(elements):
         for element in elements:
             if 'paragraph' in element:
-                for para_element in element['paragraph'].get('elements', []):
-                    text_run = para_element.get('textRun')
-                    if text_run and text_run.get('content'):
-                        content_parts.append(text_run['content'])
+                para = element['paragraph']
+                bullet = para.get('bullet')
+                if bullet:
+                    list_id = bullet.get('listId', '')
+                    nesting = bullet.get('nestingLevel') or 0
+                    tag = get_list_tag(list_id, nesting)
+                    while list_stack and (
+                        list_stack[-1][0] != list_id
+                        or list_stack[-1][1] > nesting
+                    ):
+                        _, _, top_tag = list_stack.pop()
+                        content_parts.append(f'</li></{top_tag}>')
+                    if not list_stack or list_stack[-1][1] < nesting:
+                        content_parts.append(f'<{tag}>')
+                        list_stack.append((list_id, nesting, tag))
+                    else:
+                        content_parts.append('</li>')
+                    content_parts.append('<li>')
+                    content_parts.append(render_inline(para))
+                else:
+                    close_all_lists()
+                    style_type = para.get('paragraphStyle', {}).get('namedStyleType', '')
+                    tag = HEADING_MAP.get(style_type, 'p')
+                    content = render_inline(para)
+                    content_parts.append(f'<{tag}>{content}</{tag}>')
             if 'table' in element:
                 for row in element['table'].get('tableRows', []):
                     for cell in row.get('tableCells', []):
@@ -185,6 +253,7 @@ def fetch_google_doc_text(creds, doc_id):
                 walk_elements(element['tableOfContents'].get('content', []))
 
     walk_elements(body.get('content', []))
+    close_all_lists()
     text = ''.join(content_parts)
     return title, text
 
