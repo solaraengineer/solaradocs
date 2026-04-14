@@ -3408,6 +3408,18 @@ def redeem_invite_code(request):
         if Contributor.objects.filter(project=project, username=request.user.username).exists():
             return JsonResponse({'success': False, 'error': 'You are already a collaborator on this project'}, status=409)
 
+        user_tier = request.user.tier if hasattr(request.user, 'tier') else 'free'
+        limits = TIER_LIMITS.get(user_tier, TIER_LIMITS['free'])
+        collab_limit = limits['collaborations']
+
+        if collab_limit is not None:
+            current_collabs = Contributor.objects.filter(username=request.user.username).count()
+            if current_collabs >= collab_limit:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Collaboration limit reached ({collab_limit}). Upgrade your plan to join more projects.'
+                }, status=403)
+
         Contributor.objects.create(
             project=project,
             username=request.user.username,
