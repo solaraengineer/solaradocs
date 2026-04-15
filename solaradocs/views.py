@@ -1469,7 +1469,6 @@ def stripe_webhook(request):
                     except User.DoesNotExist:
                         pass
 
-            # duplicate detection — only log when something is actually wrong
             active_subs = stripe.Subscription.list(
                 customer=customer_id,
                 status='active'

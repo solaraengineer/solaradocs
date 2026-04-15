@@ -886,6 +886,16 @@
             color: var(--accent-green);
         }
 
+        .autosave-separator {
+            color: var(--text-tertiary);
+            opacity: 0.5;
+        }
+
+        #autosaveCountdown {
+            color: var(--text-tertiary);
+            font-variant-numeric: tabular-nums;
+        }
+
         /* Quill Overrides */
         .ql-toolbar.ql-snow {
             display: none;
@@ -2524,6 +2534,8 @@
                     <span class="autosave-indicator" id="autosaveIndicator">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
                         <span id="autosaveText">Saved</span>
+                        <span class="autosave-separator" id="autosaveSeparator">•</span>
+                        <span id="autosaveCountdown">Auto save in 5:00</span>
                     </span>
                     <span class="status-item"><kbd>Ctrl+S</kbd> Save</span>
                     <span class="status-item"><kbd>Ctrl+P</kbd> Print</span>
@@ -5098,73 +5110,171 @@
         let hasUnsavedChanges = false;
         let lastSavedContent = '';
 
+        // Autosave runs on a 5-minute throttle: the countdown is always
+        // running and at 0:00 any pending unsaved changes are flushed. Manual
+        // save and autosave both reset the countdown back to 5:00. Typing does
+        // NOT reset it — that guarantees edits are persisted within 5 minutes
+        // rather than being deferred indefinitely while the user keeps typing.
+        const AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;
+        let autosaveDeadline = Date.now() + AUTOSAVE_INTERVAL_MS;
+        let autosaveBriefSavedTimer = null;
+        let autosaveInProgress = false;
+
+        function resetAutosaveCountdown() {
+            autosaveDeadline = Date.now() + AUTOSAVE_INTERVAL_MS;
+            renderAutosaveCountdown();
+        }
+
+        function renderAutosaveCountdown() {
+            const el = document.getElementById('autosaveCountdown');
+            if (!el) return;
+            const remaining = Math.max(0, autosaveDeadline - Date.now());
+            const totalSecs = Math.ceil(remaining / 1000);
+            const mins = Math.floor(totalSecs / 60);
+            const secs = totalSecs % 60;
+            el.textContent = `Auto save in ${mins}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function relativeSavedLabel() {
+            if (lastModifiedTimestamp == null) return 'Saved';
+            const secs = Math.floor((Date.now() - lastModifiedTimestamp) / 1000);
+            if (secs < 10) return 'Saved just now';
+            if (secs < 60) return `Saved ${secs}s ago`;
+            if (secs < 3600) return `Saved ${Math.floor(secs / 60)}m ago`;
+            if (secs < 86400) return `Saved ${Math.floor(secs / 3600)}h ago`;
+            return `Saved ${Math.floor(secs / 86400)}d ago`;
+        }
+
         function updateAutosaveIndicator(state) {
             const indicator = document.getElementById('autosaveIndicator');
             const text = document.getElementById('autosaveText');
+            const separator = document.getElementById('autosaveSeparator');
+            const countdownEl = document.getElementById('autosaveCountdown');
             indicator.className = 'autosave-indicator';
+
+            // Cancel any pending transition out of the brief "Saved" flash,
+            // unless we're re-entering it.
+            if (autosaveBriefSavedTimer && state !== 'saved') {
+                clearTimeout(autosaveBriefSavedTimer);
+                autosaveBriefSavedTimer = null;
+            }
+
+            const showCountdown = (show) => {
+                separator.style.display = show ? '' : 'none';
+                countdownEl.style.display = show ? '' : 'none';
+            };
+
             if (state === 'saving') {
                 indicator.classList.add('saving');
                 text.textContent = 'Saving...';
                 indicator.querySelector('svg').innerHTML = '<path d="M21 12a9 9 0 1 1-6.219-8.56" style="animation: spin 1s linear infinite;"/>';
+                showCountdown(false);
             } else if (state === 'saved') {
+                // Brief "Saved" flash — hide the countdown for ~1.5s then
+                // transition to the idle state with the relative timestamp.
                 indicator.classList.add('saved');
                 text.textContent = 'Saved';
                 indicator.querySelector('svg').innerHTML = '<path d="M20 6L9 17l-5-5"/>';
+                showCountdown(false);
+                if (autosaveBriefSavedTimer) clearTimeout(autosaveBriefSavedTimer);
+                autosaveBriefSavedTimer = setTimeout(() => {
+                    autosaveBriefSavedTimer = null;
+                    updateAutosaveIndicator('idle');
+                }, 1500);
+            } else if (state === 'idle') {
+                // "Saved Xm ago • Auto save in Y:YY"
+                indicator.classList.add('saved');
+                text.textContent = relativeSavedLabel();
+                indicator.querySelector('svg').innerHTML = '<path d="M20 6L9 17l-5-5"/>';
+                showCountdown(true);
+                renderAutosaveCountdown();
             } else if (state === 'cached') {
                 indicator.classList.add('saving');
                 text.textContent = 'Cached locally';
                 indicator.querySelector('svg').innerHTML = '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>';
+                showCountdown(false);
             } else {
+                // unsaved — still show the countdown so the user knows when
+                // the next autosave will land.
                 text.textContent = 'Unsaved';
                 indicator.querySelector('svg').innerHTML = '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>';
+                showCountdown(true);
+                renderAutosaveCountdown();
             }
         }
 
-        // Track content changes + autosave
-        let autosaveTimer = null;
-        const AUTOSAVE_DELAY = 3000; // 3 seconds after last change
-
-        quill.on('text-change', () => {
-            if (currentDocumentId) {
-                const currentContent = quill.root.innerHTML;
-                hasUnsavedChanges = currentContent !== lastSavedContent;
-
-                // Debounced autosave
-                if (autosaveTimer) clearTimeout(autosaveTimer);
-                if (hasUnsavedChanges) {
+        async function performAutosave() {
+            if (autosaveInProgress) return;
+            if (!currentDocumentId || !hasUnsavedChanges) return;
+            autosaveInProgress = true;
+            updateAutosaveIndicator('saving');
+            const content = quill.root.innerHTML;
+            try {
+                const data = await API.saveDocument(currentDocumentId, content);
+                if (data.success && !data.requires_note) {
+                    lastSavedContent = content;
+                    hasUnsavedChanges = false;
+                    setLastModifiedNow();
+                    updateAutosaveIndicator('saved');
+                } else {
                     updateAutosaveIndicator('unsaved');
-                    autosaveTimer = setTimeout(() => {
-                        if (!currentDocumentId || !hasUnsavedChanges) return;
-                        updateAutosaveIndicator('saving');
-                        const content = quill.root.innerHTML;
-                        API.saveDocument(currentDocumentId, content).then(data => {
-                            if (data.success && !data.requires_note) {
-                                lastSavedContent = content;
-                                hasUnsavedChanges = false;
-                                setLastModifiedNow();
-                                updateAutosaveIndicator('saved');
-                            } else {
-                                updateAutosaveIndicator('unsaved');
-                            }
-                        }).catch(() => {
-                            updateAutosaveIndicator('unsaved');
-                        });
-                    }, AUTOSAVE_DELAY);
                 }
+            } catch (e) {
+                updateAutosaveIndicator('unsaved');
+            } finally {
+                autosaveInProgress = false;
+                resetAutosaveCountdown();
+            }
+        }
+
+        // Track content changes — does NOT reset the 5-minute deadline.
+        // The ticker below handles the actual autosave fire.
+        quill.on('text-change', () => {
+            if (!currentDocumentId) return;
+            const currentContent = quill.root.innerHTML;
+            const wasUnsaved = hasUnsavedChanges;
+            hasUnsavedChanges = currentContent !== lastSavedContent;
+
+            if (hasUnsavedChanges && !wasUnsaved) {
+                updateAutosaveIndicator('unsaved');
+            } else if (!hasUnsavedChanges && wasUnsaved) {
+                updateAutosaveIndicator('idle');
             }
         });
+
+        // 1-second ticker: updates the countdown display, refreshes the
+        // "Saved Xm ago" label, and fires the autosave when the deadline hits.
+        setInterval(() => {
+            renderAutosaveCountdown();
+            // Refresh the relative label while in the idle (saved) state.
+            const indicator = document.getElementById('autosaveIndicator');
+            if (!autosaveBriefSavedTimer && !autosaveInProgress &&
+                indicator.classList.contains('saved') && !hasUnsavedChanges) {
+                const text = document.getElementById('autosaveText');
+                if (text) text.textContent = relativeSavedLabel();
+            }
+            if (Date.now() >= autosaveDeadline) {
+                if (hasUnsavedChanges && currentDocumentId && !autosaveInProgress) {
+                    performAutosave();
+                } else {
+                    // Nothing to save — silently restart the countdown.
+                    resetAutosaveCountdown();
+                }
+            }
+        }, 1000);
 
         // Auto-save before switching documents
         const originalSelectDocument = selectDocument;
         selectDocument = async function(docId, forceRefresh = false) {
             // Auto-save current doc before switching
             if (hasUnsavedChanges && currentDocumentId && currentDocumentId !== docId) {
-                if (autosaveTimer) clearTimeout(autosaveTimer);
                 const content = quill.root.innerHTML;
                 updateAutosaveIndicator('saving');
                 const data = await API.saveDocument(currentDocumentId, content);
                 if (data.success && !data.requires_note) {
+                    setLastModifiedNow();
                     updateAutosaveIndicator('saved');
+                    resetAutosaveCountdown();
                 } else if (data.requires_note) {
                     localStorage.setItem('unsaved_doc_' + currentDocumentId, content);
                     updateAutosaveIndicator('cached');
@@ -5182,7 +5292,8 @@
                 updateAutosaveIndicator('unsaved');
             } else {
                 hasUnsavedChanges = false;
-                updateAutosaveIndicator('saved');
+                updateAutosaveIndicator('idle');
+                resetAutosaveCountdown();
             }
 
             lastSavedContent = hasUnsavedChanges ? '' : quill.root.innerHTML;
@@ -5279,6 +5390,7 @@ function hidePendingNoteModal() {
                 lastSavedContent = content;
                 hasUnsavedChanges = false;
                 updateAutosaveIndicator('saved');
+                resetAutosaveCountdown();
             } else if (data.requires_note) {
                 // User needs to provide a note for pending review
                 pendingSaveContent = content;

@@ -112,11 +112,11 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_HOST = 'smtp-relay.brevo.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'apikey'
-EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY')
+EMAIL_HOST_USER = 'a722bd001@smtp-brevo.com'
+EMAIL_HOST_PASSWORD = os.getenv('BREVO_API_KEY')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM', 'support@solaradocs.net')
 
 # Celery
