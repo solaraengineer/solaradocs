@@ -106,6 +106,26 @@
         .plan-card:not(.recommended) .plan-cta button, .plan-card:not(.recommended) .plan-cta a { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
         .plan-card:not(.recommended) .plan-cta button:hover, .plan-card:not(.recommended) .plan-cta a:hover { background: var(--border); border-color: var(--text-tertiary); }
 
+        /* Current plan state */
+        .plan-card.current-plan { border-color: var(--accent-green); background: rgba(127, 176, 105, 0.04); }
+        .plan-card.current-plan .current-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--accent-green); color: var(--bg-primary);
+            padding: 0.375rem 1rem; border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+        }
+        .plan-card.current-plan .plan-cta button,
+        .plan-card.current-plan .plan-cta a {
+            background: transparent !important; color: var(--text-tertiary) !important;
+            border: 1px solid var(--border) !important; cursor: default !important;
+        }
+        .plan-card.current-plan .plan-cta button:hover,
+        .plan-card.current-plan .plan-cta a:hover {
+            background: transparent !important; transform: none !important;
+            border-color: var(--border) !important;
+        }
+
         /* ===== CHECKOUT MODAL ===== */
         .checkout-overlay { display: none; position: fixed; inset: 0; z-index: 999; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
         .checkout-overlay.active { display: flex; }
@@ -230,7 +250,7 @@
 <body>
     <nav class="navbar">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <a href="javascript:history.back()" class="back-btn">
+            <a href="{% if request.user.is_authenticated %}/dashboard{% else %}/{% endif %}" class="back-btn" id="backBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                 Back
             </a>
@@ -256,12 +276,13 @@
     <main class="main-container">
         <div class="page-header">
             <h1 class="page-title">Simple Pricing</h1>
-            <p class="page-subtitle">No bullshit. Pick a plan, start editing in under 2 minutes.</p>
+            <p class="page-subtitle">Straightforward pricing. Pick a plan, start editing in under 2 minutes.</p>
         </div>
 
         <div class="plans-grid">
             <!-- Free -->
-            <div class="plan-card">
+            <div class="plan-card{% if current_tier == 'free' %} current-plan{% endif %}">
+                {% if current_tier == 'free' %}<span class="current-badge">Current plan</span>{% endif %}
                 <h3 class="plan-name">Free</h3>
                 <p class="plan-desc">Get started and try it out.</p>
                 <div class="plan-price"><span class="price-amount">$0</span><span class="price-period">/ month</span></div>
@@ -274,11 +295,20 @@
                     <li class="disabled"><span class="feature-cross"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>No backups</li>
                     <li class="disabled"><span class="feature-cross"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>No audit logs</li>
                 </ul>
-                <div class="plan-cta"><a href="/register">Get Started</a></div>
+                <div class="plan-cta">
+                    {% if current_tier == 'free' %}
+                        <a href="#" onclick="return false;">Current plan</a>
+                    {% elif request.user.is_authenticated %}
+                        <a href="#" onclick="return false;">Included</a>
+                    {% else %}
+                        <a href="/register">Get Started</a>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Personal -->
-            <div class="plan-card">
+            <div class="plan-card{% if current_tier == 'personal' %} current-plan{% endif %}">
+                {% if current_tier == 'personal' %}<span class="current-badge">Current plan</span>{% endif %}
                 <h3 class="plan-name">Personal</h3>
                 <p class="plan-desc">Perfect for personal projects.</p>
                 <div class="plan-price"><span class="price-amount">$6</span><span class="price-period">/ month</span></div>
@@ -291,12 +321,20 @@
                     <li><span class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>Version backups</li>
                     <li class="disabled"><span class="feature-cross"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>No audit logs</li>
                 </ul>
-                <div class="plan-cta"><button onclick="openCheckout('personal', 'Personal', '$6.00')">Get Started</button></div>
+                <div class="plan-cta">
+                    {% if current_tier == 'personal' %}
+                        <button type="button" onclick="return false;">Current plan</button>
+                    {% elif current_tier == 'team' or current_tier == 'enterprise' %}
+                        <button type="button" onclick="openCheckout('personal', 'Personal', '$6.00')">Downgrade</button>
+                    {% else %}
+                        <button type="button" onclick="openCheckout('personal', 'Personal', '$6.00')">Subscribe</button>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Team -->
-            <div class="plan-card recommended">
-                <span class="plan-badge">Most Popular</span>
+            <div class="plan-card recommended{% if current_tier == 'team' %} current-plan{% endif %}">
+                {% if current_tier == 'team' %}<span class="current-badge">Current plan</span>{% else %}<span class="plan-badge">Most Popular</span>{% endif %}
                 <h3 class="plan-name">Team</h3>
                 <p class="plan-desc">For teams that need to ship fast.</p>
                 <div class="plan-price"><span class="price-amount">$16</span><span class="price-period">/ month</span></div>
@@ -310,11 +348,22 @@
                     <li><span class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>Audit logs</li>
                     <li><span class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>Pending approvals</li>
                 </ul>
-                <div class="plan-cta"><button onclick="openCheckout('team', 'Team', '$16.00')">Get Started</button></div>
+                <div class="plan-cta">
+                    {% if current_tier == 'team' %}
+                        <button type="button" onclick="return false;">Current plan</button>
+                    {% elif current_tier == 'enterprise' %}
+                        <button type="button" onclick="openCheckout('team', 'Team', '$16.00')">Downgrade</button>
+                    {% elif current_tier == 'personal' %}
+                        <button type="button" onclick="openCheckout('team', 'Team', '$16.00')">Upgrade</button>
+                    {% else %}
+                        <button type="button" onclick="openCheckout('team', 'Team', '$16.00')">Subscribe</button>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Enterprise -->
-            <div class="plan-card">
+            <div class="plan-card{% if current_tier == 'enterprise' %} current-plan{% endif %}">
+                {% if current_tier == 'enterprise' %}<span class="current-badge">Current plan</span>{% endif %}
                 <h3 class="plan-name">Enterprise</h3>
                 <p class="plan-desc">Unlimited everything. Scale it.</p>
                 <div class="plan-price"><span class="price-amount">$36</span><span class="price-period">/ month</span></div>
@@ -329,7 +378,15 @@
                     <li><span class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>Pending approvals</li>
                     <li><span class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>Dedicated support</li>
                 </ul>
-                <div class="plan-cta"><button onclick="openCheckout('enterprise', 'Enterprise', '$36.00')">Get Started</button></div>
+                <div class="plan-cta">
+                    {% if current_tier == 'enterprise' %}
+                        <button type="button" onclick="return false;">Current plan</button>
+                    {% elif current_tier == 'personal' or current_tier == 'team' %}
+                        <button type="button" onclick="openCheckout('enterprise', 'Enterprise', '$36.00')">Upgrade</button>
+                    {% else %}
+                        <button type="button" onclick="openCheckout('enterprise', 'Enterprise', '$36.00')">Subscribe</button>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
@@ -406,6 +463,8 @@
                             <div class="checkout-payment-logos">
                                 <svg viewBox="0 0 38 24" width="38" height="24" role="img" aria-labelledby="visa"><title id="visa">Visa</title><rect width="38" height="24" rx="3" fill="#1A1F71"/><path d="M15.3 16.2l1.6-9.4h2.5l-1.6 9.4h-2.5zm10.3-9.2c-.5-.2-1.3-.4-2.2-.4-2.5 0-4.2 1.3-4.2 3.1 0 1.4 1.2 2.1 2.2 2.6 1 .5 1.3.8 1.3 1.2 0 .6-.8 1-1.5 1-.1 0-2.1-.4-2.1-.4l-.3 1.5s1 .4 2.5.4c2.6 0 4.3-1.3 4.3-3.2 0-1.1-.6-1.9-2.1-2.6-.9-.4-1.4-.7-1.4-1.2 0-.4.5-.8 1.4-.8.8 0 1.5.2 2 .3l.3-1.5h-.2zm5.5 0h-1.9c-.6 0-1 .2-1.3.7l-3.6 8.5h2.5l.5-1.4h3.1l.3 1.4h2.2l-1.8-9.2zm-3.3 6l1.3-3.5.7 3.5h-2zM13.5 6.8l-2.3 6.4-.3-1.2-.8-4c-.1-.5-.5-.7-1-.7H5.8v.2c.9.2 2 .5 2.6.9l2.2 8.4h2.6l3.9-9.4h-2.6l-1 .4z" fill="#fff"/></svg>
                                 <svg viewBox="0 0 38 24" width="38" height="24" role="img" aria-labelledby="mc"><title id="mc">Mastercard</title><rect width="38" height="24" rx="3" fill="#252525"/><circle cx="15" cy="12" r="7" fill="#EB001B"/><circle cx="23" cy="12" r="7" fill="#F79E1B"/><path d="M19 7.3c1.7 1.2 2.8 3.2 2.8 5.4s-1.1 4.2-2.8 5.4c-1.7-1.2-2.8-3.2-2.8-5.4s1.1-4.2 2.8-5.4z" fill="#FF5F00"/></svg>
+                                <svg viewBox="0 0 38 24" width="38" height="24" role="img" aria-labelledby="amex"><title id="amex">American Express</title><rect width="38" height="24" rx="3" fill="#2E77BC"/><text x="19" y="15" text-anchor="middle" font-family="Arial, sans-serif" font-size="6.5" font-weight="900" fill="#fff" letter-spacing="0.2">AMEX</text></svg>
+                                <svg viewBox="0 0 38 24" width="38" height="24" role="img" aria-labelledby="disc"><title id="disc">Discover</title><rect width="38" height="24" rx="3" fill="#F2F2F2"/><path d="M0 14h38v7a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-7z" fill="#F68121"/><text x="18" y="13" text-anchor="middle" font-family="Arial, sans-serif" font-size="5.5" font-weight="700" fill="#000">DISCOVER</text></svg>
                             </div>
                             <div class="checkout-legal">
                                 By subscribing, you agree to our <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.

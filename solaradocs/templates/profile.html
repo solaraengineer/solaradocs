@@ -752,30 +752,30 @@
 
     <!-- Cancel Subscription Modal -->
     <div class="modal-overlay" id="cancel-modal">
-        <div class="modal">
-            <div class="modal-title">Cancel Subscription?</div>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title">
+            <div class="modal-title" id="cancel-modal-title">Cancel Subscription?</div>
             <p class="modal-text">
                 Your subscription will remain active until the end of your billing period.
                 After that, you'll be downgraded to the free plan.
             </p>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeCancelModal()">Keep Subscription</button>
-                <button class="btn btn-danger" onclick="cancelSubscription()">Yes, Cancel</button>
+                <button class="btn btn-danger" id="cancelSubBtn" onclick="cancelSubscription()">Cancel Subscription</button>
             </div>
         </div>
     </div>
 
     <!-- Delete Account Modal -->
     <div class="modal-overlay" id="delete-modal">
-        <div class="modal">
-            <div class="modal-title">Delete Account?</div>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+            <div class="modal-title" id="delete-modal-title">Delete Account?</div>
             <p class="modal-text">
                 This will permanently delete your account and all associated data.
                 This action cannot be undone.
             </p>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-                <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Keep Account</button>
+                <button class="btn btn-danger" id="deleteAccountBtn" onclick="deleteAccount()">Delete Account</button>
             </div>
         </div>
     </div>
@@ -801,6 +801,8 @@
             e.preventDefault();
             const form = e.target;
             const alert = document.getElementById('password-alert');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn ? submitBtn.textContent : '';
 
             const currentPassword = form.current_password.value;
             const newPassword = form.new_password.value;
@@ -819,6 +821,8 @@
                 alert.style.display = 'block';
                 return;
             }
+
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Updating...'; }
 
             try {
                 const res = await fetch('/change-password/', {
@@ -849,6 +853,9 @@
                 alert.textContent = 'Something went wrong';
                 alert.style.display = 'block';
             }
+            finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalBtnText; }
+            }
         });
 
         // Cancel subscription
@@ -861,6 +868,9 @@
         }
 
         async function cancelSubscription() {
+            const btn = document.getElementById('cancelSubBtn');
+            const originalText = btn ? btn.textContent : '';
+            if (btn) { btn.disabled = true; btn.textContent = 'Canceling...'; }
             try {
                 const res = await fetch('/cancel-subscription/', {
                     method: 'POST',
@@ -877,11 +887,14 @@
                     setTimeout(() => location.reload(), 2600);
                 } else {
                     showToast(data.error || 'Failed to cancel subscription', 'error');
+                    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+                    closeCancelModal();
                 }
             } catch (err) {
                 showToast('Something went wrong', 'error');
+                if (btn) { btn.disabled = false; btn.textContent = originalText; }
+                closeCancelModal();
             }
-            closeCancelModal();
         }
 
         // Delete account
@@ -894,6 +907,9 @@
         }
 
         async function deleteAccount() {
+            const btn = document.getElementById('deleteAccountBtn');
+            const originalText = btn ? btn.textContent : '';
+            if (btn) { btn.disabled = true; btn.textContent = 'Deleting...'; }
             try {
                 const res = await fetch('/delete-account/', {
                     method: 'POST',
@@ -907,22 +923,38 @@
 
                 if (data.success) {
                     window.location.href = '/';
+                    return;
                 } else {
                     showToast(data.error || 'Failed to delete account', 'error');
+                    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+                    closeDeleteModal();
                 }
             } catch (err) {
                 showToast('Something went wrong', 'error');
+                if (btn) { btn.disabled = false; btn.textContent = originalText; }
+                closeDeleteModal();
             }
-            closeDeleteModal();
         }
 
-        // Close modals on overlay click
+        // Close modals on overlay click (only if not mid-request)
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    overlay.classList.remove('active');
-                }
+                if (e.target !== overlay) return;
+                const primaryAction = overlay.querySelector('.btn-danger, .btn-primary');
+                if (primaryAction && primaryAction.disabled) return;
+                overlay.classList.remove('active');
             });
+        });
+
+        // Close modals on Escape (only the topmost, only if not mid-request)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const openModals = document.querySelectorAll('.modal-overlay.active');
+            if (openModals.length === 0) return;
+            const topModal = openModals[openModals.length - 1];
+            const primaryAction = topModal.querySelector('.btn-danger, .btn-primary');
+            if (primaryAction && primaryAction.disabled) return;
+            topModal.classList.remove('active');
         });
     </script>
 

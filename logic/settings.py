@@ -215,6 +215,9 @@ OAUTH_REQUEST_TIMEOUT = int(os.getenv('OAUTH_REQUEST_TIMEOUT', '30'))
 # Admin notification for server errors
 ADMINS = [('Admin', os.getenv('ADMIN_EMAIL', ''))]
 
+# Admin panel URL prefix (obscured path — override via ADMIN_PANEL_PATH env var)
+ADMIN_PANEL_PATH = os.getenv('ADMIN_PANEL_PATH', 'crypticA7X').strip('/')
+
 # Logging configuration
 LOGGING = {
     'version': 1,

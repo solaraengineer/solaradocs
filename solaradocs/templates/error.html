@@ -198,6 +198,27 @@
             transform: translateX(-3px);
         }
 
+        /* Support link */
+        .support-line {
+            margin-top: 20px;
+            font-size: 0.78rem;
+            color: var(--text-tertiary);
+            opacity: 0;
+            animation: fadeUp 0.7s ease 0.6s forwards;
+        }
+
+        .support-line a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--border);
+            transition: color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .support-line a:hover {
+            color: var(--accent-orange);
+            border-bottom-color: var(--accent-orange);
+        }
+
         /* Wardent badge */
         .wardent-badge {
             position: fixed;
@@ -309,6 +330,10 @@
             </svg>
             Back to safety
         </a>
+
+        <p class="support-line">
+            Need help? <a href="mailto:support@solaradocs.net">Contact support</a>
+        </p>
     </div>
 
     <!-- Wardent badge -->

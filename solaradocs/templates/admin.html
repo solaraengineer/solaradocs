@@ -1299,9 +1299,9 @@
                                 <td style="font-size: 0.78rem;">{{ user.date_joined|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
-                                        <button class="action-btn" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.Tier }}', {{ user.is_active|yesno:'true,false' }}, {{ user.is_superuser|yesno:'true,false' }})">Edit</button>
-                                        <button class="action-btn" onclick="toggleUserActive({{ user.id }}, '{{ user.username }}', {{ user.is_active|yesno:'true,false' }})">{% if user.is_active %}Disable{% else %}Enable{% endif %}</button>
-                                        <button class="action-btn danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">Delete</button>
+                                        <button class="action-btn" data-action="edit-user" data-user-id="{{ user.id }}" data-username="{{ user.username }}" data-tier="{{ user.Tier }}">Edit</button>
+                                        <button class="action-btn" data-action="toggle-user" data-user-id="{{ user.id }}" data-username="{{ user.username }}" data-active="{{ user.is_active|yesno:'true,false' }}">{% if user.is_active %}Disable{% else %}Enable{% endif %}</button>
+                                        <button class="action-btn danger" data-action="delete-user" data-user-id="{{ user.id }}" data-username="{{ user.username }}">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1348,8 +1348,8 @@
                                 <td style="font-size: 0.78rem;">{{ project.created_at|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
-                                        <button class="action-btn" onclick="transferProject({{ project.id }}, '{{ project.project_name }}')">Transfer</button>
-                                        <button class="action-btn danger" onclick="deleteProject({{ project.id }}, '{{ project.project_name }}')">Delete</button>
+                                        <button class="action-btn" data-action="transfer-project" data-project-id="{{ project.id }}" data-project-name="{{ project.project_name }}">Transfer</button>
+                                        <button class="action-btn danger" data-action="delete-project" data-project-id="{{ project.id }}" data-project-name="{{ project.project_name }}">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1431,8 +1431,8 @@
                                 <td style="font-size: 0.78rem;">{{ log.created_at|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
-                                        <button class="action-btn" onclick="editChangelog({{ log.id }}, '{{ log.version }}', '{{ log.title }}', '{{ log.description|escapejs }}', '{{ log.version_type }}')">Edit</button>
-                                        <button class="action-btn danger" onclick="deleteChangelog({{ log.id }})">Delete</button>
+                                        <button class="action-btn" data-action="edit-changelog" data-log-id="{{ log.id }}" data-version="{{ log.version }}" data-title="{{ log.title }}" data-description="{{ log.description }}" data-type="{{ log.version_type }}">Edit</button>
+                                        <button class="action-btn danger" data-action="delete-changelog" data-log-id="{{ log.id }}">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1604,7 +1604,7 @@
                                 <td style="font-size: 0.78rem;">{{ promo.created_at|date:"M d, Y" }}</td>
                                 <td>
                                     <div class="actions-cell">
-                                        <button class="action-btn danger" onclick="deletePromo({{ promo.id }}, '{{ promo.code }}')">Delete</button>
+                                        <button class="action-btn danger" data-action="delete-promo" data-promo-id="{{ promo.id }}" data-code="{{ promo.code }}">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1805,7 +1805,7 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
-        const BASE = '/crypticA7X';
+        const BASE = '{{ admin_base_path|escapejs }}';
 
         // ── Confirm Dialog ──────────────────────
         function showConfirm(message, confirmLabel = 'Confirm') {
@@ -2063,6 +2063,41 @@
 
             const res = await api('create-promo', { code, tier, expires, left_uses: leftUses });
             if (res) { toast('Promo code created'); location.reload(); }
+        });
+
+        // ── Row action delegation ───────────────
+        // Avoid interpolating user/project/changelog/promo strings into onclick handlers:
+        // read them from data-* attributes (auto-escaped by Django) and dispatch here instead.
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            switch (action) {
+                case 'edit-user':
+                    editUser(parseInt(btn.dataset.userId, 10), btn.dataset.username, btn.dataset.tier);
+                    break;
+                case 'toggle-user':
+                    toggleUserActive(parseInt(btn.dataset.userId, 10), btn.dataset.username, btn.dataset.active === 'true');
+                    break;
+                case 'delete-user':
+                    deleteUser(parseInt(btn.dataset.userId, 10), btn.dataset.username);
+                    break;
+                case 'transfer-project':
+                    transferProject(parseInt(btn.dataset.projectId, 10), btn.dataset.projectName);
+                    break;
+                case 'delete-project':
+                    deleteProject(parseInt(btn.dataset.projectId, 10), btn.dataset.projectName);
+                    break;
+                case 'edit-changelog':
+                    editChangelog(parseInt(btn.dataset.logId, 10), btn.dataset.version, btn.dataset.title, btn.dataset.description, btn.dataset.type);
+                    break;
+                case 'delete-changelog':
+                    deleteChangelog(parseInt(btn.dataset.logId, 10));
+                    break;
+                case 'delete-promo':
+                    deletePromo(parseInt(btn.dataset.promoId, 10), btn.dataset.code);
+                    break;
+            }
         });
 
         // ── Dashboard: Greeting ─────────────────

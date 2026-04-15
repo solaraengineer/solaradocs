@@ -277,7 +277,7 @@
         <h1 class="success-title">Payment Successful!</h1>
         <p class="success-message">You have successfully upgraded your account</p>
 
-        <div class="plan-badge">{{ plan_name|default:"Student" }} Plan</div>
+        <div class="plan-badge">{{ plan_name|default:"Personal" }} Plan</div>
 
         <div class="details-card">
             <div class="detail-row">
@@ -290,11 +290,11 @@
             </div>
             <div class="detail-row">
                 <span class="detail-label">Tier</span>
-                <span class="detail-value">{{ plan_name|default:"Student" }}</span>
+                <span class="detail-value">{{ plan_name|default:"Personal" }}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Amount Paid</span>
-                <span class="detail-value">${{ amount|default:"5.00" }}</span>
+                <span class="detail-value">${{ amount|default:"6.00" }}</span>
             </div>
         </div>
 
@@ -308,8 +308,12 @@
     </div>
 
     <script>
-        // Confetti animation
+        // Confetti animation — respects user motion preferences
         function createConfetti() {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                return;
+            }
+
             const colors = ['#d4a574', '#7fb069', '#6b9ece', '#9d7cd8', '#5fb3a1'];
 
             for (let i = 0; i < 50; i++) {

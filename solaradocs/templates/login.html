@@ -258,6 +258,44 @@
             gap: 0.5rem;
         }
 
+        .form-input.has-error {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 0 3px rgba(212, 106, 106, 0.12);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-secondary);
+        }
+
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .password-wrapper .form-input {
+            padding-right: 2.75rem;
+        }
+
         .btn-submit {
             width: 100%;
             padding: 0.875rem 1.5rem;
@@ -389,12 +427,20 @@
 
                     <div class="form-group">
                         <label class="form-label" for="username">Username</label>
-                        <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username" required>
+                        <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username" autocomplete="username" required>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                        <div class="password-wrapper">
+                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" autocomplete="current-password" required>
+                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="passwordToggleIcon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
                         <a href="/password-reset" class="forgot-password">Forgot password?</a>
                     </div>
 
@@ -443,6 +489,27 @@
             }
         };
 
+        // Password toggle
+        document.getElementById('passwordToggle').addEventListener('click', () => {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('passwordToggleIcon');
+            const btn = document.getElementById('passwordToggle');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.setAttribute('aria-label', 'Hide password');
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+            } else {
+                input.type = 'password';
+                btn.setAttribute('aria-label', 'Show password');
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+            }
+        });
+
+        // Clear field error class on focus
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('focus', () => input.classList.remove('has-error'));
+        });
+
         // Form submission
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -450,14 +517,21 @@
             const submitBtn = document.getElementById('submitBtn');
             const errorMessage = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
+            const usernameField = document.getElementById('username');
+            const passwordField = document.getElementById('password');
+
+            // Guard against double-submit
+            if (submitBtn.disabled) return;
 
             submitBtn.disabled = true;
             submitBtn.innerHTML = 'Signing in...';
             errorMessage.classList.remove('visible');
+            usernameField.classList.remove('has-error');
+            passwordField.classList.remove('has-error');
 
             const formData = new FormData();
-            formData.append('username', document.getElementById('username').value);
-            formData.append('password', document.getElementById('password').value);
+            formData.append('username', usernameField.value);
+            formData.append('password', passwordField.value);
 
             try {
                 const response = await fetch('/login/', {
@@ -480,6 +554,8 @@
                 } else {
                     errorText.textContent = data.error || 'Invalid credentials. Please try again.';
                     errorMessage.classList.add('visible');
+                    usernameField.classList.add('has-error');
+                    passwordField.classList.add('has-error');
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = 'Sign in <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
                 }

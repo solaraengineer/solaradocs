@@ -2,6 +2,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.conf import settings
 from django.db.models import Count, Sum, Q, F
 from django.db.models.functions import TruncDate, TruncMonth
 from django.utils import timezone
@@ -75,6 +76,7 @@ def admin_panel(request):
         'changelogs': changelogs,
         'promo_codes': promo_codes,
         'stats': stats,
+        'admin_base_path': f'/{settings.ADMIN_PANEL_PATH}',
         'signups_by_day': json.dumps([
             {'day': str(s['day']), 'count': s['count']} for s in signups_by_day
         ]),

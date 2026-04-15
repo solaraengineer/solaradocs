@@ -1024,9 +1024,12 @@
             padding: 0.5rem;
             min-width: 180px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            z-index: 100;
+            z-index: 150;
             display: none;
         }
+
+        /* Keep Quill's link tooltip below modals but above editor content */
+        .ql-tooltip { z-index: 300 !important; }
 
         .export-dropdown.show {
             display: block;
@@ -1840,7 +1843,7 @@
             justify-content: center;
             cursor: pointer;
             color: var(--text-tertiary);
-            z-index: 20;
+            z-index: 90;
             transition: all 0.15s ease;
         }
 
@@ -1853,6 +1856,11 @@
         .sidebar-expand-tab svg {
             width: 12px;
             height: 12px;
+            transition: transform 0.2s ease;
+        }
+
+        .sidebar-expand-tab:hover svg {
+            transform: translateX(2px);
         }
 
         .sidebar-expand-tab.visible {
@@ -1875,7 +1883,7 @@
             justify-content: center;
             cursor: pointer;
             color: var(--text-tertiary);
-            z-index: 20;
+            z-index: 90;
             transition: all 0.15s ease;
         }
 
@@ -1888,6 +1896,11 @@
         .panel-expand-tab svg {
             width: 12px;
             height: 12px;
+            transition: transform 0.2s ease;
+        }
+
+        .panel-expand-tab:hover svg {
+            transform: translateX(-2px);
         }
 
         .panel-expand-tab.visible {
@@ -3327,10 +3340,19 @@
 
             if (documents.length === 0) {
                 container.innerHTML = `
-                    <div style="padding: 1rem; text-align: center; color: var(--text-tertiary); font-size: 0.85rem;">
-                        No documents yet. Create one!
+                    <div style="padding: 1.5rem 1rem; text-align: center; color: var(--text-tertiary); font-size: 0.85rem;">
+                        <div style="margin-bottom: 0.75rem;">No documents yet.</div>
+                        <button type="button" id="emptyStateCreateBtn" class="new-doc-btn" style="display: inline-flex; width: auto; padding: 0.5rem 1rem;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Create first document
+                        </button>
                     </div>
                 `;
+                const createBtn = document.getElementById('emptyStateCreateBtn');
+                if (createBtn) createBtn.addEventListener('click', openNewDocModal);
                 return;
             }
 
@@ -3425,6 +3447,7 @@
             if (data.success) {
                 quill.root.innerHTML = data.document.content || '';
                 updateWordCount();
+                setLastModifiedNow();
             } else {
                 showToast('Failed to load document', 'error');
             }
@@ -4915,10 +4938,35 @@
         // ==================== UTILS ====================
 
         function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            if (text == null) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
+
+        // Relative-time display for the "Modified" info row
+        let lastModifiedTimestamp = null;
+        function setLastModifiedNow() {
+            lastModifiedTimestamp = Date.now();
+            renderLastModified();
+        }
+        function renderLastModified() {
+            const el = document.getElementById('lastModified');
+            if (!el || lastModifiedTimestamp == null) return;
+            const secs = Math.floor((Date.now() - lastModifiedTimestamp) / 1000);
+            let label;
+            if (secs < 10) label = 'Just now';
+            else if (secs < 60) label = `${secs}s ago`;
+            else if (secs < 3600) label = `${Math.floor(secs / 60)}m ago`;
+            else if (secs < 86400) label = `${Math.floor(secs / 3600)}h ago`;
+            else label = `${Math.floor(secs / 86400)}d ago`;
+            el.textContent = label;
+        }
+        // Tick the relative timestamp every 30 seconds
+        setInterval(renderLastModified, 30 * 1000);
 
         // Connection status
         function updateStatus(status) {
@@ -4931,25 +4979,25 @@
 
         setTimeout(() => updateStatus(''), 1000);
 
-        // Keyboard shortcuts
+        // Keyboard shortcuts — use Ctrl on Windows/Linux, Cmd on macOS (not both)
+        const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                if (e.key === 's') {
-                    e.preventDefault();
-                    document.getElementById('saveBtn').click();
-                }
-                if (e.key === 'p') {
-                    e.preventDefault();
-                    document.getElementById('printBtn').click();
-                }
-                if (e.key === 'k') {
-                    e.preventDefault();
-                    document.getElementById('linkBtn').click();
-                }
-                if (e.shiftKey && (e.key === 'C' || e.key === 'c')) {
-                    e.preventDefault();
-                    document.getElementById('codeBlockBtn').click();
-                }
+            const modifier = IS_MAC ? e.metaKey : e.ctrlKey;
+            if (!modifier) return;
+            // Use e.code so Shift/CapsLock don't break the match
+            const code = e.code;
+            if (code === 'KeyS' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('saveBtn').click();
+            } else if (code === 'KeyP' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('printBtn').click();
+            } else if (code === 'KeyK' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('linkBtn').click();
+            } else if (code === 'KeyC' && e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('codeBlockBtn').click();
             }
         });
 
@@ -5030,16 +5078,20 @@
             }
         });
 
-        // Optional: Periodic background refresh every 5 minutes while active
+        // Periodic background refresh every 15 minutes while visible.
+        // (The visibilitychange handler already covers refresh-on-return.)
+        // Skip when the user has unsaved changes or a modal is open to avoid
+        // disrupting input state.
         setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                API.getDocuments().then(data => {
-                    if (data.success && data.documents) {
-                        renderDocumentsList(data.documents);
-                    }
-                });
-            }
-        }, 5 * 60 * 1000);
+            if (document.visibilityState !== 'visible') return;
+            if (hasUnsavedChanges) return;
+            if (document.querySelector('.modal-overlay.show')) return;
+            API.getDocuments().then(data => {
+                if (data.success && data.documents) {
+                    renderDocumentsList(data.documents);
+                }
+            }).catch(() => {});
+        }, 15 * 60 * 1000);
 
         // ==================== UNSAVED CHANGES WARNING ====================
 
@@ -5089,7 +5141,7 @@
                             if (data.success && !data.requires_note) {
                                 lastSavedContent = content;
                                 hasUnsavedChanges = false;
-                                document.getElementById('lastModified').textContent = 'Just now';
+                                setLastModifiedNow();
                                 updateAutosaveIndicator('saved');
                             } else {
                                 updateAutosaveIndicator('unsaved');
@@ -5188,7 +5240,7 @@ function hidePendingNoteModal() {
             const data = await API.saveDocument(currentDocumentId, pendingSaveContent, note);
             if (data.success) {
                 showToast('Changes submitted for review');
-                document.getElementById('lastModified').textContent = 'Just now';
+                setLastModifiedNow();
                 hasUnsavedChanges = false;
                 hidePendingNoteModal();
             } else {
@@ -5223,7 +5275,7 @@ function hidePendingNoteModal() {
             const data = await API.saveDocument(currentDocumentId, content);
             if (data.success) {
                 showToast(data.pending ? 'Changes submitted for review' : 'Saved successfully');
-                document.getElementById('lastModified').textContent = 'Just now';
+                setLastModifiedNow();
                 lastSavedContent = content;
                 hasUnsavedChanges = false;
                 updateAutosaveIndicator('saved');

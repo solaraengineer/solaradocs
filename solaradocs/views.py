@@ -157,6 +157,8 @@ def require_auth_token(view_func):
     def wrapper(request, *args, **kwargs):
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             if not request.user.is_authenticated:
+                if _is_ajax_request(request):
+                    return JsonResponse({'success': False, 'error': 'Session expired'}, status=401)
                 return redirect('login')
             return view_func(request, *args, **kwargs)
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
@@ -184,6 +186,33 @@ def require_auth_token(view_func):
     return wrapper
 
 
+def _is_ajax_request(request):
+    """True when the client is a fetch/XHR caller expecting JSON, not a browser navigating."""
+    accept = request.headers.get('Accept', '')
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in accept
+        or request.content_type == 'application/json'
+    )
+
+
+def ajax_login_required(view_func):
+    """
+    Drop-in replacement for @login_required that returns 401 JSON to AJAX/fetch callers
+    instead of issuing a 302 redirect to /login (which fetch() follows and then fails to
+    parse as JSON). Non-AJAX requests still get redirected to the login page.
+    """
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return view_func(request, *args, **kwargs)
+        if _is_ajax_request(request):
+            return JsonResponse({'success': False, 'error': 'Session expired'}, status=401)
+        return redirect(f'/login/?next={request.path}')
+
+    return _wrapped
+
+
 @require_GET
 @ratelimit(key='ip', rate='30/m', block=True)
 def dashboard(request):
@@ -199,7 +228,7 @@ def dashboard(request):
 
 
 @require_auth_token
-@login_required(login_url='/login')
+@ajax_login_required
 @ratelimit(key='ip', rate='10/m', block=True)
 def setup(request):
     if request.method == 'GET':
@@ -262,7 +291,7 @@ def setup(request):
         return JsonResponse({'success': True, 'redirect': '/dashboard/'})
     except Exception:
         logger.exception("setup failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not create project. Please try again.'}, status=500)
 
 
 @require_POST
@@ -531,7 +560,7 @@ def register(request):
 
     except Exception:
         logger.exception("register failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not create your account. Please try again.'}, status=500)
 
 
 @require_POST
@@ -645,12 +674,12 @@ def delete_project(request):
         return JsonResponse({'success': True})
     except Exception:
         logger.exception("delete_project failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not delete this project. Please try again.'}, status=500)
 
 
 @require_GET
 @require_auth_token
-@login_required
+@ajax_login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def list_project_backups(request, project_id):
     try:
@@ -780,7 +809,7 @@ def _generate_side_by_side_diff_html(current_text, proposed_text, current_label=
 
 @require_GET
 @require_auth_token
-@login_required
+@ajax_login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def pending_diff(request, project_id, pending_id):
     try:
@@ -840,7 +869,7 @@ def pending_diff(request, project_id, pending_id):
 
 @require_GET
 @require_auth_token
-@login_required
+@ajax_login_required
 @ratelimit(key='ip', rate='20/m', block=True)
 def backup_diff(request, project_id, backup_id):
     try:
@@ -1323,9 +1352,41 @@ def create_checkout_session(request):
                 'subscription_id': subscription.id,
             })
 
-        except stripe.error.StripeError as e:
-            logger.exception("Stripe error in create_checkout_session")
-            return JsonResponse({'success': False, 'error': str(e)}, status=503)
+        except stripe.error.CardError as e:
+            # Card-level failures (declined, insufficient funds, incorrect CVC, etc.)
+            # Stripe already provides a user-safe message in e.user_message — pass it through.
+            logger.warning(
+                "create_checkout_session: card error for user %s: %s",
+                request.user.id, e.code
+            )
+            user_msg = getattr(e, 'user_message', None) or 'Your card was declined. Please try a different payment method.'
+            return JsonResponse({'success': False, 'error': user_msg}, status=402)
+        except stripe.error.RateLimitError:
+            logger.exception("create_checkout_session: Stripe rate limit")
+            return JsonResponse(
+                {'success': False, 'error': 'Too many payment requests, please wait a moment and try again.'},
+                status=429)
+        except stripe.error.InvalidRequestError:
+            logger.exception("create_checkout_session: invalid Stripe request")
+            return JsonResponse(
+                {'success': False, 'error': 'Payment failed, please try again.'},
+                status=400)
+        except stripe.error.AuthenticationError:
+            logger.exception("create_checkout_session: Stripe authentication failure")
+            return JsonResponse(
+                {'success': False, 'error': 'Payment failed, please try again.'},
+                status=500)
+        except stripe.error.APIConnectionError:
+            logger.exception("create_checkout_session: could not reach Stripe")
+            return JsonResponse(
+                {'success': False, 'error': 'Could not reach the payment processor. Please try again in a moment.'},
+                status=503)
+        except stripe.error.StripeError:
+            # Any other Stripe error — do NOT leak raw exception text to the client.
+            logger.exception("create_checkout_session: unexpected Stripe error")
+            return JsonResponse(
+                {'success': False, 'error': 'Payment failed, please try again.'},
+                status=502)
     except Exception:
         logger.exception("create_checkout_session failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
@@ -1557,18 +1618,26 @@ def stripe_webhook(request):
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
 def success(request):
+    user_tier = (request.user.Tier or 'free').lower()
+    default_plan_name = user_tier.capitalize() if user_tier else 'Personal'
+    tier_price_map = {'free': '0.00', 'personal': '6.00', 'team': '16.00', 'enterprise': '36.00'}
+    default_amount = tier_price_map.get(user_tier, '6.00')
     return render(request, 'success.html', {
-        'plan_name': request.session.get('plan_name', 'Student'),
-        'amount': request.session.get('amount', '5.00'),
+        'plan_name': request.session.get('plan_name', default_plan_name),
+        'amount': request.session.get('amount', default_amount),
         'user': request.user
     })
 
 
 @ratelimit(key='ip', rate='30/m', block=True)
 def buy(request):
+    current_tier = ''
+    if request.user.is_authenticated:
+        current_tier = (request.user.Tier or 'free').lower()
     return render(request, 'buy.html', {
         'stripe_publishable_key': settings.STRIPE_PUBLIC_KEY,
-        'user': request.user
+        'user': request.user,
+        'current_tier': current_tier,
     })
 
 
@@ -1646,7 +1715,7 @@ def get_documents(request, project_id):
         return JsonResponse({'success': True, 'documents': docs_data})
     except Exception:
         logger.exception("get_documents failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not load documents. Please refresh the page.'}, status=500)
 
 
 @require_GET
@@ -1716,7 +1785,7 @@ def get_document(request, project_id, doc_id):
         })
     except Exception:
         logger.exception("get_document failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not open this document. Please try again.'}, status=500)
 
 
 @require_POST
@@ -1829,7 +1898,7 @@ def add_document(request, project_id):
         })
     except Exception:
         logger.exception("add_document failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not create the document. Please try again.'}, status=500)
 
 
 @require_POST
@@ -1959,7 +2028,7 @@ def save_document(request, project_id, doc_id):
         return JsonResponse({'success': True})
     except Exception:
         logger.exception("save_document failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not save your changes. Please try again \u2014 your edits are still in the editor.'}, status=500)
 
 
 @require_POST
@@ -2039,7 +2108,7 @@ def rename_document(request, project_id, doc_id):
         })
     except Exception:
         logger.exception("rename_document failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not rename this document. Please try again.'}, status=500)
 
 
 @require_POST
@@ -2105,7 +2174,7 @@ def delete_document(request, project_id, doc_id):
         })
     except Exception:
         logger.exception("delete_document failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not delete this document. Please try again.'}, status=500)
 
 
 @require_GET
@@ -2160,7 +2229,7 @@ def get_teams(request, project_id):
         return JsonResponse({'success': True, 'teams': teams_data})
     except Exception:
         logger.exception("get_teams failed")
-        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+        return JsonResponse({'success': False, 'error': 'Could not load teams. Please refresh the page.'}, status=500)
 
 
 @require_GET
@@ -2814,13 +2883,13 @@ def update_team_member_review(request, project_id, team_id):
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
-@login_required
+@ajax_login_required
 @require_GET
 def profile(request):
     return render(request, 'profile.html', {'user': request.user})
 
 
-@login_required
+@ajax_login_required
 @require_POST
 @ratelimit(key='ip', rate='5/m', block=True)
 def change_password(request):
@@ -2853,7 +2922,7 @@ def change_password(request):
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
-@login_required
+@ajax_login_required
 @require_POST
 @ratelimit(key='ip', rate='5/m', block=True)
 def cancel_subscription(request):
@@ -2891,7 +2960,7 @@ def cancel_subscription(request):
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
-@login_required
+@ajax_login_required
 @require_POST
 @ratelimit(key='ip', rate='3/m', block=True)
 def delete_account(request):
@@ -2907,10 +2976,13 @@ def delete_account(request):
                 for sub in subscriptions.data:
                     stripe.Subscription.cancel(sub.id)
             except stripe.error.StripeError:
+                logger.exception("delete_account: Stripe cancellation failed for user %s", user.id)
                 return JsonResponse(
-                    {'success': False, 'error': 'Please contact support if your subscrption hasnt automaticaly cancelled'},
-                    status=500)
+                    {'success': False,
+                     'error': 'We could not cancel your subscription automatically. Please contact support before retrying.'},
+                    status=502)
 
+        # Stripe cleanup succeeded (or user had no customer). Only now is it safe to log out and delete.
         auth_logout(request)
         user.delete()
 

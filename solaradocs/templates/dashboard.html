@@ -1686,16 +1686,20 @@
 
         // === Collaborators ===
         async function saveRole(projectId, contributorId) {
-            const newRole = document.getElementById(`role-${projectId}-${contributorId}`).value;
+            const select = document.getElementById(`role-${projectId}-${contributorId}`);
+            const newRole = select.value;
+            const saveBtn = select.parentElement.querySelector('.btn-secondary');
+            if (saveBtn) saveBtn.disabled = true;
             try {
                 const response = await authFetch('/changeroles/', { method: 'POST', body: JSON.stringify({ project_id: projectId, contributor_id: contributorId, role: newRole }) });
-                if (!response) return;
+                if (!response) { if (saveBtn) saveBtn.disabled = false; return; }
                 const data = await safeJson(response);
                 if (data.success) {
                     showToast('Role updated');
                     document.getElementById(`role-badge-${projectId}-${contributorId}`).textContent = newRole;
                 } else { showToast(data.error || 'Failed to update role', 'error'); }
             } catch (error) { showToast('Failed to update role', 'error'); }
+            finally { if (saveBtn) saveBtn.disabled = false; }
         }
 
         async function deleteUser(projectId, contributorId) {
@@ -1798,9 +1802,11 @@
             const projectId = document.getElementById('createTeamProjectId').value;
             const teamName = document.getElementById('createTeamName').value.trim();
             if (!teamName) { showToast('Please enter a team name', 'error'); return; }
+            const submitBtn = document.querySelector('#createTeamModal .btn-primary');
+            if (submitBtn) submitBtn.disabled = true;
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/add`, { method: 'POST', body: JSON.stringify({ team_name: teamName }) });
-                if (!response) return;
+                if (!response) { if (submitBtn) submitBtn.disabled = false; return; }
                 const data = await safeJson(response);
                 if (data.success) {
                     showToast('Team created!');
@@ -1836,6 +1842,7 @@
                     teamsList.insertAdjacentHTML('beforeend', teamHtml);
                 } else { showToast(data.error || 'Failed to create team', 'error'); }
             } catch (error) { showToast('Failed to create team', 'error'); }
+            finally { if (submitBtn) submitBtn.disabled = false; }
         }
 
         function openEditTeamModal(projectId, teamId, teamName) {
@@ -1853,9 +1860,11 @@
             const teamId = document.getElementById('editTeamId').value;
             const teamName = document.getElementById('editTeamName').value.trim();
             if (!teamName) { showToast('Please enter a team name', 'error'); return; }
+            const submitBtn = document.querySelector('#editTeamModal .btn-primary');
+            if (submitBtn) submitBtn.disabled = true;
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/update`, { method: 'POST', body: JSON.stringify({ team_name: teamName }) });
-                if (!response) return;
+                if (!response) { if (submitBtn) submitBtn.disabled = false; return; }
                 const data = await safeJson(response);
                 if (data.success) {
                     showToast('Team updated!');
@@ -1863,6 +1872,7 @@
                     document.querySelector(`#team-card-${teamId} .team-name`).textContent = teamName;
                 } else { showToast(data.error || 'Failed to update team', 'error'); }
             } catch (error) { showToast('Failed to update team', 'error'); }
+            finally { if (submitBtn) submitBtn.disabled = false; }
         }
 
         async function deleteTeam(projectId, teamId) {
@@ -1881,9 +1891,11 @@
             const username = input.value.trim();
             const role = document.getElementById(`add-member-role-${teamId}`).value;
             if (!username) { showToast('Please enter a username', 'error'); return; }
+            const addBtn = input.parentElement.querySelector('button');
+            if (addBtn) addBtn.disabled = true;
             try {
                 const response = await authFetch(`/api/project/${projectId}/teams/${teamId}/members/add`, { method: 'POST', body: JSON.stringify({ username: username, role: role }) });
-                if (!response) return;
+                if (!response) { if (addBtn) addBtn.disabled = false; return; }
                 const data = await safeJson(response);
                 if (data.success) {
                     showToast('Member added!');
@@ -1917,6 +1929,7 @@
                     updateTeamMemberCount(teamId);
                 } else { showToast(data.error || 'Failed to add member', 'error'); }
             } catch (error) { showToast('Failed to add member', 'error'); }
+            finally { if (addBtn) addBtn.disabled = false; }
         }
 
         async function removeTeamMember(projectId, teamId, username) {
@@ -2036,7 +2049,11 @@
                 if (!data.invite_codes || data.invite_codes.length === 0) { container.innerHTML = '<p class="detail-value muted">No active invite codes</p>'; return; }
                 container.innerHTML = data.invite_codes.map(ic => {
                     let meta = `Role: ${ic.role}`;
-                    if (ic.expires_at) { meta += ` \u00b7 Expires: ${new Date(ic.expires_at).toLocaleString()}`; }
+                    if (ic.expires_at) {
+                        const d = new Date(ic.expires_at);
+                        const formatted = d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        meta += ` \u00b7 Expires: ${formatted}`;
+                    }
                     else { meta += ` \u00b7 No expiry`; }
                     return `
                         <div class="invite-code-item" id="invite-code-${ic.id}">
@@ -2062,13 +2079,21 @@
             const expiry = expirySelect.value;
             if (!role) { showToast('Please select a role', 'error'); return; }
             if (!expiry) { showToast('Please select an expiry duration', 'error'); return; }
+            const btn = roleSelect.parentElement.querySelector('button');
+            if (btn) btn.disabled = true;
             try {
                 const response = await authFetch(`/api/project/${projectId}/invite-code/generate`, { method: 'POST', body: JSON.stringify({ role: role, expiry: expiry }) });
                 if (!response) return;
                 const data = await safeJson(response);
-                if (data.success) { showToast('Invite code generated', 'success'); loadInviteCodes(projectId); }
+                if (data.success) {
+                    showToast('Invite code generated', 'success');
+                    roleSelect.selectedIndex = 0;
+                    expirySelect.selectedIndex = 0;
+                    loadInviteCodes(projectId);
+                }
                 else { showToast(data.error || 'Failed to generate code', 'error'); }
             } catch (err) { showToast('Failed to generate code', 'error'); }
+            finally { if (btn) btn.disabled = false; }
         }
 
         function copyCode(code) {
@@ -2200,7 +2225,7 @@
             if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
             if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
             if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-            return new Date(iso).toLocaleDateString();
+            return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
         }
 
         function formatAuditExact(iso) {

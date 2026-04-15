@@ -1,8 +1,10 @@
 from django.urls import path, include
+from django.conf import settings
 from . import views
 from . import views_admin
 from . import views_import
 
+_ADMIN = settings.ADMIN_PANEL_PATH
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -67,20 +69,20 @@ urlpatterns = [
     path('change-password/', views.change_password, name='change_password'),
     path('cancel-subscription/', views.cancel_subscription, name='cancel_subscription'),
     path('delete-account/', views.delete_account, name='delete_account'),
-    path('crypticA7X/', views_admin.admin_panel, name='admin_panel'),
-    path('crypticA7X/update-user/', views_admin.admin_update_user, name='admin_update_user'),
-    path('crypticA7X/delete-user/', views_admin.admin_delete_user, name='admin_delete_user'),
-    path('crypticA7X/toggle-user-active/', views_admin.admin_toggle_user_active, name='admin_toggle_user_active'),
-    path('crypticA7X/toggle-superuser/', views_admin.admin_toggle_superuser, name='admin_toggle_superuser'),
-    path('crypticA7X/delete-project/', views_admin.admin_delete_project, name='admin_delete_project'),
-    path('crypticA7X/transfer-project/', views_admin.admin_transfer_project, name='admin_transfer_project'),
-    path('crypticA7X/add-changelog/', views_admin.admin_add_changelog, name='admin_add_changelog'),
-    path('crypticA7X/update-changelog/', views_admin.admin_update_changelog, name='admin_update_changelog'),
-    path('crypticA7X/delete-changelog/', views_admin.admin_delete_changelog, name='admin_delete_changelog'),
-    path('crypticA7X/broadcast-announcement/', views_admin.admin_broadcast_announcement, name='admin_broadcast_announcement'),
-    path('crypticA7X/dismiss-alert/', views_admin.admin_dismiss_alert, name='admin_dismiss_alert'),
-    path('crypticA7X/create-promo/', views_admin.admin_create_promo, name='admin_create_promo'),
-    path('crypticA7X/delete-promo/', views_admin.admin_delete_promo, name='admin_delete_promo'),
+    path(f'{_ADMIN}/', views_admin.admin_panel, name='admin_panel'),
+    path(f'{_ADMIN}/update-user/', views_admin.admin_update_user, name='admin_update_user'),
+    path(f'{_ADMIN}/delete-user/', views_admin.admin_delete_user, name='admin_delete_user'),
+    path(f'{_ADMIN}/toggle-user-active/', views_admin.admin_toggle_user_active, name='admin_toggle_user_active'),
+    path(f'{_ADMIN}/toggle-superuser/', views_admin.admin_toggle_superuser, name='admin_toggle_superuser'),
+    path(f'{_ADMIN}/delete-project/', views_admin.admin_delete_project, name='admin_delete_project'),
+    path(f'{_ADMIN}/transfer-project/', views_admin.admin_transfer_project, name='admin_transfer_project'),
+    path(f'{_ADMIN}/add-changelog/', views_admin.admin_add_changelog, name='admin_add_changelog'),
+    path(f'{_ADMIN}/update-changelog/', views_admin.admin_update_changelog, name='admin_update_changelog'),
+    path(f'{_ADMIN}/delete-changelog/', views_admin.admin_delete_changelog, name='admin_delete_changelog'),
+    path(f'{_ADMIN}/broadcast-announcement/', views_admin.admin_broadcast_announcement, name='admin_broadcast_announcement'),
+    path(f'{_ADMIN}/dismiss-alert/', views_admin.admin_dismiss_alert, name='admin_dismiss_alert'),
+    path(f'{_ADMIN}/create-promo/', views_admin.admin_create_promo, name='admin_create_promo'),
+    path(f'{_ADMIN}/delete-promo/', views_admin.admin_delete_promo, name='admin_delete_promo'),
     path('api/project/<int:project_id>/invite-codes', views.list_invite_codes, name='list_invite_codes'),
     path('api/project/<int:project_id>/invite-code/generate', views.generate_invite_code, name='generate_invite_code'),
     path('api/project/<int:project_id>/invite-code/<int:code_id>/delete', views.delete_invite_code, name='delete_invite_code'),
