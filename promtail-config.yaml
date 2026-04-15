@@ -15,4 +15,4 @@ scrape_configs:
         labels:
           job: solaradocs
           type: error-log
-          __path__: /var/log/django/errors.log
+          __path__: /home/ubuntu/solaradocs/errors.log
