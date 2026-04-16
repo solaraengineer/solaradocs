@@ -111,9 +111,9 @@ services:
     image: prom/alertmanager:v0.27.0
     container_name: alertmanager
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c", "sed 's|{SENDGRID_API_KEY}|'\"$$SENDGRID_API_KEY\"'|' /etc/alertmanager/alertmanager.yml.tmpl > /etc/alertmanager/alertmanager.yml && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager"]
+    entrypoint: ["/bin/sh", "-c", "sed 's|{BREVO_API_KEY}|'\"$$BREVO_API_KEY\"'|' /etc/alertmanager/alertmanager.yml.tmpl > /etc/alertmanager/alertmanager.yml && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager"]
     environment:
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - BREVO_API_KEY=${BREVO_API_KEY}
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml.tmpl:ro
       - alertmanager_data:/alertmanager
