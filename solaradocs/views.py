@@ -3549,4 +3549,3 @@ def redeem_promo(request):
     except Exception:
         logger.exception("redeem_promo failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
-

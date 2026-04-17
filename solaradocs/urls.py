@@ -88,7 +88,6 @@ urlpatterns = [
     path('api/project/<int:project_id>/invite-code/<int:code_id>/delete', views.delete_invite_code, name='delete_invite_code'),
     path('api/invite-code/redeem', views.redeem_invite_code, name='redeem_invite_code'),
     path('redeem-promo/', views.redeem_promo, name='redeem_promo'),
-
     path('api/project/<int:project_id>/google/check-auth', views_import.check_google_auth, name='check_google_auth'),
     path('api/project/<int:project_id>/google/docs', views_import.list_google_docs_view, name='list_google_docs'),
     path('api/project/<int:project_id>/google/import', views_import.start_google_import, name='start_google_import'),
