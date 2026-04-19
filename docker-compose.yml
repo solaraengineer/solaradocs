@@ -12,13 +12,16 @@ services:
   web:
     build: .
     restart: unless-stopped
-    command: gunicorn logic.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -
+    command: gunicorn logic.wsgi:application --bind 0.0.0.0:8000 --workers 3 --config gunicorn.conf.py --access-logfile - --error-logfile -
     volumes:
       - .:/app
+    tmpfs:
+      - /tmp/prometheus_multiproc
     ports:
       - "127.0.0.1:8000:8000"
     environment:
       - DEBUG=False
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
       - SECRET_KEY=${DJANGO_SECRET_KEY}
@@ -170,7 +173,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml
-      - .:/var/log/django:ro
+      - /home/ubuntu/solaradocs:/home/ubuntu/solaradocs:ro
     command: ["-config.file=/etc/promtail/promtail-config.yaml"]
     networks:
       - backend

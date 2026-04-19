@@ -7,7 +7,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'logic.settings')
 import django
 django.setup()
 
-from logic.models import User, Project
+from solaradocs.models import User, Project
 
 for user in User.objects.all():
     tier = (user.Tier or 'free').lower()
