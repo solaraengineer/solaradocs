@@ -13,7 +13,7 @@ services:
     build: .
     container_name: solaradocs-web-1
     restart: unless-stopped
-    command: gunicorn logic.wsgi:application --bind 0.0.0.0:8000 --workers 3 --config gunicorn.conf.py --access-logfile - --error-logfile -
+    command: gunicorn logic.wsgi:application --bind 0.0.0.0:8000 --workers 3 --config logic/gunicorn.conf.py --access-logfile - --error-logfile -
     volumes:
       - .:/app
     tmpfs:
