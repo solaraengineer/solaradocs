@@ -1024,6 +1024,229 @@ class PendingEditsTests(BaseTestCase):
 
 
 # ---------------------------------------------------------------------------
+# Reject Comment (reviewer feedback on declined pending edits)
+# ---------------------------------------------------------------------------
+class RejectCommentTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.priv_team = Teams.objects.create(project=self.project, team_name='RCTeam')
+        self.priv_doc = Documents.objects.create(
+            project=self.project, document_name='RCDoc',
+            content='<p>Original</p>', team_assigned=self.priv_team,
+        )
+        self.editor = self._make_contributor('rceditor', role='EDITOR')
+        self._make_team_member(
+            self.editor, team=self.priv_team,
+            role='EDITOR', can_direct_save=False,
+        )
+        self.pending = Pending.objects.create(
+            project=self.project, team=self.priv_team, document=self.priv_doc,
+            user=self.editor, submitted_content='<p>Proposed</p>', note='Check',
+        )
+
+    # ---- reject validation ----
+    def test_reject_missing_comment_returns_400(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("reason", r.json()['error'].lower())
+        self.assertTrue(Pending.objects.filter(id=self.pending.id).exists())
+        self.assertFalse(PendingAction.objects.filter(action='reject').exists())
+
+    def test_reject_empty_comment_returns_400(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': '',
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertTrue(Pending.objects.filter(id=self.pending.id).exists())
+
+    def test_reject_whitespace_only_comment_returns_400(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': '   \t \n  ',
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertTrue(Pending.objects.filter(id=self.pending.id).exists())
+
+    def test_reject_non_string_comment_returns_400(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 123,
+        })
+        self.assertEqual(r.status_code, 400)
+
+    def test_reject_comment_over_255_chars_returns_400(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'x' * 256,
+        })
+        self.assertEqual(r.status_code, 400)
+
+    def test_reject_comment_exactly_255_chars_allowed(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'x' * 255,
+        })
+        self.assertEqual(r.status_code, 200)
+        pa = PendingAction.objects.get(action='reject')
+        self.assertEqual(len(pa.reject_comment), 255)
+
+    # ---- reject success path ----
+    def test_reject_with_valid_comment_saves_it(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'Bad formatting',
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['action'], 'reject')
+        pa = PendingAction.objects.get(action='reject', pending_user=self.editor)
+        self.assertEqual(pa.reject_comment, 'Bad formatting')
+        self.assertFalse(Pending.objects.filter(id=self.pending.id).exists())
+
+    def test_reject_strips_whitespace_around_comment(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': '  Needs more detail  \n',
+        })
+        self.assertEqual(r.status_code, 200)
+        pa = PendingAction.objects.get(action='reject')
+        self.assertEqual(pa.reject_comment, 'Needs more detail')
+
+    def test_reject_preserves_original_document_content(self):
+        self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'Incorrect data',
+        })
+        self.priv_doc.refresh_from_db()
+        self.assertEqual(self.priv_doc.content, '<p>Original</p>')
+
+    # ---- accept should not require or store comment ----
+    @patch('solaradocs.views.backup_document_to_r2')
+    def test_accept_does_not_require_comment(self, _mock):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'accept',
+        })
+        self.assertEqual(r.status_code, 200)
+        pa = PendingAction.objects.get(action='accept')
+        self.assertEqual(pa.reject_comment, '')
+
+    @patch('solaradocs.views.backup_document_to_r2')
+    def test_accept_ignores_comment_if_sent(self, _mock):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'accept',
+            'reject_comment': 'should be ignored',
+        })
+        self.assertEqual(r.status_code, 200)
+        pa = PendingAction.objects.get(action='accept')
+        self.assertEqual(pa.reject_comment, '')
+
+    # ---- get_pending_actions exposes reject_comment ----
+    def test_get_pending_actions_includes_reject_comment(self):
+        self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'Out of scope',
+        })
+        r = self._get(f'/api/project/{self.project.id}/pending-actions')
+        self.assertEqual(r.status_code, 200)
+        actions = r.json()['pending_actions']
+        reject_entries = [a for a in actions if a['action'] == 'reject']
+        self.assertTrue(len(reject_entries) >= 1)
+        self.assertEqual(reject_entries[0]['reject_comment'], 'Out of scope')
+
+    # ---- authorization is still enforced before comment validation ----
+    def test_unauthorized_user_cannot_reject_even_with_comment(self):
+        nobody = self._make_contributor('rcnobody', role='VIEWER')
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'nope',
+        }, user=nobody)
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(Pending.objects.filter(id=self.pending.id).exists())
+
+
+# ---------------------------------------------------------------------------
+# My Rejection Feedback (editor-facing view of their declined edits)
+# ---------------------------------------------------------------------------
+class MyRejectionFeedbackTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.editor = self._make_contributor('mrfeditor', role='EDITOR')
+        self.other_editor = self._make_contributor('mrfother', role='EDITOR')
+
+    def _make_rejection(self, user, comment='Bad formatting', doc_name='Doc'):
+        return PendingAction.objects.create(
+            project=self.project, document=self.doc,
+            pending_user=user, actioned_by=self.owner,
+            action='reject', document_name=doc_name,
+            reject_comment=comment,
+        )
+
+    def _make_acceptance(self, user, doc_name='Doc'):
+        return PendingAction.objects.create(
+            project=self.project, document=self.doc,
+            pending_user=user, actioned_by=self.owner,
+            action='accept', document_name=doc_name,
+        )
+
+    def test_returns_own_rejections_with_comment(self):
+        self._make_rejection(self.editor, comment='Bad formatting', doc_name='MyDoc')
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(len(data['rejections']), 1)
+        item = data['rejections'][0]
+        self.assertEqual(item['reject_comment'], 'Bad formatting')
+        self.assertEqual(item['document_name'], 'MyDoc')
+        self.assertEqual(item['actioned_by'], self.owner.username)
+        self.assertEqual(item['project_name'], self.project.project_name)
+
+    def test_empty_list_when_no_rejections(self):
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['rejections'], [])
+
+    def test_excludes_other_users_rejections(self):
+        self._make_rejection(self.other_editor, comment='Not yours')
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['rejections'], [])
+
+    def test_excludes_accepted_actions(self):
+        self._make_acceptance(self.editor)
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['rejections'], [])
+
+    def test_mixed_actions_returns_only_rejections(self):
+        self._make_rejection(self.editor, comment='Reject 1', doc_name='D1')
+        self._make_acceptance(self.editor, doc_name='D2')
+        self._make_rejection(self.editor, comment='Reject 2', doc_name='D3')
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        data = r.json()
+        self.assertEqual(len(data['rejections']), 2)
+        self.assertEqual({d['document_name'] for d in data['rejections']}, {'D1', 'D3'})
+
+    def test_ordered_newest_first(self):
+        old = self._make_rejection(self.editor, comment='Old', doc_name='Old')
+        PendingAction.objects.filter(id=old.id).update(
+            created_at=timezone.now() - timedelta(days=5),
+        )
+        self._make_rejection(self.editor, comment='New', doc_name='New')
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        names = [item['document_name'] for item in r.json()['rejections']]
+        self.assertEqual(names, ['New', 'Old'])
+
+    def test_caps_at_20_results(self):
+        for i in range(25):
+            self._make_rejection(self.editor, comment=f'R{i}', doc_name=f'D{i}')
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        self.assertEqual(len(r.json()['rejections']), 20)
+
+
+# ---------------------------------------------------------------------------
 # Audits
 # ---------------------------------------------------------------------------
 class AuditTests(BaseTestCase):

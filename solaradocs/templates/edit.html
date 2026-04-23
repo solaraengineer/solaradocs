@@ -1452,6 +1452,28 @@
             padding: 0.625rem 1.25rem;
         }
 
+        /* Preset chips (reject + submit-note modals) */
+        .reject-preset-row, .note-preset-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .reject-preset-chip, .note-preset-chip {
+            padding: 0.4rem 0.75rem; border-radius: 999px;
+            background: var(--bg-tertiary); border: 1px solid var(--border);
+            color: var(--text-secondary); font-size: 0.8rem; font-family: inherit;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .reject-preset-chip:hover { border-color: var(--accent-red); color: var(--text-primary); }
+        .reject-preset-chip.active {
+            background: rgba(212,106,106,0.12); border-color: var(--accent-red); color: var(--accent-red);
+        }
+        .note-preset-chip:hover { border-color: var(--accent-orange); color: var(--text-primary); }
+        .note-preset-chip.active {
+            background: rgba(212,165,116,0.12); border-color: var(--accent-orange); color: var(--accent-orange);
+        }
+        .btn-danger {
+            background: var(--accent-red); color: #fff;
+        }
+        .btn-danger:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 4px 16px rgba(212,106,106,0.3); }
+        .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
         /* Toast Notification */
         .toast {
             position: fixed;
@@ -2863,6 +2885,14 @@
                 </p>
                 <div class="form-group">
                     <label class="form-label" for="pendingNoteInput">Change Note <span style="color: var(--accent-red);">*</span></label>
+                    <div class="note-preset-row" id="notePresetRow">
+                        <button type="button" class="note-preset-chip" data-reason="Fixed a typo">Fixed a typo</button>
+                        <button type="button" class="note-preset-chip" data-reason="Fixed formatting">Fixed formatting</button>
+                        <button type="button" class="note-preset-chip" data-reason="Updated content">Updated content</button>
+                        <button type="button" class="note-preset-chip" data-reason="Added missing info">Added missing info</button>
+                        <button type="button" class="note-preset-chip" data-reason="Clarified wording">Clarified wording</button>
+                        <button type="button" class="note-preset-chip" data-reason="Fixed broken link">Fixed broken link</button>
+                    </div>
                     <textarea class="form-input" id="pendingNoteInput" rows="4" placeholder="Describe your changes (e.g., Fixed typo in section 2, Updated pricing info...)" maxlength="500" style="resize: vertical;"></textarea>
                     <div style="text-align: right; font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.25rem;">
                         <span id="pendingNoteCharCount">0</span>/500
@@ -2872,6 +2902,43 @@
             <div class="modal-footer">
                 <button class="btn btn-ghost" id="cancelPendingNote">Cancel</button>
                 <button class="btn btn-primary" id="confirmPendingNote">Submit for Review</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Reason Modal -->
+    <div class="modal-overlay" id="rejectReasonModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Decline Changes</h3>
+                <button class="modal-close" id="closeRejectReasonModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Let the editor know why this edit was declined.
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Pick a reason or write your own <span style="color: var(--accent-red);">*</span></label>
+                    <div class="reject-preset-row" id="rejectPresetRow">
+                        <button type="button" class="reject-preset-chip" data-reason="Bad formatting">Bad formatting</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Incorrect data">Incorrect data</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Out of scope">Out of scope</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Needs more detail">Needs more detail</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Duplicate edit">Duplicate edit</button>
+                    </div>
+                    <textarea class="form-input" id="rejectReasonInput" rows="4" placeholder="Explain what needs to change so the editor can fix it..." maxlength="255" style="resize: vertical;"></textarea>
+                    <div style="text-align: right; font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.25rem;">
+                        <span id="rejectReasonCharCount">0</span>/255
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="cancelRejectReason">Cancel</button>
+                <button class="btn btn-danger" id="confirmRejectReason" disabled>Decline</button>
             </div>
         </div>
     </div>
@@ -3082,11 +3149,15 @@
                 }
             },
 
-            async handlePendingEdit(pendingId, action) {
+            async handlePendingEdit(pendingId, action, rejectComment) {
                 try {
+                    const payload = { pending_id: pendingId, action };
+                    if (action === 'reject' && rejectComment) {
+                        payload.reject_comment = rejectComment;
+                    }
                     const response = await authFetch('/handlepending/', {
                         method: 'POST',
-                        body: JSON.stringify({ pending_id: pendingId, action })
+                        body: JSON.stringify(payload)
                     });
                     if (!response) return { success: false };
 
@@ -4059,20 +4130,25 @@
                     const pendingId = parseInt(btn.dataset.pendingId);
                     const action = btn.dataset.action;
 
+                    if (action === 'reject') {
+                        openRejectReasonModal(pendingId, btn);
+                        return;
+                    }
+
                     btn.disabled = true;
-                    btn.textContent = action === 'accept' ? 'Accepting...' : 'Rejecting...';
+                    btn.textContent = 'Accepting...';
 
                     const data = await API.handlePendingEdit(pendingId, action);
                     if (data.success) {
-                        showToast(action === 'accept' ? 'Changes accepted' : 'Changes rejected');
+                        showToast('Changes accepted');
                         await loadPendingEdits();
-                        if (action === 'accept' && data.document_id && data.document_id === currentDocumentId) {
+                        if (data.document_id && data.document_id === currentDocumentId) {
                             await selectDocument(currentDocumentId, true);
                         }
                     } else {
                         showToast(data.error || 'Failed to process', 'error');
                         btn.disabled = false;
-                        btn.textContent = action === 'accept' ? 'Accept' : 'Reject';
+                        btn.textContent = 'Accept';
                     }
                 });
             });
@@ -4737,6 +4813,7 @@
                 if (modal.classList.contains('show')) { closeNewDocModal(); return; }
                 if (deleteModal.classList.contains('show')) { closeDeleteModal(); return; }
                 if (pendingNoteModal.classList.contains('show')) { hidePendingNoteModal(); return; }
+                if (document.getElementById('rejectReasonModal').classList.contains('show')) { hideRejectReasonModal(); return; }
                 // No modal open — toggle focus mode
                 setFocusMode(!mainLayout.classList.contains('focus-mode'));
             }
@@ -5306,15 +5383,30 @@
         const pendingNoteModal = document.getElementById('pendingNoteModal');
         const pendingNoteInput = document.getElementById('pendingNoteInput');
         const pendingNoteCharCount = document.getElementById('pendingNoteCharCount');
+        const notePresetRow = document.getElementById('notePresetRow');
 
-        // Character count for note
+        // Character count for note + keep preset chips in sync
         pendingNoteInput.addEventListener('input', () => {
             pendingNoteCharCount.textContent = pendingNoteInput.value.length;
+            notePresetRow.querySelectorAll('.note-preset-chip').forEach(chip => {
+                if (chip.dataset.reason !== pendingNoteInput.value) chip.classList.remove('active');
+            });
+        });
+
+        notePresetRow.querySelectorAll('.note-preset-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                pendingNoteInput.value = chip.dataset.reason;
+                pendingNoteCharCount.textContent = pendingNoteInput.value.length;
+                notePresetRow.querySelectorAll('.note-preset-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                pendingNoteInput.focus();
+            });
         });
 
         function showPendingNoteModal() {
     pendingNoteInput.value = '';
     pendingNoteCharCount.textContent = '0';
+    notePresetRow.querySelectorAll('.note-preset-chip').forEach(c => c.classList.remove('active'));
     quill.disable();
     pendingNoteModal.classList.add('show');
     setTimeout(() => {
@@ -5360,6 +5452,97 @@ function hidePendingNoteModal() {
 
             confirmBtn.disabled = false;
             confirmBtn.textContent = 'Submit for Review';
+        });
+
+        // ==================== REJECT REASON MODAL ====================
+
+        const rejectReasonModal = document.getElementById('rejectReasonModal');
+        const rejectReasonInput = document.getElementById('rejectReasonInput');
+        const rejectReasonCharCount = document.getElementById('rejectReasonCharCount');
+        const confirmRejectReasonBtn = document.getElementById('confirmRejectReason');
+        const rejectPresetRow = document.getElementById('rejectPresetRow');
+        let activeRejectPendingId = null;
+        let activeRejectTriggerBtn = null;
+
+        function syncRejectReasonUI() {
+            const value = rejectReasonInput.value;
+            rejectReasonCharCount.textContent = value.length;
+            confirmRejectReasonBtn.disabled = value.trim().length === 0;
+            rejectPresetRow.querySelectorAll('.reject-preset-chip').forEach(chip => {
+                if (chip.dataset.reason !== value) chip.classList.remove('active');
+            });
+        }
+
+        rejectReasonInput.addEventListener('input', syncRejectReasonUI);
+
+        rejectPresetRow.querySelectorAll('.reject-preset-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                rejectReasonInput.value = chip.dataset.reason;
+                rejectPresetRow.querySelectorAll('.reject-preset-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                syncRejectReasonUI();
+                rejectReasonInput.focus();
+            });
+        });
+
+        function openRejectReasonModal(pendingId, triggerBtn) {
+            activeRejectPendingId = pendingId;
+            activeRejectTriggerBtn = triggerBtn || null;
+            rejectReasonInput.value = '';
+            rejectReasonCharCount.textContent = '0';
+            confirmRejectReasonBtn.disabled = true;
+            confirmRejectReasonBtn.textContent = 'Decline';
+            rejectPresetRow.querySelectorAll('.reject-preset-chip').forEach(c => c.classList.remove('active'));
+            if (typeof quill !== 'undefined' && quill) quill.disable();
+            rejectReasonModal.classList.add('show');
+            setTimeout(() => {
+                rejectReasonInput.focus();
+                rejectReasonInput.click();
+            }, 350);
+        }
+
+        function hideRejectReasonModal() {
+            rejectReasonModal.classList.remove('show');
+            activeRejectPendingId = null;
+            activeRejectTriggerBtn = null;
+            if (typeof quill !== 'undefined' && quill) quill.enable();
+        }
+
+        document.getElementById('closeRejectReasonModal').addEventListener('click', hideRejectReasonModal);
+        document.getElementById('cancelRejectReason').addEventListener('click', hideRejectReasonModal);
+
+        rejectReasonModal.addEventListener('click', (e) => {
+            if (e.target === rejectReasonModal) hideRejectReasonModal();
+        });
+
+        confirmRejectReasonBtn.addEventListener('click', async () => {
+            const reason = rejectReasonInput.value.trim();
+            if (!reason) {
+                showToast("Can't decline without reason", 'error');
+                return;
+            }
+            if (activeRejectPendingId == null) {
+                hideRejectReasonModal();
+                return;
+            }
+            const pendingId = activeRejectPendingId;
+            const trigger = activeRejectTriggerBtn;
+
+            confirmRejectReasonBtn.disabled = true;
+            confirmRejectReasonBtn.textContent = 'Declining...';
+            if (trigger) { trigger.disabled = true; trigger.textContent = 'Rejecting...'; }
+
+            const data = await API.handlePendingEdit(pendingId, 'reject', reason);
+            if (data.success) {
+                showToast('Changes declined');
+                hideRejectReasonModal();
+                await loadPendingEdits();
+            } else {
+                showToast(data.error || 'Failed to decline', 'error');
+                confirmRejectReasonBtn.disabled = false;
+                confirmRejectReasonBtn.textContent = 'Decline';
+                if (trigger) { trigger.disabled = false; trigger.textContent = 'Reject'; }
+            }
         });
 
         // Update after successful save

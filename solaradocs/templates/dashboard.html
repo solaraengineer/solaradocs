@@ -541,6 +541,34 @@
         }
         .form-input:focus { border-color: var(--accent-orange); }
         .form-input::placeholder { color: var(--text-tertiary); }
+        .form-textarea {
+            width: 100%; padding: 0.75rem 1rem;
+            background: var(--bg-tertiary); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text-primary);
+            font-size: 0.9rem; font-family: inherit; outline: none;
+            transition: border-color 0.2s ease;
+            min-height: 96px; resize: vertical;
+        }
+        .form-textarea:focus { border-color: var(--accent-orange); }
+        .form-textarea::placeholder { color: var(--text-tertiary); }
+
+        /* === Reject Reason Modal === */
+        .reject-preset-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .reject-preset-chip {
+            padding: 0.4rem 0.75rem; border-radius: 999px;
+            background: var(--bg-tertiary); border: 1px solid var(--border);
+            color: var(--text-secondary); font-size: 0.8rem; font-family: inherit;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .reject-preset-chip:hover { border-color: var(--accent-orange); color: var(--text-primary); }
+        .reject-preset-chip.active { background: rgba(212,106,106,0.12); border-color: var(--accent-red); color: var(--accent-red); }
+        .reject-counter { font-size: 0.75rem; color: var(--text-tertiary); text-align: right; margin-top: 0.35rem; }
+        .btn-danger {
+            background: var(--accent-red); color: #fff;
+            border: 1px solid var(--accent-red);
+        }
+        .btn-danger:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(212,106,106,0.3); }
+        .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* === Notification Modal === */
         .notif-overlay {
@@ -1350,6 +1378,40 @@
         </div>
     </div>
 
+    <!-- Reject Reason Modal -->
+    <div class="modal-overlay" id="rejectReasonModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Decline Changes</h3>
+                <button class="modal-close" onclick="closeRejectReasonModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="rejectReasonProjectId">
+                <input type="hidden" id="rejectReasonPendingId">
+                <div class="form-group">
+                    <label class="form-label">Pick a reason or write your own</label>
+                    <div class="reject-preset-row" id="rejectPresetRow">
+                        <button type="button" class="reject-preset-chip" data-reason="Bad formatting">Bad formatting</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Incorrect data">Incorrect data</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Out of scope">Out of scope</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Needs more detail">Needs more detail</button>
+                        <button type="button" class="reject-preset-chip" data-reason="Duplicate edit">Duplicate edit</button>
+                    </div>
+                    <textarea class="form-textarea" id="rejectReasonText" maxlength="255" placeholder="Explain what needs to change so the editor can fix it..." oninput="handleRejectReasonInput()"></textarea>
+                    <div class="reject-counter"><span id="rejectReasonCount">0</span>/255</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeRejectReasonModal()">Cancel</button>
+                <button class="btn btn-danger" id="rejectReasonSubmit" onclick="submitRejectReason()" disabled>Decline</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Diff Modal -->
     <div class="modal-overlay" id="diffModal">
         <div class="modal diff-modal">
@@ -1601,18 +1663,77 @@
             } catch (error) { showToast('Failed to accept changes', 'error'); }
         }
 
-        async function declinePending(projectId, pendingId) {
+        function declinePending(projectId, pendingId) {
+            openRejectReasonModal(projectId, pendingId);
+        }
+
+        function openRejectReasonModal(projectId, pendingId) {
+            document.getElementById('rejectReasonProjectId').value = projectId;
+            document.getElementById('rejectReasonPendingId').value = pendingId;
+            const textarea = document.getElementById('rejectReasonText');
+            textarea.value = '';
+            document.getElementById('rejectReasonCount').textContent = '0';
+            document.getElementById('rejectReasonSubmit').disabled = true;
+            document.querySelectorAll('#rejectPresetRow .reject-preset-chip').forEach(chip => {
+                chip.classList.remove('active');
+                chip.onclick = () => {
+                    textarea.value = chip.dataset.reason;
+                    document.querySelectorAll('#rejectPresetRow .reject-preset-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    handleRejectReasonInput();
+                    textarea.focus();
+                };
+            });
+            document.getElementById('rejectReasonModal').classList.add('show');
+            setTimeout(() => textarea.focus(), 50);
+        }
+
+        function closeRejectReasonModal() {
+            document.getElementById('rejectReasonModal').classList.remove('show');
+        }
+
+        function handleRejectReasonInput() {
+            const textarea = document.getElementById('rejectReasonText');
+            const value = textarea.value.trim();
+            document.getElementById('rejectReasonCount').textContent = textarea.value.length;
+            document.getElementById('rejectReasonSubmit').disabled = value.length === 0;
+            document.querySelectorAll('#rejectPresetRow .reject-preset-chip').forEach(chip => {
+                if (chip.dataset.reason !== textarea.value) chip.classList.remove('active');
+            });
+        }
+
+        async function submitRejectReason() {
+            const projectId = parseInt(document.getElementById('rejectReasonProjectId').value, 10);
+            const pendingId = parseInt(document.getElementById('rejectReasonPendingId').value, 10);
+            const reason = document.getElementById('rejectReasonText').value.trim();
+            if (!reason) {
+                showToast("Can't decline without reason", 'error');
+                return;
+            }
+            const submitBtn = document.getElementById('rejectReasonSubmit');
+            submitBtn.disabled = true;
             try {
-                const response = await authFetch('/handlepending/', { method: 'POST', body: JSON.stringify({ pending_id: pendingId, action: 'reject' }) });
-                if (!response) return;
+                const response = await authFetch('/handlepending/', {
+                    method: 'POST',
+                    body: JSON.stringify({ pending_id: pendingId, action: 'reject', reject_comment: reason })
+                });
+                if (!response) { submitBtn.disabled = false; return; }
                 const data = await safeJson(response);
                 if (data.success) {
                     showToast('Changes declined');
-                    document.getElementById(`pending-${pendingId}`).remove();
+                    const row = document.getElementById(`pending-${pendingId}`);
+                    if (row) row.remove();
                     updatePendingBadge(projectId);
                     updateStats();
-                } else { showToast(data.error || 'Failed to decline changes', 'error'); }
-            } catch (error) { showToast('Failed to decline changes', 'error'); }
+                    closeRejectReasonModal();
+                } else {
+                    showToast(data.error || 'Failed to decline changes', 'error');
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                showToast('Failed to decline changes', 'error');
+                submitBtn.disabled = false;
+            }
         }
 
         async function viewPendingDiff(projectId, pendingId, docName, username) {

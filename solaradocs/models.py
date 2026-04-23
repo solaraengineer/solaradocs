@@ -164,6 +164,7 @@ class PendingAction(models.Model):
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
     document_name = models.CharField(max_length=255)
     pending_note = models.TextField(blank=True)
+    reject_comment= models.CharField(max_length=256, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -195,6 +195,122 @@
             margin-top: 0.5rem;
         }
 
+        /* Rejection Feedback Trigger Pill */
+        .feedback-trigger {
+            display: none; align-items: center; gap: 0.55rem;
+            padding: 0.55rem 0.95rem; border-radius: 999px;
+            background: rgba(212,106,106,0.1); border: 1px solid rgba(212,106,106,0.3);
+            color: var(--accent-red); font-family: inherit; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .feedback-trigger.visible { display: inline-flex; }
+        .feedback-trigger:hover { background: rgba(212,106,106,0.18); border-color: var(--accent-red); }
+        .feedback-trigger svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .feedback-trigger-count {
+            background: var(--accent-red); color: #fff;
+            font-size: 0.7rem; font-weight: 700;
+            padding: 0.1rem 0.45rem; border-radius: 999px; min-width: 1.2rem; text-align: center;
+        }
+
+        /* Side Panel Overlay + Panel */
+        .feedback-panel-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.55);
+            opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+            z-index: 900;
+        }
+        .feedback-panel-overlay.show { opacity: 1; visibility: visible; }
+        .feedback-panel {
+            position: fixed; top: 0; right: 0; bottom: 0;
+            width: min(440px, 92vw);
+            background: var(--bg-secondary); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.33,1,0.68,1);
+            z-index: 901; box-shadow: -12px 0 32px rgba(0,0,0,0.35);
+        }
+        .feedback-panel.left { right: auto; left: 0; border-left: none; border-right: 1px solid var(--border); transform: translateX(-100%); box-shadow: 12px 0 32px rgba(0,0,0,0.35); }
+        .feedback-panel-overlay.show .feedback-panel { transform: translateX(0); }
+
+        .feedback-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border);
+        }
+        .feedback-panel-title-block { display: flex; flex-direction: column; gap: 0.15rem; }
+        .feedback-panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem; font-weight: 600; color: var(--text-primary);
+        }
+        .feedback-panel-subtitle { font-size: 0.78rem; color: var(--text-tertiary); }
+        .feedback-panel-close {
+            background: transparent; border: 1px solid var(--border-subtle);
+            color: var(--text-secondary); border-radius: 8px;
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .feedback-panel-close:hover { color: var(--text-primary); border-color: var(--border); }
+        .feedback-panel-close svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+        .feedback-panel-body {
+            flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+            display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .feedback-empty {
+            text-align: center; padding: 3rem 1rem;
+            color: var(--text-tertiary); font-size: 0.9rem;
+        }
+
+        .feedback-card {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--accent-red);
+            border-radius: 10px; padding: 0.9rem 1rem;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+        .feedback-card-top {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 0.75rem; flex-wrap: wrap;
+        }
+        .feedback-card-doc {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem; font-weight: 600; color: var(--text-primary);
+        }
+        .feedback-card-project {
+            display: inline-block; font-size: 0.7rem; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--text-tertiary);
+            margin-top: 0.15rem;
+        }
+        .feedback-card-date { font-size: 0.72rem; color: var(--text-tertiary); white-space: nowrap; }
+        .feedback-card-reviewer {
+            font-size: 0.75rem; color: var(--text-secondary);
+        }
+        .feedback-card-reviewer b { color: var(--text-primary); font-weight: 600; }
+        .feedback-card-reason {
+            background: rgba(212,106,106,0.08); border: 1px solid rgba(212,106,106,0.18);
+            border-radius: 8px; padding: 0.6rem 0.75rem;
+            font-size: 0.85rem; color: var(--text-primary); line-height: 1.5;
+            white-space: pre-wrap; word-break: break-word;
+        }
+        .feedback-reason-label {
+            display: block; font-size: 0.65rem; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--accent-red); font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .feedback-panel-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.85rem 1.25rem; border-top: 1px solid var(--border);
+            gap: 0.75rem;
+        }
+        .feedback-page-info { font-size: 0.78rem; color: var(--text-tertiary); }
+        .feedback-page-nav { display: flex; gap: 0.5rem; }
+        .feedback-page-btn {
+            background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+            color: var(--text-secondary); font-family: inherit;
+            padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .feedback-page-btn:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border); }
+        .feedback-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
         /* Projects Grid */
         .projects-grid {
             display: grid;
@@ -921,6 +1037,40 @@
             <div class="invite-code-message" id="inviteCodeMessage"></div>
         </div>
 
+        <div style="margin-bottom: 1.5rem;">
+            <button type="button" class="feedback-trigger" id="feedbackTrigger" onclick="openFeedbackPanel()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Feedback on your declined edits</span>
+                <span class="feedback-trigger-count" id="feedbackTriggerCount">0</span>
+            </button>
+        </div>
+
+        <div class="feedback-panel-overlay" id="feedbackPanelOverlay" onclick="handleFeedbackOverlayClick(event)">
+            <aside class="feedback-panel" id="feedbackPanel" role="dialog" aria-modal="true" aria-labelledby="feedbackPanelTitle">
+                <header class="feedback-panel-header">
+                    <div class="feedback-panel-title-block">
+                        <span class="feedback-panel-title" id="feedbackPanelTitle">Declined Edits</span>
+                        <span class="feedback-panel-subtitle" id="feedbackPanelSubtitle">Reviewer feedback on your submissions</span>
+                    </div>
+                    <button type="button" class="feedback-panel-close" onclick="closeFeedbackPanel()" aria-label="Close">
+                        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </header>
+                <div class="feedback-panel-body" id="feedbackPanelBody">
+                    <div class="feedback-empty">No declined edits yet.</div>
+                </div>
+                <footer class="feedback-panel-footer" id="feedbackPanelFooter" style="display:none;">
+                    <span class="feedback-page-info" id="feedbackPageInfo">Page 1 of 1</span>
+                    <div class="feedback-page-nav">
+                        <button type="button" class="feedback-page-btn" id="feedbackPrevBtn" onclick="changeFeedbackPage(-1)">Prev</button>
+                        <button type="button" class="feedback-page-btn" id="feedbackNextBtn" onclick="changeFeedbackPage(1)">Next</button>
+                    </div>
+                </footer>
+            </aside>
+        </div>
+
         {% if collaborated_projects %}
         <div class="projects-grid">
             {% for collab in collaborated_projects %}
@@ -1588,11 +1738,126 @@
             }
         }
 
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
+        function formatRejectionDate(iso) {
+            try {
+                const d = new Date(iso);
+                if (isNaN(d.getTime())) return '';
+                return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+            } catch (e) { return ''; }
+        }
+
+        const FEEDBACK_PAGE_SIZE = 5;
+        let feedbackItems = [];
+        let feedbackPage = 1;
+
+        function renderFeedbackPage() {
+            const body = document.getElementById('feedbackPanelBody');
+            const footer = document.getElementById('feedbackPanelFooter');
+            const pageInfo = document.getElementById('feedbackPageInfo');
+            const prevBtn = document.getElementById('feedbackPrevBtn');
+            const nextBtn = document.getElementById('feedbackNextBtn');
+
+            if (!feedbackItems.length) {
+                body.innerHTML = '<div class="feedback-empty">No declined edits yet.</div>';
+                footer.style.display = 'none';
+                return;
+            }
+
+            const totalPages = Math.max(1, Math.ceil(feedbackItems.length / FEEDBACK_PAGE_SIZE));
+            if (feedbackPage > totalPages) feedbackPage = totalPages;
+            if (feedbackPage < 1) feedbackPage = 1;
+
+            const start = (feedbackPage - 1) * FEEDBACK_PAGE_SIZE;
+            const slice = feedbackItems.slice(start, start + FEEDBACK_PAGE_SIZE);
+
+            body.innerHTML = slice.map(r => `
+                <div class="feedback-card">
+                    <div class="feedback-card-top">
+                        <div>
+                            <div class="feedback-card-doc">${escapeHtml(r.document_name)}</div>
+                            <div class="feedback-card-project">${escapeHtml(r.project_name)}</div>
+                        </div>
+                        <span class="feedback-card-date">${escapeHtml(formatRejectionDate(r.created_at))}</span>
+                    </div>
+                    <div class="feedback-card-reviewer">Declined by <b>${escapeHtml(r.actioned_by)}</b></div>
+                    <div class="feedback-card-reason">
+                        <span class="feedback-reason-label">Reason</span>${r.reject_comment ? escapeHtml(r.reject_comment) : '<em style="color:var(--text-tertiary);">No reason provided</em>'}
+                    </div>
+                </div>
+            `).join('');
+
+            if (totalPages > 1) {
+                footer.style.display = 'flex';
+                pageInfo.textContent = `Page ${feedbackPage} of ${totalPages} · ${feedbackItems.length} total`;
+                prevBtn.disabled = feedbackPage <= 1;
+                nextBtn.disabled = feedbackPage >= totalPages;
+            } else {
+                footer.style.display = 'none';
+            }
+        }
+
+        function changeFeedbackPage(delta) {
+            feedbackPage += delta;
+            renderFeedbackPage();
+            document.getElementById('feedbackPanelBody').scrollTop = 0;
+        }
+
+        function openFeedbackPanel() {
+            feedbackPage = 1;
+            renderFeedbackPage();
+            document.getElementById('feedbackPanelOverlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFeedbackPanel() {
+            document.getElementById('feedbackPanelOverlay').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        function handleFeedbackOverlayClick(event) {
+            if (event.target === event.currentTarget) closeFeedbackPanel();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('feedbackPanelOverlay').classList.contains('show')) {
+                closeFeedbackPanel();
+            }
+        });
+
+        async function loadRejectionFeedback() {
+            try {
+                const response = await authFetch('/api/my-rejection-feedback');
+                if (!response) return;
+                const data = await safeJson(response);
+                if (!data || !data.success || !Array.isArray(data.rejections)) return;
+
+                feedbackItems = data.rejections;
+                const trigger = document.getElementById('feedbackTrigger');
+                const count = document.getElementById('feedbackTriggerCount');
+
+                if (feedbackItems.length > 0) {
+                    count.textContent = feedbackItems.length;
+                    trigger.classList.add('visible');
+                } else {
+                    trigger.classList.remove('visible');
+                }
+                renderFeedbackPage();
+            } catch (e) {
+                console.error('Failed to load rejection feedback', e);
+            }
+        }
+
         // Initialize token on page load
         (async function initToken() {
             if (!TokenManager.getToken()) {
                 await TokenManager.refreshToken();
             }
+            loadRejectionFeedback();
         })();
     </script>
 </body>

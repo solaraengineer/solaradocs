@@ -1158,6 +1158,17 @@ def handle_pending(request):
         if action not in ('accept', 'reject'):
             return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
 
+        reject_comment = ''
+        if action == 'reject':
+            raw_comment = data.get('reject_comment', '')
+            if not isinstance(raw_comment, str):
+                return JsonResponse({'success': False, 'error': 'Invalid reject comment'}, status=400)
+            reject_comment = raw_comment.strip()
+            if not reject_comment:
+                return JsonResponse({'success': False, 'error': "Can't decline without reason"}, status=400)
+            if len(reject_comment) > 255:
+                return JsonResponse({'success': False, 'error': 'Reject comment too long (max 255 chars)'}, status=400)
+
         with transaction.atomic():
             pending = Pending.objects.select_related(
                 'project', 'document', 'team', 'user'
@@ -1230,7 +1241,8 @@ def handle_pending(request):
                 actioned_by=request.user,
                 action=action,
                 document_name=document_name,
-                pending_note=pending_note
+                pending_note=pending_note,
+                reject_comment=reject_comment if action == 'reject' else ''
             )
 
             if tier_config.get('audit', False):
@@ -1267,6 +1279,32 @@ def collaborations(request):
     except Exception:
         logger.exception("collaborations failed")
         return render_error(request, 500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_my_rejection_feedback(request):
+    try:
+        rejections = PendingAction.objects.filter(
+            pending_user=request.user,
+            action='reject'
+        ).select_related('project', 'actioned_by').order_by('-created_at')[:20]
+
+        items = [{
+            'id': r.id,
+            'project_name': r.project.project_name if r.project_id else 'Unknown project',
+            'document_name': r.document_name,
+            'actioned_by': r.actioned_by.username,
+            'reject_comment': r.reject_comment,
+            'created_at': r.created_at.isoformat(),
+        } for r in rejections]
+
+        return JsonResponse({'success': True, 'rejections': items})
+    except Exception:
+        logger.exception("get_my_rejection_feedback failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @csrf_protect
@@ -2399,6 +2437,7 @@ def get_pending_actions(request, project_id):
             'action': action.action,
             'document_name': action.document_name,
             'pending_note': action.pending_note,
+            'reject_comment': action.reject_comment,
             'created_at': action.created_at.isoformat()
         } for action in pending_actions]
 
@@ -4582,6 +4621,17 @@ def handle_pending(request):
         if action not in ('accept', 'reject'):
             return JsonResponse({'success': False, 'error': 'Invalid action. Must be accept or reject'}, status=400)
 
+        reject_comment = ''
+        if action == 'reject':
+            raw_comment = data.get('reject_comment', '')
+            if not isinstance(raw_comment, str):
+                return JsonResponse({'success': False, 'error': 'Invalid reject comment'}, status=400)
+            reject_comment = raw_comment.strip()
+            if not reject_comment:
+                return JsonResponse({'success': False, 'error': "Can't decline without reason"}, status=400)
+            if len(reject_comment) > 255:
+                return JsonResponse({'success': False, 'error': 'Reject comment too long (max 255 chars)'}, status=400)
+
         with transaction.atomic():
             pending = Pending.objects.select_related(
                 'project', 'document', 'team', 'user'
@@ -4654,7 +4704,8 @@ def handle_pending(request):
                 actioned_by=request.user,
                 action=action,
                 document_name=document_name,
-                pending_note=pending_note
+                pending_note=pending_note,
+                reject_comment=reject_comment if action == 'reject' else ''
             )
 
             if tier_config.get('audit', False):
@@ -4691,6 +4742,32 @@ def collaborations(request):
     except Exception:
         logger.exception("collaborations failed")
         return render_error(request, 500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
+def get_my_rejection_feedback(request):
+    try:
+        rejections = PendingAction.objects.filter(
+            pending_user=request.user,
+            action='reject'
+        ).select_related('project', 'actioned_by').order_by('-created_at')[:20]
+
+        items = [{
+            'id': r.id,
+            'project_name': r.project.project_name if r.project_id else 'Unknown project',
+            'document_name': r.document_name,
+            'actioned_by': r.actioned_by.username,
+            'reject_comment': r.reject_comment,
+            'created_at': r.created_at.isoformat(),
+        } for r in rejections]
+
+        return JsonResponse({'success': True, 'rejections': items})
+    except Exception:
+        logger.exception("get_my_rejection_feedback failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
 @csrf_protect
@@ -5823,6 +5900,7 @@ def get_pending_actions(request, project_id):
             'action': action.action,
             'document_name': action.document_name,
             'pending_note': action.pending_note,
+            'reject_comment': action.reject_comment,
             'created_at': action.created_at.isoformat()
         } for action in pending_actions]
 

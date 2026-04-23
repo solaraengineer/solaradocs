@@ -16,6 +16,7 @@ urlpatterns = [
     path('changeroles/', views.change_roles, name='change_roles'),
     path('about/', views.about, name='about'),
     path('collaborations/', views.collaborations, name='collaborations'),
+    path('api/my-rejection-feedback', views.get_my_rejection_feedback, name='get_my_rejection_feedback'),
     path('deleteproject/', views.delete_project, name='delete_project'),
     path('handlepending/', views.handle_pending, name='handle_pending'),
     path('metrics', views.metrics_view, name='metrics'),
