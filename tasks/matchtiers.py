@@ -16,5 +16,4 @@ for user in User.objects.all():
     if count > 0:
         mismatched.update(tier=tier)
         print(f"{user.username}: updated {count} project(s) to {tier}")
-
 print("done")

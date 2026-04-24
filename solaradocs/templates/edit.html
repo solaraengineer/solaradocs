@@ -5617,7 +5617,39 @@ function hidePendingNoteModal() {
 
         // ==================== INIT ====================
 
-        loadDocuments();
+        async function bootEditor() {
+            const params = new URLSearchParams(window.location.search);
+            const resubmitFrom = params.get('resubmit_from');
+
+            if (resubmitFrom) {
+                try {
+                    const response = await authFetch('/api/my-rejection-feedback');
+                    if (response) {
+                        const data = await safeJson(response);
+                        if (data && data.success && Array.isArray(data.rejections)) {
+                            const rejection = data.rejections.find(r => String(r.id) === String(resubmitFrom));
+                            if (rejection && rejection.can_resubmit && rejection.project_id === projectId && rejection.document_id) {
+                                currentDocumentId = rejection.document_id;
+                                await loadDocuments();
+                                await selectDocument(rejection.document_id, true);
+                                quill.root.innerHTML = rejection.rejected_content || '';
+                                updateWordCount();
+                                hasUnsavedChanges = true;
+                                showToast('Resubmitting declined edit — enter a note when you save', 'success');
+                                try { history.replaceState({}, '', window.location.pathname); } catch (e) {}
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Resubmit preload failed', e);
+                }
+            }
+
+            loadDocuments();
+        }
+
+        bootEditor();
     function getCookie(name) {
 let cookieValue = null;
 if (document.cookie && document.cookie !== '') {

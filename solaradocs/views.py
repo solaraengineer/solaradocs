@@ -1242,7 +1242,8 @@ def handle_pending(request):
                 action=action,
                 document_name=document_name,
                 pending_note=pending_note,
-                reject_comment=reject_comment if action == 'reject' else ''
+                reject_comment=reject_comment if action == 'reject' else '',
+                rejected_content=pending.submitted_content if action == 'reject' else ''
             )
 
             if tier_config.get('audit', False):
@@ -1290,14 +1291,18 @@ def get_my_rejection_feedback(request):
         rejections = PendingAction.objects.filter(
             pending_user=request.user,
             action='reject'
-        ).select_related('project', 'actioned_by').order_by('-created_at')[:20]
+        ).select_related('project', 'actioned_by', 'document').order_by('-created_at')[:20]
 
         items = [{
             'id': r.id,
+            'project_id': r.project_id,
             'project_name': r.project.project_name if r.project_id else 'Unknown project',
+            'document_id': r.document_id,
             'document_name': r.document_name,
             'actioned_by': r.actioned_by.username,
             'reject_comment': r.reject_comment,
+            'rejected_content': r.rejected_content,
+            'can_resubmit': r.document_id is not None,
             'created_at': r.created_at.isoformat(),
         } for r in rejections]
 
@@ -4705,7 +4710,8 @@ def handle_pending(request):
                 action=action,
                 document_name=document_name,
                 pending_note=pending_note,
-                reject_comment=reject_comment if action == 'reject' else ''
+                reject_comment=reject_comment if action == 'reject' else '',
+                rejected_content=pending.submitted_content if action == 'reject' else ''
             )
 
             if tier_config.get('audit', False):
@@ -4753,14 +4759,18 @@ def get_my_rejection_feedback(request):
         rejections = PendingAction.objects.filter(
             pending_user=request.user,
             action='reject'
-        ).select_related('project', 'actioned_by').order_by('-created_at')[:20]
+        ).select_related('project', 'actioned_by', 'document').order_by('-created_at')[:20]
 
         items = [{
             'id': r.id,
+            'project_id': r.project_id,
             'project_name': r.project.project_name if r.project_id else 'Unknown project',
+            'document_id': r.document_id,
             'document_name': r.document_name,
             'actioned_by': r.actioned_by.username,
             'reject_comment': r.reject_comment,
+            'rejected_content': r.rejected_content,
+            'can_resubmit': r.document_id is not None,
             'created_at': r.created_at.isoformat(),
         } for r in rejections]
 
@@ -7066,4 +7076,76 @@ def metrics_view(request):
             generate_latest(registry),
             content_type=CONTENT_TYPE_LATEST
         )
+
+
+@require_POST
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='10/m', block=True)
+def resubmit_pending(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    try:
+        pending_action_id = data.get('pending_action_id')
+        content = data.get('content')
+        note = data.get('note', '')
+
+        if not isinstance(pending_action_id, int) or pending_action_id < 1:
+            return JsonResponse({'success': False, 'error': 'Invalid pending action ID'}, status=400)
+
+        if not isinstance(content, str):
+            return JsonResponse({'success': False, 'error': 'Invalid content'}, status=400)
+
+        if not isinstance(note, str):
+            return JsonResponse({'success': False, 'error': 'Invalid note'}, status=400)
+
+        note = note.strip()
+        if not note:
+            return JsonResponse({'success': False, 'error': 'A note is required when resubmitting'}, status=400)
+
+        if len(note) > 500:
+            return JsonResponse({'success': False, 'error': 'Note too long (max 500 chars)'}, status=400)
+
+        with transaction.atomic():
+            pending_action = PendingAction.objects.select_related(
+                'project', 'document', 'pending_user'
+            ).filter(id=pending_action_id).first()
+
+            if not pending_action:
+                return JsonResponse({'success': False, 'error': 'Rejection not found'}, status=404)
+
+            if pending_action.pending_user_id != request.user.id:
+                return JsonResponse({'success': False, 'error': 'Not authorized to resubmit this edit'}, status=403)
+
+            if pending_action.action != 'reject':
+                return JsonResponse({'success': False, 'error': 'Only rejected edits can be resubmitted'}, status=400)
+
+            document = pending_action.document
+            if not document:
+                return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
+
+            document = Documents.objects.select_for_update().filter(id=document.id).first()
+            if not document:
+                return JsonResponse({'success': False, 'error': 'Document no longer exists'}, status=404)
+
+            new_pending = Pending.objects.create(
+                project=pending_action.project,
+                team=document.team_assigned,
+                document=document,
+                user=request.user,
+                submitted_content=content,
+                note=note,
+            )
+
+        return JsonResponse({
+            'success': True,
+            'pending_id': new_pending.id,
+            'document_id': document.id,
+        })
+    except Exception:
+        logger.exception("resubmit_pending failed")
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 

@@ -295,6 +295,22 @@
             margin-bottom: 0.25rem;
         }
 
+        .feedback-card-actions {
+            display: flex; justify-content: flex-end; gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+        .feedback-resubmit-btn {
+            background: var(--bg-primary); border: 1px solid var(--border);
+            color: var(--text-primary); font-family: inherit;
+            padding: 0.45rem 0.85rem; border-radius: 6px; font-size: 0.78rem;
+            cursor: pointer; transition: all 0.15s ease; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .feedback-resubmit-btn:hover {
+            border-color: var(--accent-teal); color: var(--accent-teal);
+        }
+        .feedback-resubmit-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
         .feedback-panel-footer {
             display: flex; align-items: center; justify-content: space-between;
             padding: 0.85rem 1.25rem; border-top: 1px solid var(--border);
@@ -1788,6 +1804,13 @@
                     <div class="feedback-card-reason">
                         <span class="feedback-reason-label">Reason</span>${r.reject_comment ? escapeHtml(r.reject_comment) : '<em style="color:var(--text-tertiary);">No reason provided</em>'}
                     </div>
+                    ${r.can_resubmit ? `
+                    <div class="feedback-card-actions">
+                        <a class="feedback-resubmit-btn" href="/project/${r.project_id}/?resubmit_from=${r.id}">
+                            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                            Edit &amp; Resubmit
+                        </a>
+                    </div>` : ''}
                 </div>
             `).join('');
 
@@ -1851,6 +1874,7 @@
                 console.error('Failed to load rejection feedback', e);
             }
         }
+
 
         // Initialize token on page load
         (async function initToken() {

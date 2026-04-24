@@ -1165,6 +1165,25 @@ class RejectCommentTests(BaseTestCase):
         self.assertEqual(r.status_code, 403)
         self.assertTrue(Pending.objects.filter(id=self.pending.id).exists())
 
+    # ---- rejected_content is captured on reject so editor can resubmit ----
+    def test_reject_populates_rejected_content(self):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'reject',
+            'reject_comment': 'Please revise',
+        })
+        self.assertEqual(r.status_code, 200)
+        pa = PendingAction.objects.get(action='reject')
+        self.assertEqual(pa.rejected_content, '<p>Proposed</p>')
+
+    @patch('solaradocs.views.backup_document_to_r2')
+    def test_accept_leaves_rejected_content_blank(self, _mock):
+        r = self._post('/handlepending/', {
+            'pending_id': self.pending.id, 'action': 'accept',
+        })
+        self.assertEqual(r.status_code, 200)
+        pa = PendingAction.objects.get(action='accept')
+        self.assertEqual(pa.rejected_content, '')
+
 
 # ---------------------------------------------------------------------------
 # My Rejection Feedback (editor-facing view of their declined edits)
@@ -1244,6 +1263,171 @@ class MyRejectionFeedbackTests(BaseTestCase):
             self._make_rejection(self.editor, comment=f'R{i}', doc_name=f'D{i}')
         r = self._get('/api/my-rejection-feedback', user=self.editor)
         self.assertEqual(len(r.json()['rejections']), 20)
+
+    def test_includes_rejected_content_and_document_id(self):
+        pa = PendingAction.objects.create(
+            project=self.project, document=self.doc,
+            pending_user=self.editor, actioned_by=self.owner,
+            action='reject', document_name='Doc',
+            reject_comment='Bad', rejected_content='<p>Old try</p>',
+        )
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        item = r.json()['rejections'][0]
+        self.assertEqual(item['id'], pa.id)
+        self.assertEqual(item['rejected_content'], '<p>Old try</p>')
+        self.assertEqual(item['document_id'], self.doc.id)
+        self.assertTrue(item['can_resubmit'])
+
+    def test_can_resubmit_false_when_document_deleted(self):
+        PendingAction.objects.create(
+            project=self.project, document=None,
+            pending_user=self.editor, actioned_by=self.owner,
+            action='reject', document_name='GoneDoc',
+            reject_comment='N/A', rejected_content='<p>orphan</p>',
+        )
+        r = self._get('/api/my-rejection-feedback', user=self.editor)
+        item = r.json()['rejections'][0]
+        self.assertFalse(item['can_resubmit'])
+        self.assertIsNone(item['document_id'])
+
+
+# ---------------------------------------------------------------------------
+# Resubmit Pending (editor re-submits an edited version of a rejected edit)
+# ---------------------------------------------------------------------------
+class ResubmitPendingTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.priv_team = Teams.objects.create(project=self.project, team_name='RSTeam')
+        self.priv_doc = Documents.objects.create(
+            project=self.project, document_name='RSDoc',
+            content='<p>Original</p>', team_assigned=self.priv_team,
+        )
+        self.editor = self._make_contributor('rseditor', role='EDITOR')
+        self._make_team_member(
+            self.editor, team=self.priv_team,
+            role='EDITOR', can_direct_save=False,
+        )
+        self.rejection = PendingAction.objects.create(
+            project=self.project, document=self.priv_doc,
+            pending_user=self.editor, actioned_by=self.owner,
+            action='reject', document_name='RSDoc',
+            reject_comment='Fix formatting',
+            rejected_content='<p>First try</p>',
+        )
+
+    def test_resubmit_creates_new_pending_with_content(self):
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': self.rejection.id,
+            'content': '<p>Edited try</p>',
+            'note': 'Fixed the formatting',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertTrue(data['success'])
+        new = Pending.objects.get(id=data['pending_id'])
+        self.assertEqual(new.submitted_content, '<p>Edited try</p>')
+        self.assertEqual(new.note, 'Fixed the formatting')
+        self.assertEqual(new.user_id, self.editor.id)
+        self.assertEqual(new.document_id, self.priv_doc.id)
+        self.assertEqual(new.team_id, self.priv_team.id)
+        self.assertEqual(new.project_id, self.project.id)
+
+    def test_resubmit_does_not_modify_original_pending_action(self):
+        original_reject_comment = self.rejection.reject_comment
+        original_rejected_content = self.rejection.rejected_content
+        original_action = self.rejection.action
+        original_created_at = self.rejection.created_at
+
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': self.rejection.id,
+            'content': '<p>New try</p>',
+            'note': 'Redo',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 200)
+
+        self.rejection.refresh_from_db()
+        self.assertEqual(self.rejection.reject_comment, original_reject_comment)
+        self.assertEqual(self.rejection.rejected_content, original_rejected_content)
+        self.assertEqual(self.rejection.action, original_action)
+        self.assertEqual(self.rejection.created_at, original_created_at)
+        self.assertTrue(PendingAction.objects.filter(id=self.rejection.id).exists())
+
+    def test_resubmit_blocked_for_other_user(self):
+        intruder = self._make_contributor('rsintruder', role='EDITOR')
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': self.rejection.id,
+            'content': '<p>Hijack</p>',
+            'note': 'not mine',
+        }, user=intruder)
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(Pending.objects.filter(submitted_content='<p>Hijack</p>').exists())
+
+    def test_resubmit_blocked_for_accepted_action(self):
+        acceptance = PendingAction.objects.create(
+            project=self.project, document=self.priv_doc,
+            pending_user=self.editor, actioned_by=self.owner,
+            action='accept', document_name='RSDoc',
+        )
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': acceptance.id,
+            'content': '<p>Nope</p>',
+            'note': 'should fail',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(Pending.objects.filter(submitted_content='<p>Nope</p>').exists())
+
+    def test_resubmit_not_found(self):
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': 99999,
+            'content': '<p>x</p>',
+            'note': 'x',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 404)
+
+    def test_resubmit_requires_note(self):
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': self.rejection.id,
+            'content': '<p>x</p>',
+            'note': '   ',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 400)
+
+    def test_resubmit_rejects_missing_content(self):
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': self.rejection.id,
+            'note': 'redo',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 400)
+
+    def test_resubmit_rejects_note_over_500_chars(self):
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': self.rejection.id,
+            'content': '<p>x</p>',
+            'note': 'x' * 501,
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 400)
+
+    def test_resubmit_document_deleted_returns_404(self):
+        orphan = PendingAction.objects.create(
+            project=self.project, document=None,
+            pending_user=self.editor, actioned_by=self.owner,
+            action='reject', document_name='Gone',
+            reject_comment='x', rejected_content='<p>gone</p>',
+        )
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': orphan.id,
+            'content': '<p>x</p>',
+            'note': 'redo',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 404)
+
+    def test_resubmit_invalid_pending_action_id(self):
+        r = self._post('/resubmit-pending/', {
+            'pending_action_id': 'abc',
+            'content': '<p>x</p>',
+            'note': 'redo',
+        }, user=self.editor)
+        self.assertEqual(r.status_code, 400)
 
 
 # ---------------------------------------------------------------------------
