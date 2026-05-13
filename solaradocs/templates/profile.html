@@ -1,4 +1,5 @@
 {% load static %}
+{% load billing_extras %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -392,6 +393,64 @@
         .status-canceled { background: var(--accent-red); }
         .status-none { background: var(--text-tertiary); }
 
+        /* Billing History */
+        .billing-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .billing-table th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 0.5px solid var(--border-subtle);
+        }
+        .billing-table td {
+            height: 40px;
+            padding: 0 12px;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            border-bottom: 0.5px solid var(--border-subtle);
+            vertical-align: middle;
+        }
+        .billing-table tr:hover td { background: var(--bg-tertiary); }
+        .billing-table tr:last-child td { border-bottom: none; }
+        .billing-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; }
+        .billing-status-paid { color: #52B788; }
+        .billing-status-failed { color: #D9544A; }
+        .billing-status-refunded { color: var(--text-tertiary); }
+        .billing-link {
+            color: var(--accent-orange);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        .billing-link:hover { text-decoration: underline; }
+        .billing-retry-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .billing-retry-btn:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
+        .billing-empty {
+            padding: 24px 12px;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+        }
+        .billing-view-all {
+            display: block;
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: var(--accent-orange);
+            text-decoration: none;
+        }
+        .billing-view-all:hover { text-decoration: underline; }
+
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -571,6 +630,7 @@
     </style>
 </head>
 <body>
+{% include "partials/past_due_banner.html" %}
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -693,13 +753,75 @@
                                     {% else %}No active subscription{% endif %}
                                 </span>
                             </div>
-                            {% if user.subscription_status == 'active' %}
-                            <button class="btn btn-danger" onclick="openCancelModal()">Cancel Subscription</button>
-                            {% elif user.Tier == 'free' %}
-                            <a href="/buy" class="btn btn-primary">Upgrade</a>
-                            {% endif %}
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                {% if user.stripe_customer_id %}
+                                <form method="post" action="/billing-portal/" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-secondary">Update payment method</button>
+                                </form>
+                                {% endif %}
+                                {% if user.subscription_status == 'active' %}
+                                <button class="btn btn-danger" onclick="openCancelModal()">Cancel Subscription</button>
+                                {% elif user.Tier == 'free' %}
+                                <a href="/buy" class="btn btn-primary">Upgrade</a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Billing History -->
+                <div class="profile-card">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="9" y1="13" x2="15" y2="13"/>
+                            <line x1="9" y1="17" x2="15" y2="17"/>
+                        </svg>
+                        Billing History
+                    </div>
+                    {% if invoices %}
+                    <table class="billing-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inv in invoices %}
+                            <tr>
+                                <td>{% if inv.paid_at %}{{ inv.paid_at|date:"M d, Y" }}{% else %}{{ inv.created_at|date:"M d, Y" }}{% endif %}</td>
+                                <td>${{ inv.amount|cents_to_dollars }}</td>
+                                <td>
+                                    {% if inv.status == 'paid' %}
+                                        <span class="billing-status billing-status-paid">✓ Paid</span>
+                                    {% elif inv.status == 'failed' %}
+                                        <span class="billing-status billing-status-failed">✕ Failed</span>
+                                    {% elif inv.status == 'refunded' %}
+                                        <span class="billing-status billing-status-refunded">Refunded</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if inv.status == 'failed' %}
+                                        <button class="billing-retry-btn" onclick="retryInvoice('{{ inv.stripe_invoice_id }}')">Retry</button>
+                                    {% elif inv.pdf_url %}
+                                        <a class="billing-link" href="{{ inv.pdf_url }}" target="_blank" rel="noopener">Download invoice</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if has_more_invoices %}
+                    <a class="billing-view-all" href="/billing-history/">[View all invoices]</a>
+                    {% endif %}
+                    {% else %}
+                    <div class="billing-empty">No billing history yet.</div>
+                    {% endif %}
                 </div>
 
                 <!-- Change Password -->

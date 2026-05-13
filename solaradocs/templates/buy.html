@@ -248,6 +248,7 @@
     </style>
 </head>
 <body>
+{% include "partials/past_due_banner.html" %}
     <nav class="navbar">
         <div style="display: flex; align-items: center; gap: 16px;">
             <a href="{% if request.user.is_authenticated %}/dashboard{% else %}/{% endif %}" class="back-btn" id="backBtn">

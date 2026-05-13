@@ -216,3 +216,16 @@ class PromoCodes(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
     left_uses = models.PositiveIntegerField(default=0)
 
+
+class InvoicePayment(models.Model):
+    stripe_invoice_id = models.CharField(max_length=255, unique=True)
+    tier = models.CharField(choices=TIER_CHOICES)
+    amount = models.PositiveIntegerField()
+    status = models.CharField(choices=[('paid', 'Paid'), ('failed', 'Failed'), ('refunded', 'Refunded')])
+    pdf_url = models.URLField(null=True, blank=True)
+    email = models.CharField(max_length=255)
+    username = models.CharField(max_length=255)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+

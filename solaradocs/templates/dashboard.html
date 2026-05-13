@@ -185,6 +185,126 @@
             border-radius: 4px; font-family: 'JetBrains Mono', monospace;
         }
         .project-owner { font-size: 0.8125rem; color: var(--text-tertiary); }
+
+        /* Kebab menu */
+        .kebab-wrap { position: relative; display: inline-block; }
+        .kebab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-tertiary);
+            border-radius: 4px;
+            width: 28px; height: 28px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.12s ease, color 0.12s ease;
+        }
+        .kebab-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .kebab-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 32px;
+            min-width: 180px;
+            background: var(--bg-elevated, var(--bg-secondary));
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 50;
+            padding: 4px;
+        }
+        .kebab-menu.open { display: block; }
+        .kebab-menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 0.875rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .kebab-menu-item:hover { background: var(--bg-tertiary); }
+        .kebab-menu-item-danger { color: var(--accent-red); }
+        .kebab-menu-item-danger:hover { background: rgba(212, 106, 106, 0.12); }
+
+        /* Typed-confirm modal */
+        .typed-confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .typed-confirm-overlay.show { display: flex; }
+        .typed-confirm-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            max-width: 460px;
+            width: 92%;
+        }
+        .typed-confirm-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent-red);
+        }
+        .typed-confirm-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .typed-confirm-input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+            outline: none;
+        }
+        .typed-confirm-input:focus { border-color: var(--accent-red); }
+        .typed-confirm-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .typed-confirm-cancel,
+        .typed-confirm-delete {
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+        .typed-confirm-cancel {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .typed-confirm-delete {
+            background: var(--accent-red);
+            color: white;
+        }
+        .typed-confirm-delete:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
         .project-actions { display: flex; gap: 0.5rem; }
         .project-meta { display: flex; flex-wrap: wrap; gap: 1.5rem; }
         .meta-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); }
@@ -791,6 +911,7 @@
     </style>
 </head>
 <body>
+{% include "partials/past_due_banner.html" %}
 
     <!-- ==================== NAVBAR ==================== -->
     <nav class="navbar">
@@ -875,7 +996,9 @@
                                 <span class="project-pending-badge">{{ project.pendings.count }} pending</span>
                                 {% endif %}
                             </h2>
+                            {% if project.owner_id != request.user.id %}
                             <p class="project-owner">Owned by {{ project.owner.username }}</p>
+                            {% endif %}
                         </div>
                         <div class="project-actions">
                             <a href="/project/{{ project.id }}" class="btn btn-primary">
@@ -892,12 +1015,16 @@
                                 </svg>
                                 Details
                             </button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteProject({{ project.id }})" title="Delete project">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                            </button>
+                            <div class="kebab-wrap">
+                                <button class="kebab-btn" type="button" title="More actions" aria-haspopup="true" onclick="toggleKebab(event, 'project-kebab-{{ project.id }}')">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                                </button>
+                                <div class="kebab-menu" id="project-kebab-{{ project.id }}" role="menu">
+                                    <button class="kebab-menu-item kebab-menu-item-danger" type="button" onclick="deleteProject({{ project.id }}, '{{ project.project_name|escapejs }}')">
+                                        Delete project
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="project-meta">
@@ -910,7 +1037,7 @@
                             </svg>
                             {{ project.created_at|date:"M d, Y" }}
                         </div>
-                        <div class="meta-item" id="collab-count-{{ project.id }}">
+                        <div class="meta-item" id="collab-count-{{ project.id }}"{% if not project.contributors.count %} style="display:none"{% endif %}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                                 <circle cx="9" cy="7" r="4"/>
@@ -1355,6 +1482,21 @@
         </div>
     </div>
 
+    <!-- Typed-confirm modal (for destructive ops like project delete) -->
+    <div class="typed-confirm-overlay" id="typedConfirmOverlay">
+        <div class="typed-confirm-box" role="dialog" aria-modal="true" aria-labelledby="typedConfirmTitle">
+            <div class="typed-confirm-title" id="typedConfirmTitle">Delete project?</div>
+            <div class="typed-confirm-text" id="typedConfirmText">
+                This action cannot be undone. Type <strong id="typedConfirmTargetName"></strong> to confirm.
+            </div>
+            <input type="text" class="typed-confirm-input" id="typedConfirmInput" autocomplete="off" spellcheck="false" placeholder="Type project name to confirm">
+            <div class="typed-confirm-actions">
+                <button type="button" class="typed-confirm-cancel" id="typedConfirmCancel">Cancel</button>
+                <button type="button" class="typed-confirm-delete" id="typedConfirmDelete" disabled>Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirmation Overlay -->
     <div class="confirm-overlay" id="confirmOverlay">
         <div class="confirm-box">
@@ -1633,11 +1775,78 @@
 
         function toggleTeam(teamId) { document.getElementById(`team-card-${teamId}`).classList.toggle('expanded'); }
 
+        // === Kebab menus ===
+        function toggleKebab(evt, menuId) {
+            evt.stopPropagation();
+            document.querySelectorAll('.kebab-menu.open').forEach(m => {
+                if (m.id !== menuId) m.classList.remove('open');
+            });
+            const m = document.getElementById(menuId);
+            if (m) m.classList.toggle('open');
+        }
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+        });
+
+        // === Typed confirm ===
+        function _escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => (
+                {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+            ));
+        }
+        function showTypedConfirm(targetName, title, text) {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('typedConfirmOverlay');
+                const input = document.getElementById('typedConfirmInput');
+                const deleteBtn = document.getElementById('typedConfirmDelete');
+                const cancelBtn = document.getElementById('typedConfirmCancel');
+                document.getElementById('typedConfirmTitle').textContent = title || 'Delete?';
+                document.getElementById('typedConfirmTargetName').textContent = targetName;
+                if (text) {
+                    // escape targetName because we're building HTML via innerHTML
+                    document.getElementById('typedConfirmText').innerHTML =
+                        text.replace('{name}', `<strong>${_escapeHtml(targetName)}</strong>`);
+                }
+                input.value = '';
+                deleteBtn.disabled = true;
+                overlay.classList.add('show');
+                setTimeout(() => input.focus(), 50);
+
+                function check() { deleteBtn.disabled = input.value !== targetName; }
+                function cleanup() {
+                    overlay.classList.remove('show');
+                    input.removeEventListener('input', check);
+                    deleteBtn.removeEventListener('click', onDelete);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    overlay.removeEventListener('click', onOverlay);
+                }
+                function onCancel() { cleanup(); resolve(false); }
+                function onDelete() {
+                    if (input.value !== targetName) return;
+                    cleanup();
+                    resolve(true);
+                }
+                function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
+                input.addEventListener('input', check);
+                deleteBtn.addEventListener('click', onDelete);
+                cancelBtn.addEventListener('click', onCancel);
+                overlay.addEventListener('click', onOverlay);
+            });
+        }
+
         // === Projects ===
-        async function deleteProject(projectId) {
-            if (!await showConfirm('Are you sure you want to delete this project? This cannot be undone.', 'Delete')) return;
+        async function deleteProject(projectId, projectName) {
+            const ok = await showTypedConfirm(
+                projectName,
+                'Delete project?',
+                'This permanently deletes the project and all of its documents, teams, and backups. Type {name} to confirm.',
+            );
+            if (!ok) return;
             try {
-                const response = await authFetch('/deleteproject/', { method: 'POST', body: JSON.stringify({ project_id: projectId }) });
+                const response = await authFetch('/deleteproject/', {
+                    method: 'POST',
+                    body: JSON.stringify({ project_id: projectId, confirm_name: projectName }),
+                });
                 if (!response) return;
                 const data = await safeJson(response);
                 if (data.success) {

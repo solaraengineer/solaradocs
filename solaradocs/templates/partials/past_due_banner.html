@@ -1,0 +1,10 @@
+{% if show_past_due_banner %}
+<div style="position:sticky;top:0;left:0;width:100%;background:#a83232;color:#fff;padding:10px 20px;font:500 14px/1.4 'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:12px;z-index:100000;text-align:center;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Your subscription is past due. Update your payment method to avoid losing access.</span>
+    <form method="post" action="/billing-portal/" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" style="background:#fff;color:#a83232;padding:4px 12px;border-radius:4px;border:none;font-weight:600;white-space:nowrap;cursor:pointer;font:inherit;">Update now</button>
+    </form>
+</div>
+{% endif %}
