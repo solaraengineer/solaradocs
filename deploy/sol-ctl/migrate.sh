@@ -4,8 +4,10 @@
 # Pre-conditions:
 #   - You can ssh to $REMOTE_HOST with $SSH_KEY.
 #   - sol-control + wardent are already installed on the host. We push
-#     fresh binaries on every run — old ones are overwritten in place.
-#   - `~/Desktop/sol-ctl/` has the binaries built (`cargo build --release`).
+#     fresh source and rebuild on the box (the binary architecture has to
+#     match the box, not your dev Mac).
+#   - The remote already has `cargo` on PATH for ec2-user.
+#   - `~/Desktop/sol-ctl/` exists locally — we rsync source from here.
 #   - `~/Desktop/solaradocs/.env` exists and has all the secrets Django needs.
 #
 # What it does (idempotent — safe to re-run):
@@ -53,30 +55,32 @@ rcp()  { scp "${SSH_OPTS[@]}" "$@"; }
 log "preflight"
 [[ -r "$SSH_KEY" ]]            || die "ssh key not readable: $SSH_KEY"
 [[ -r "$LOCAL_ENV" ]]          || die "no .env at $LOCAL_ENV"
-[[ -x "$SOLCTL_DIR/target/release/sol-control" ]] \
-    || die "sol-control binary missing — run: (cd $SOLCTL_DIR && cargo build --workspace --release)"
-[[ -x "$SOLCTL_DIR/target/release/solctl" ]] \
-    || die "solctl binary missing — run: (cd $SOLCTL_DIR && cargo build --workspace --release)"
-[[ -x "$SOLCTL_DIR/target/release/sol-vpc" ]] \
-    || die "sol-vpc binary missing — run: (cd $SOLCTL_DIR && cargo build --workspace --release)"
+[[ -d "$SOLCTL_DIR/src" ]]     || die "sol-ctl source not found at $SOLCTL_DIR (override with SOLCTL_DIR=...)"
+[[ -f "$SOLCTL_DIR/Cargo.toml" ]] || die "$SOLCTL_DIR/Cargo.toml missing — wrong SOLCTL_DIR?"
 
 # Quick connectivity check before doing anything destructive.
 rsh "true" || die "ssh to $REMOTE failed"
+rsh "command -v cargo >/dev/null" || die "remote ec2-user has no 'cargo' on PATH — install rust on the box first"
 
-# -------- 1. ship binaries --------
-log "uploading sol-ctl binaries"
-rcp \
-    "$SOLCTL_DIR/target/release/sol-control" \
-    "$SOLCTL_DIR/target/release/solctl" \
-    "$SOLCTL_DIR/target/release/sol-vpc" \
-    "$SOLCTL_DIR/systemd/sol-control.service" \
-    "$REMOTE:/tmp/"
+# -------- 1. sync source + build on the server --------
+# We rebuild on the box every run. cargo's incremental cache makes the
+# second-and-onwards build fast (~30s typical). Fresh builds are ~5min.
+log "rsync sol-ctl source to $REMOTE:~/sol-ctl/"
+rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
+    --exclude='target' \
+    --exclude='.git' \
+    --exclude='.idea' \
+    --exclude='.DS_Store' \
+    "$SOLCTL_DIR/" "$REMOTE:sol-ctl/"
 
-log "installing + restarting sol-control"
-rsh "sudo install -m 755 /tmp/sol-control /usr/local/bin/sol-control \
-  && sudo install -m 755 /tmp/solctl       /usr/local/bin/solctl \
-  && sudo install -m 755 /tmp/sol-vpc      /usr/local/bin/sol-vpc \
-  && sudo install -m 644 /tmp/sol-control.service /etc/systemd/system/sol-control.service \
+log "building sol-ctl on server (this is slow on a cold cache)"
+rsh "cd ~/sol-ctl && cargo build --workspace --release 2>&1 | tail -20"
+
+log "installing fresh binaries + restarting sol-control"
+rsh "sudo install -m 755 ~/sol-ctl/target/release/sol-control /usr/local/bin/sol-control \
+  && sudo install -m 755 ~/sol-ctl/target/release/solctl       /usr/local/bin/solctl \
+  && sudo install -m 755 ~/sol-ctl/target/release/sol-vpc      /usr/local/bin/sol-vpc \
+  && sudo install -m 644 ~/sol-ctl/systemd/sol-control.service /etc/systemd/system/sol-control.service \
   && sudo systemctl daemon-reload \
   && sudo systemctl restart sol-control"
 
