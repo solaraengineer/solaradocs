@@ -1,0 +1,20 @@
+# sol-control daemon config. Lives at /etc/sol-ctl/ctl.toml on the server.
+# Both [router] keys below are independent — set just `secret` to enable the
+# HTTP front-end, just `targets_path` to enable Prometheus discovery, or both.
+
+[router]
+# Shared secret with wardent. Must match the value wardent sends in
+# `X-Wardent-Secret`. Empty/missing = HTTP router off.
+secret = "REPLACE_ME_WITH_THE_WARDENT_SHARED_SECRET"
+
+# Where wardent forwards to. Default 9040 — keep this unless you also
+# reconfigure wardent.
+port = 9040
+
+# Backend port inside each web container. Gunicorn binds 0.0.0.0:8000.
+upstream_port = 8000
+
+# Opt-in Prometheus file_sd target list. sol-control rewrites this file
+# atomically on every assign/deploy/destroy/restart/rebuild. Point
+# Prometheus' `file_sd_configs.files` at the same path.
+targets_path = "/var/sol-ctl/targets.json"

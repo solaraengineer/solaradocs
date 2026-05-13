@@ -1,0 +1,22 @@
+# Prometheus config for a host-level Prometheus on the sol-ctl test box.
+# Drop this at /etc/prometheus/prometheus.yml (or wherever your Prometheus
+# install reads its config from) and reload — Prometheus will pick up
+# additions/removals via `file_sd_configs` within `refresh_interval`.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'sol-ctl'
+    file_sd_configs:
+      - files:
+          - '/var/sol-ctl/targets.json'
+        refresh_interval: 10s
+    # Labels (vpc, container, service) are already attached by sol-control's
+    # targets.json writer. Don't strip them in relabel rules.
+
+  # Optional: scrape Prometheus itself.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
