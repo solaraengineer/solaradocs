@@ -1,0 +1,166 @@
+groups:
+  - name: node_resources
+    rules:
+      - alert: DiskUsageHigh
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 80
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk usage above 80%: {{ $value | printf \"%.1f\" }}%"
+
+      - alert: CPUUsageHigh
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage above 80% for 5m: {{ $value | printf \"%.1f\" }}%"
+
+      - alert: MemoryUsageHigh
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Memory usage above 90% for 5m: {{ $value | printf \"%.1f\" }}%"
+
+  - name: container_health
+    rules:
+      - alert: ContainerDown
+        expr: up{job!="sol-ctl"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scrape target {{ $labels.job }} ({{ $labels.instance }}) is DOWN"
+
+  - name: http_health
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(django_http_responses_total_by_status_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(django_http_responses_total_by_status_total[5m])), 1e-9)
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx rate >1% over 5m: {{ $value | printf \"%.2f\" }}%"
+
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(django_http_requests_latency_seconds_by_view_method_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 HTTP latency >1s over 5m: {{ $value | printf \"%.2f\" }}s"
+
+      - alert: SuspiciousAuthFailures
+        expr: increase(django_http_responses_total_by_status_total{status=~"401|403"}[5m]) >= 2
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "2+ unauthorized responses in 5m: {{ $value }} ({{ $labels.status }})"
+
+      - alert: TrafficSpike
+        expr: rate(django_http_requests_before_middlewares_total[5m]) > 50
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Request rate >50/s sustained 2m: {{ $value | printf \"%.1f\" }} req/s"
+
+      - alert: NoNewLogs
+        expr: time() - max(timestamp(django_http_requests_total_by_method_total)) > 600
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No new requests for 10+ minutes — service may be dead"
+
+  - name: trace_latency
+    rules:
+      - alert: CheckoutSessionSlow
+        expr: histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{span_name="/create-checkout-session/"}[5m])) by (le)) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "create-checkout-session p95 latency above 10s: {{ $value | printf \"%.1f\" }}s"
+
+      - alert: EndpointLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(traces_spanmetrics_latency_bucket{
+              span_name!~"/create-checkout-session/|/webhook/stripe/"
+            }[5m])) by (le, span_name)
+          ) > 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.span_name }} p95 latency above 3s: {{ $value | printf \"%.1f\" }}s"
+
+  - name: redis_health
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is DOWN — Celery and caching broken"
+
+      - alert: RedisConnectionFailures
+        expr: increase(redis_rejected_connections_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis rejected {{ $value }} connections in 5m"
+
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes > 200000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory above 200MB: {{ $value | humanize }}B"
+
+  - name: celery_health
+    rules:
+      - alert: CeleryWorkerDown
+        expr: celery_worker_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celery worker {{ $labels.hostname }} is DOWN"
+
+      - alert: CeleryTaskFailureSpike
+        expr: |
+          (
+            sum(rate(celery_task_failed_total[5m]))
+            /
+            clamp_min(sum(rate(celery_task_succeeded_total[5m]) + rate(celery_task_failed_total[5m])), 1e-9)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celery task failure rate >5% over 5m: {{ $value | printf \"%.2f\" }}"
+
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery queue {{ $labels.queue_name }} backlogged: {{ $value }} tasks"

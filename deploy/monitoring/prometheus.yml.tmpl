@@ -71,3 +71,10 @@ scrape_configs:
         labels:
           vpc: 'soldocs'
           service: 'loki'
+
+  - job_name: 'celery-exporter'
+    static_configs:
+      - targets: ['__CELERY_EXPORTER_IP__:9808']
+        labels:
+          vpc: 'soldocs'
+          service: 'celery-exporter'

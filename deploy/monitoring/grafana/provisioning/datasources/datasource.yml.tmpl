@@ -28,3 +28,13 @@ datasources:
     access: proxy
     url: http://__LOKI_IP__:3100
     editable: false
+
+  - name: Alertmanager
+    uid: alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://__ALERTMANAGER_IP__:9093
+    editable: false
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: true
