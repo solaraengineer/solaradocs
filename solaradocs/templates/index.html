@@ -5,7 +5,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solara Docs</title>
+    <title>SolaraDocs - Private team docs with audit logs, flat $16/mo</title>
+    <meta name="description" content="Private team documentation with audit logs, role-based access, and a flat $16/mo team plan. No per-seat surprise bills.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="SolaraDocs - Private team docs with audit logs, flat $16/mo">
+    <meta property="og:description" content="Private team documentation with audit logs, role-based access, and a flat $16/mo team plan. No per-seat surprise bills.">
+    <meta property="og:image" content="{% static 'assets/og-image.png' %}">
+    <meta property="og:url" content="https://solaradocs.net/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SolaraDocs - Private team docs with audit logs, flat $16/mo">
+    <meta name="twitter:description" content="Private team documentation with audit logs, role-based access, and a flat $16/mo team plan. No per-seat surprise bills.">
+    <meta name="twitter:image" content="{% static 'assets/og-image.png' %}">
     <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
     <link rel="apple-touch-icon" href="{% static 'assets/favicon-512.png' %}">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -610,6 +620,8 @@
     </style>
 </head>
 <body>
+{% include "partials/past_due_banner.html" %}
+{% include "partials/command_palette.html" %}
     {% if broadcast_alert %}
     <div style="background:#b45309;color:#fff;text-align:center;padding:10px 16px;font-size:14px;font-weight:500;letter-spacing:0.3px;">
         {{ broadcast_alert.title }}
@@ -940,10 +952,6 @@
             <section class="stats">
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-number">99.9%</div>
-                        <div class="stat-label">Uptime</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-number">50ms</div>
                         <div class="stat-label">Response time</div>
                     </div>
@@ -1048,7 +1056,7 @@
 
             <!-- Footer -->
             <footer class="footer">
-                <div class="footer-copy">© 2025 Solara Docs</div>
+                <div class="footer-copy">© 2026 Solara Docs</div>
                 <div class="footer-links">
                     <a href="/privacy" class="footer-link">Privacy</a>
                     <a href="/terms" class="footer-link">Terms</a>

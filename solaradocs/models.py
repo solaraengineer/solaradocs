@@ -7,6 +7,10 @@ class User(AbstractUser):
     subscription_status = models.CharField(max_length=50, default='none')
     retries_left = models.PositiveIntegerField(default=0)
     promo = models.BooleanField(default=False)
+    redirect_to_dashboard = models.BooleanField(
+        default=True,
+        help_text="When true, logged-in users hitting / are redirected to /dashboard/ instead of seeing the landing page.",
+    )
 
 
 
@@ -215,4 +219,19 @@ class PromoCodes(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     left_uses = models.PositiveIntegerField(default=0)
+
+
+class InvoicePayment(models.Model):
+    stripe_invoice_id = models.CharField(max_length=255, unique=True)
+    tier = models.CharField(max_length=20, choices=TIER_CHOICES)
+    amount = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=10,
+        choices=[('paid', 'Paid'), ('failed', 'Failed'), ('refunded', 'Refunded')],
+    )
+    pdf_url = models.URLField(null=True, blank=True)
+    email = models.CharField(max_length=255)
+    username = models.CharField(max_length=255)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 

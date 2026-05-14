@@ -1,0 +1,254 @@
+<div id="cmdkOverlay" class="cmdk-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Command palette">
+    <div class="cmdk-box">
+        <div class="cmdk-input-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#6b6963;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="cmdkInput" class="cmdk-input" type="text" placeholder="Search pages and projects…" autocomplete="off" spellcheck="false">
+            <kbd class="cmdk-kbd">esc</kbd>
+        </div>
+        <ul id="cmdkList" class="cmdk-list" role="listbox"></ul>
+    </div>
+</div>
+<style>
+    .cmdk-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(2px);
+        align-items: flex-start;
+        justify-content: center;
+        z-index: 100001;
+        padding-top: 12vh;
+        font-family: 'Inter', -apple-system, sans-serif;
+    }
+    .cmdk-overlay.open { display: flex; }
+    .cmdk-box {
+        width: 92%;
+        max-width: 560px;
+        background: #21201c;
+        border: 1px solid #3d3b35;
+        border-radius: 10px;
+        box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+        overflow: hidden;
+    }
+    .cmdk-input-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #2e2d28;
+    }
+    .cmdk-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: #e8e4dd;
+        font-size: 0.95rem;
+        font-family: inherit;
+    }
+    .cmdk-input::placeholder { color: #6b6963; }
+    .cmdk-kbd {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border: 1px solid #3d3b35;
+        border-radius: 4px;
+        color: #6b6963;
+        background: #1a1915;
+    }
+    .cmdk-list {
+        list-style: none;
+        margin: 0;
+        padding: 6px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    .cmdk-section-title {
+        padding: 8px 14px 4px;
+        color: #6b6963;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+    }
+    .cmdk-item {
+        padding: 10px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        color: #e8e4dd;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    .cmdk-item.active,
+    .cmdk-item:hover { background: #2a2924; }
+    .cmdk-item-label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .cmdk-item-label span:last-child {
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cmdk-item-icon { color: #d4a574; flex-shrink: 0; }
+    .cmdk-item-meta {
+        color: #6b6963;
+        font-size: 0.7rem;
+        font-family: 'JetBrains Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        flex-shrink: 0;
+    }
+    .cmdk-empty {
+        padding: 28px;
+        text-align: center;
+        color: #6b6963;
+        font-size: 0.875rem;
+    }
+</style>
+<script>
+(function () {
+    if (window.__cmdkInit) return;
+    window.__cmdkInit = true;
+
+    const overlay = document.getElementById('cmdkOverlay');
+    const input = document.getElementById('cmdkInput');
+    const list = document.getElementById('cmdkList');
+    if (!overlay || !input || !list) return;
+
+    const STATIC_ITEMS = [
+        { label: 'Dashboard',      url: '/dashboard/',       meta: 'page' },
+        { label: 'Profile',        url: '/profile/',         meta: 'page' },
+        { label: 'Billing',        url: '/billing-history/', meta: 'page' },
+        { label: 'Pricing',        url: '/buy/',             meta: 'page' },
+        { label: 'Collaborations', url: '/collaborations/',  meta: 'page' },
+        { label: 'Changelog',      url: '/changelog/',       meta: 'page' },
+    ];
+    let recentProjects = [];
+    let recentLoaded = false;
+    let filteredItems = [];
+    let activeIdx = 0;
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => (
+            {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+        ));
+    }
+
+    function render() {
+        const q = input.value.trim().toLowerCase();
+        const all = [...STATIC_ITEMS, ...recentProjects];
+        filteredItems = q ? all.filter(it => it.label.toLowerCase().includes(q)) : all;
+        activeIdx = 0;
+        if (!filteredItems.length) {
+            list.innerHTML = '<li class="cmdk-empty">No matches</li>';
+            return;
+        }
+        // Group: pages + projects (when no filter or both groups still have items)
+        let html = '';
+        const pages = filteredItems.filter(i => i.meta === 'page');
+        const projects = filteredItems.filter(i => i.meta === 'project');
+        let idx = 0;
+        if (pages.length) {
+            html += '<li class="cmdk-section-title">Pages</li>';
+            for (const it of pages) {
+                html += `<li class="cmdk-item ${idx === activeIdx ? 'active' : ''}" data-i="${idx}" data-url="${escapeHtml(it.url)}" role="option">
+                    <span class="cmdk-item-label">
+                        <svg class="cmdk-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                        <span>${escapeHtml(it.label)}</span>
+                    </span>
+                    <span class="cmdk-item-meta">${escapeHtml(it.meta)}</span>
+                </li>`;
+                idx++;
+            }
+        }
+        if (projects.length) {
+            html += '<li class="cmdk-section-title">Recent projects</li>';
+            for (const it of projects) {
+                html += `<li class="cmdk-item ${idx === activeIdx ? 'active' : ''}" data-i="${idx}" data-url="${escapeHtml(it.url)}" role="option">
+                    <span class="cmdk-item-label">
+                        <svg class="cmdk-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span>${escapeHtml(it.label)}</span>
+                    </span>
+                    <span class="cmdk-item-meta">${escapeHtml(it.meta)}</span>
+                </li>`;
+                idx++;
+            }
+        }
+        list.innerHTML = html;
+    }
+
+    function setActive(i) {
+        if (!filteredItems.length) return;
+        activeIdx = (i + filteredItems.length) % filteredItems.length;
+        list.querySelectorAll('.cmdk-item').forEach(el => {
+            el.classList.toggle('active', parseInt(el.dataset.i) === activeIdx);
+        });
+        const el = list.querySelector(`.cmdk-item[data-i="${activeIdx}"]`);
+        if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+
+    async function loadRecent() {
+        if (recentLoaded) return;
+        recentLoaded = true;
+        try {
+            const token = (window.TokenManager && typeof TokenManager.getToken === 'function')
+                ? TokenManager.getToken() : '';
+            const headers = {};
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            const r = await fetch('/api/recent-projects/', { headers });
+            if (!r.ok) return;
+            const data = await r.json();
+            if (data && data.success && Array.isArray(data.projects)) {
+                recentProjects = data.projects.map(p => ({
+                    label: p.name, url: p.url, meta: 'project',
+                }));
+            }
+        } catch (_) { /* ignore */ }
+    }
+
+    function openPalette() {
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        input.value = '';
+        render();
+        loadRecent().then(render);
+        setTimeout(() => input.focus(), 30);
+    }
+    function closePalette() {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    document.addEventListener('keydown', e => {
+        const k = e.key.toLowerCase();
+        if ((e.metaKey || e.ctrlKey) && k === 'k') {
+            e.preventDefault();
+            overlay.classList.contains('open') ? closePalette() : openPalette();
+            return;
+        }
+        if (!overlay.classList.contains('open')) return;
+        if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); setActive(activeIdx + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(activeIdx - 1); }
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            const it = filteredItems[activeIdx];
+            if (it) window.location.href = it.url;
+        }
+    });
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) closePalette(); });
+    input.addEventListener('input', render);
+    list.addEventListener('click', e => {
+        const li = e.target.closest('.cmdk-item');
+        if (li && li.dataset.url) window.location.href = li.dataset.url;
+    });
+    list.addEventListener('mousemove', e => {
+        const li = e.target.closest('.cmdk-item');
+        if (li && li.dataset.i !== undefined) {
+            const i = parseInt(li.dataset.i);
+            if (i !== activeIdx) setActive(i);
+        }
+    });
+})();
+</script>

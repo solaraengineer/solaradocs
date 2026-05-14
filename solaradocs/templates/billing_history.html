@@ -1,0 +1,108 @@
+{% load static %}
+{% load billing_extras %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing History - Solara Docs</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; }
+        .wrap { max-width: 920px; margin: 48px auto; padding: 0 24px; }
+        .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; }
+        .header h1 { font-size: 1.5rem; font-weight: 600; }
+        .back-link { color: var(--accent-orange); text-decoration: none; font-size: 0.875rem; }
+        .back-link:hover { text-decoration: underline; }
+        .card { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; }
+        .billing-table { width: 100%; border-collapse: collapse; }
+        .billing-table th {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;
+            font-weight: 600; color: var(--text-secondary); text-align: left;
+            padding: 10px 12px; border-bottom: 0.5px solid var(--border-subtle);
+        }
+        .billing-table td {
+            height: 40px; padding: 0 12px;
+            font-size: 0.875rem; color: var(--text-primary);
+            border-bottom: 0.5px solid var(--border-subtle); vertical-align: middle;
+        }
+        .billing-table tr:hover td { background: var(--bg-tertiary); }
+        .billing-table tr:last-child td { border-bottom: none; }
+        .billing-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; }
+        .billing-status-paid { color: #52B788; }
+        .billing-status-failed { color: #D9544A; }
+        .billing-status-refunded { color: var(--text-tertiary); }
+        .billing-link { color: var(--accent-orange); text-decoration: none; font-size: 0.875rem; }
+        .billing-link:hover { text-decoration: underline; }
+        .billing-retry-btn {
+            background: transparent; color: var(--text-secondary);
+            border: 1px solid var(--border); padding: 4px 10px;
+            border-radius: 4px; font-size: 0.75rem; cursor: pointer;
+        }
+        .billing-retry-btn:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
+        .billing-empty { padding: 48px 12px; text-align: center; color: var(--text-tertiary); font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+{% include "partials/past_due_banner.html" %}
+<div class="wrap">
+    <div class="header">
+        <h1>Billing History</h1>
+        <a class="back-link" href="/profile/">← Back to profile</a>
+    </div>
+    <div class="card">
+        {% if invoices %}
+        <table class="billing-table">
+            <thead>
+                <tr><th>Date</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td>{% if inv.paid_at %}{{ inv.paid_at|date:"M d, Y" }}{% else %}{{ inv.created_at|date:"M d, Y" }}{% endif %}</td>
+                    <td>${{ inv.amount|cents_to_dollars }}</td>
+                    <td>
+                        {% if inv.status == 'paid' %}
+                            <span class="billing-status billing-status-paid">✓ Paid</span>
+                        {% elif inv.status == 'failed' %}
+                            <span class="billing-status billing-status-failed">✕ Failed</span>
+                        {% elif inv.status == 'refunded' %}
+                            <span class="billing-status billing-status-refunded">Refunded</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if inv.status == 'failed' %}
+                            <button class="billing-retry-btn" onclick="retryInvoice('{{ inv.stripe_invoice_id }}')">Retry</button>
+                        {% elif inv.pdf_url %}
+                            <a class="billing-link" href="{{ inv.pdf_url }}" target="_blank" rel="noopener">Download invoice</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="billing-empty">No billing history yet.</div>
+        {% endif %}
+    </div>
+</div>
+<script>
+    function retryInvoice(invoiceId) {
+        window.location.href = '/profile/#subscription';
+    }
+</script>
+</body>
+</html>

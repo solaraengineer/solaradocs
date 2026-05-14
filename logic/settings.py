@@ -52,7 +52,7 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
-    'solaradocs.middleware.WardentSecretMiddleware',
+  #  'solaradocs.middleware.WardentSecretMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -77,6 +77,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'solaradocs.context_processors.past_due_banner',
             ],
         },
     },

@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch, MagicMock
 from datetime import timedelta
 
-from django.test import TestCase, override_settings
+from django.test import TestCase, RequestFactory, override_settings
 from django.http import HttpResponse
 from django.core.cache import cache
 from django.utils import timezone
@@ -10,7 +10,7 @@ from django.utils import timezone
 from solaradocs.models import (
     User, Project, Documents, Teams, TeamMember, Contributor,
     Pending, PendingAction, Audit, Backup, Changelog,
-    ViewerDocumentAccess, InviteCode, PromoCodes,
+    ViewerDocumentAccess, InviteCode, PromoCodes, InvoicePayment,
     TIER_LIMITS as MODEL_TIER_LIMITS,
 )
 
@@ -384,7 +384,10 @@ class ProjectSetupTests(BaseTestCase):
         self.assertEqual(r.status_code, 403)
 
     def test_delete_project_owner(self):
-        r = self._post('/deleteproject/', {'project_id': self.project.id})
+        r = self._post(
+            '/deleteproject/',
+            {'project_id': self.project.id, 'confirm_name': self.project.project_name},
+        )
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.json()['success'])
         self.assertFalse(Project.objects.filter(id=self.project.id).exists())
@@ -965,6 +968,7 @@ class PendingEditsTests(BaseTestCase):
         r = self._post('/handlepending/', {
             'pending_id': self.pending.id,
             'action': 'reject',
+            'reject_comment': 'Not aligned with the spec',
         })
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()['action'], 'reject')
@@ -991,6 +995,7 @@ class PendingEditsTests(BaseTestCase):
         r = self._post('/handlepending/', {
             'pending_id': self.pending.id,
             'action': 'reject',
+            'reject_comment': 'Team admin rejection',
         }, user=team_admin)
         self.assertEqual(r.status_code, 200)
 
@@ -2414,7 +2419,8 @@ class GoogleImportHelperTests(TestCase):
             title, text = fetch_google_doc_text(mock_creds, 'docid')
 
         self.assertEqual(title, 'Test Doc')
-        self.assertEqual(text, 'Hello World')
+        # fetch_google_doc_text now returns HTML, not plain text
+        self.assertEqual(text, '<p>Hello World</p>')
 
 
 # ---------------------------------------------------------------------------
@@ -2688,3 +2694,764 @@ class DocumentTeamAccessTests(BaseTestCase):
             user=editor,
         )
         self.assertEqual(r.status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# Stripe Webhook → InvoicePayment
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+    STRIPE_PERSONAL_PRICE_ID='price_personal',
+    STRIPE_TEAM_PRICE_ID='price_team',
+    STRIPE_ENTERPRISE_PRICE_ID='price_enterprise',
+    STRIPE_WEBHOOK_SECRET='whsec_test',
+)
+class StripeWebhookInvoicePaymentTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            username='payer', email='payer@test.com', password='pass123456',
+        )
+        self.user.stripe_customer_id = 'cus_123'
+        self.user.Tier = 'team'
+        self.user.save(update_fields=['stripe_customer_id', 'Tier'])
+
+    def _send(self, event):
+        with patch('solaradocs.views.stripe.Webhook.construct_event', return_value=event):
+            return self.client.post(
+                '/webhook/stripe/',
+                data=json.dumps(event),
+                content_type='application/json',
+                HTTP_STRIPE_SIGNATURE='t=1,v1=fake',
+            )
+
+    def _sub(self, price_id='price_team', metadata_tier=None):
+        sub = MagicMock()
+        sub.metadata = {'tier': metadata_tier} if metadata_tier else {}
+        sub.get = lambda k, d=None: {
+            'items': {'data': [{'price': {'id': price_id}}]},
+        }.get(k, d)
+        return sub
+
+    def test_invoice_paid_creates_record(self):
+        event = {
+            'type': 'invoice.paid',
+            'created': 1_700_000_000,
+            'data': {'object': {
+                'id': 'in_pay_1', 'customer': 'cus_123', 'subscription': 'sub_1',
+                'amount_paid': 1600, 'amount_due': 1600,
+                'hosted_invoice_url': 'https://stripe.test/invoice/in_pay_1',
+                'invoice_pdf': 'https://stripe.test/invoice/in_pay_1.pdf',
+                'customer_email': 'payer@test.com',
+                'status_transitions': {'paid_at': 1_700_000_500},
+            }},
+        }
+        with patch('solaradocs.views.stripe.Subscription.retrieve', return_value=self._sub('price_team')), \
+             patch('solaradocs.views.stripe.Subscription.list', return_value=MagicMock(data=[MagicMock(id='sub_1')])):
+            r = self._send(event)
+        self.assertEqual(r.status_code, 200)
+        rec = InvoicePayment.objects.get(stripe_invoice_id='in_pay_1')
+        self.assertEqual(rec.status, 'paid')
+        self.assertEqual(rec.amount, 1600)
+        self.assertEqual(rec.tier, 'team')
+        self.assertEqual(rec.username, 'payer')
+        self.assertEqual(rec.email, 'payer@test.com')
+        self.assertEqual(rec.pdf_url, 'https://stripe.test/invoice/in_pay_1')
+        self.assertIsNotNone(rec.paid_at)
+
+    def test_invoice_paid_rejects_javascript_url(self):
+        event = {
+            'type': 'invoice.paid', 'created': 1_700_000_000,
+            'data': {'object': {
+                'id': 'in_xss', 'customer': 'cus_123', 'subscription': 'sub_1',
+                'amount_paid': 1600,
+                'hosted_invoice_url': 'javascript:alert(1)',
+                'invoice_pdf': 'http://insecure.example/x.pdf',
+            }},
+        }
+        with patch('solaradocs.views.stripe.Subscription.retrieve', return_value=self._sub('price_team')), \
+             patch('solaradocs.views.stripe.Subscription.list', return_value=MagicMock(data=[])):
+            self._send(event)
+        rec = InvoicePayment.objects.get(stripe_invoice_id='in_xss')
+        self.assertIsNone(rec.pdf_url)
+
+    def test_invoice_paid_falls_back_to_pdf_url(self):
+        event = {
+            'type': 'invoice.paid', 'created': 1_700_000_000,
+            'data': {'object': {
+                'id': 'in_pay_2', 'customer': 'cus_123', 'subscription': 'sub_1',
+                'amount_paid': 600,
+                'hosted_invoice_url': None,
+                'invoice_pdf': 'https://stripe.test/in_pay_2.pdf',
+            }},
+        }
+        with patch('solaradocs.views.stripe.Subscription.retrieve', return_value=self._sub('price_personal')), \
+             patch('solaradocs.views.stripe.Subscription.list', return_value=MagicMock(data=[])):
+            self._send(event)
+        rec = InvoicePayment.objects.get(stripe_invoice_id='in_pay_2')
+        self.assertEqual(rec.pdf_url, 'https://stripe.test/in_pay_2.pdf')
+        self.assertEqual(rec.tier, 'personal')
+
+    def test_invoice_paid_is_idempotent_on_replay(self):
+        event = {
+            'type': 'invoice.paid', 'created': 1_700_000_000,
+            'data': {'object': {
+                'id': 'in_pay_dup', 'customer': 'cus_123', 'subscription': 'sub_1',
+                'amount_paid': 1600,
+                'hosted_invoice_url': 'https://stripe.test/u1',
+            }},
+        }
+        with patch('solaradocs.views.stripe.Subscription.retrieve', return_value=self._sub('price_team')), \
+             patch('solaradocs.views.stripe.Subscription.list', return_value=MagicMock(data=[])):
+            self._send(event); self._send(event)
+        self.assertEqual(InvoicePayment.objects.filter(stripe_invoice_id='in_pay_dup').count(), 1)
+
+    def test_invoice_payment_failed_creates_record(self):
+        event = {
+            'type': 'invoice.payment_failed',
+            'data': {'object': {
+                'id': 'in_fail_1', 'customer': 'cus_123', 'subscription': 'sub_1',
+                'amount_due': 1600,
+                'hosted_invoice_url': 'https://stripe.test/in_fail_1',
+                'customer_email': 'payer@test.com',
+            }},
+        }
+        with patch('solaradocs.views.stripe.Subscription.retrieve', return_value=self._sub('price_team')):
+            r = self._send(event)
+        self.assertEqual(r.status_code, 200)
+        rec = InvoicePayment.objects.get(stripe_invoice_id='in_fail_1')
+        self.assertEqual(rec.status, 'failed')
+        self.assertEqual(rec.amount, 1600)
+        self.assertEqual(rec.tier, 'team')
+        self.assertIsNone(rec.paid_at)
+
+    def test_charge_refunded_marks_existing_invoice(self):
+        InvoicePayment.objects.create(
+            stripe_invoice_id='in_to_refund', tier='team', amount=1600,
+            status='paid', email='payer@test.com', username='payer',
+        )
+        event = {'type': 'charge.refunded', 'data': {'object': {'id': 'ch_1', 'invoice': 'in_to_refund'}}}
+        r = self._send(event)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(InvoicePayment.objects.get(stripe_invoice_id='in_to_refund').status, 'refunded')
+
+    def test_charge_refunded_without_invoice_is_noop(self):
+        event = {'type': 'charge.refunded', 'data': {'object': {'id': 'ch_oneoff', 'invoice': None}}}
+        r = self._send(event)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(InvoicePayment.objects.count(), 0)
+
+    def test_charge_refunded_unknown_invoice_is_noop(self):
+        event = {'type': 'charge.refunded', 'data': {'object': {'id': 'ch_unknown', 'invoice': 'in_never_seen'}}}
+        r = self._send(event)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(InvoicePayment.objects.count(), 0)
+
+
+# ---------------------------------------------------------------------------
+# Billing History (profile section + full-list endpoint)
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class BillingHistoryTests(TestCase):
+    """RequestFactory + direct view calls because Django's template-rendered
+    signal trips on Python 3.14 (super().__copy__ on Context)."""
+
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='alice', email='alice@test.com', password='pass123456',
+        )
+
+    def _call(self, view, path, user=None):
+        from solaradocs import views as v
+        req = self.factory.get(path)
+        req.user = user or self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': req.user.id}):
+            return view(req)
+
+    def _make_invoice(self, **kwargs):
+        defaults = dict(
+            stripe_invoice_id=f'in_{InvoicePayment.objects.count() + 1}',
+            tier='team', amount=1600, status='paid',
+            email='alice@test.com', username='alice',
+            paid_at=timezone.now(),
+        )
+        defaults.update(kwargs)
+        return InvoicePayment.objects.create(**defaults)
+
+    def test_profile_empty_state(self):
+        from solaradocs.views import profile
+        r = self._call(profile, '/profile/')
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode()
+        self.assertIn('No billing history yet.', body)
+        self.assertNotIn('[View all invoices]', body)
+
+    def test_profile_shows_at_most_5_with_view_all(self):
+        from solaradocs.views import profile
+        for i in range(7):
+            self._make_invoice(stripe_invoice_id=f'in_paid_{i}', amount=1600)
+        body = self._call(profile, '/profile/').content.decode()
+        self.assertEqual(body.count('✓ Paid'), 5)
+        self.assertIn('[View all invoices]', body)
+        self.assertIn('/billing-history/', body)
+
+    def test_profile_only_shows_own_invoices(self):
+        from solaradocs.views import profile
+        InvoicePayment.objects.create(
+            stripe_invoice_id='in_other', tier='team', amount=9999,
+            status='paid', email='bob@test.com', username='bob',
+        )
+        self._make_invoice(stripe_invoice_id='in_mine', amount=1600)
+        body = self._call(profile, '/profile/').content.decode()
+        self.assertIn('$16.00', body)
+        self.assertNotIn('$99.99', body)
+
+    def test_profile_status_classes(self):
+        from solaradocs.views import profile
+        self._make_invoice(stripe_invoice_id='in_p', status='paid', amount=1600)
+        self._make_invoice(stripe_invoice_id='in_f', status='failed', amount=1600, paid_at=None)
+        self._make_invoice(stripe_invoice_id='in_r', status='refunded', amount=1600)
+        body = self._call(profile, '/profile/').content.decode()
+        self.assertIn('billing-status-paid', body)
+        self.assertIn('billing-status-failed', body)
+        self.assertIn('billing-status-refunded', body)
+        self.assertIn('Retry', body)
+
+    def test_billing_history_endpoint_returns_all(self):
+        from solaradocs.views import billing_history
+        for i in range(8):
+            self._make_invoice(stripe_invoice_id=f'in_full_{i}', amount=1600)
+        body = self._call(billing_history, '/billing-history/').content.decode()
+        self.assertEqual(body.count('✓ Paid'), 8)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Quick wins
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class QuickWinsTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='alice', email='alice@test.com', password='pass123456',
+        )
+
+    def test_home_redirects_authenticated_user_to_dashboard(self):
+        from solaradocs.views import home
+        req = self.factory.get('/')
+        req.user = self.user
+        r = home(req)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r.url, '/dashboard/')
+
+    def test_home_renders_for_anon(self):
+        from solaradocs.views import home
+        from django.contrib.auth.models import AnonymousUser
+        req = self.factory.get('/')
+        req.user = AnonymousUser()
+        r = home(req)
+        self.assertEqual(r.status_code, 200)
+
+    def test_index_template_no_longer_claims_uptime(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/index.html').read_text()
+        self.assertNotIn('99.9%', body)
+        self.assertNotIn('>Uptime<', body)
+
+    def test_index_template_has_new_title_and_og(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/index.html').read_text()
+        self.assertIn('SolaraDocs - Private team docs with audit logs, flat $16/mo', body)
+        self.assertIn('og:title', body)
+        self.assertIn('og:description', body)
+        self.assertIn('og:image', body)
+
+    def test_footer_year_is_2026(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/index.html').read_text()
+        self.assertIn('© 2026 Solara Docs', body)
+        self.assertNotIn('© 2025 Solara Docs', body)
+
+    def test_dashboard_template_hides_owner_when_self(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/dashboard.html').read_text()
+        self.assertIn('{% if project.owner_id != request.user.id %}', body)
+
+    def test_dashboard_template_hides_zero_collab_count(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/dashboard.html').read_text()
+        self.assertIn('{% if not project.contributors.count %}', body)
+
+    def test_dashboard_template_uses_kebab_for_delete(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/dashboard.html').read_text()
+        self.assertNotIn('onclick="deleteProject({{ project.id }})"', body)
+        self.assertIn('class="kebab-btn"', body)
+        self.assertIn('id="typedConfirmOverlay"', body)
+        self.assertIn('showTypedConfirm', body)
+
+    def test_editor_toolbar_buttons_have_titles(self):
+        from pathlib import Path
+        body = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates/edit.html').read_text()
+        for btn_id in [
+            'boldBtn', 'italicBtn', 'underlineBtn', 'strikeBtn',
+            'bulletListBtn', 'orderedListBtn', 'quoteBtn', 'codeBtn',
+            'codeBlockBtn', 'linkBtn', 'imageBtn', 'undoBtn', 'redoBtn',
+            'clearBtn', 'printBtn',
+        ]:
+            self.assertRegex(
+                body, rf'id="{btn_id}"[^>]*\btitle="',
+                msg=f'toolbar button {btn_id} is missing a title= attribute',
+            )
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Delete safety (typed confirmation)
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class DeleteProjectTypedConfirmTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='owner', email='owner@test.com', password='pass123456',
+        )
+        self.project = Project.objects.create(
+            owner=self.user, project_name='MyProject', tier='team',
+        )
+
+    def _post(self, payload, user=None):
+        from solaradocs import views as v
+        req = self.factory.post(
+            '/deleteproject/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_AUTHORIZATION='Bearer t',
+        )
+        req.user = user or self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': req.user.id}):
+            return v.delete_project(req)
+
+    def test_delete_without_confirm_name_fails(self):
+        r = self._post({'project_id': self.project.id})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn(b'exact project name', r.content)
+        self.assertTrue(Project.objects.filter(id=self.project.id).exists())
+
+    def test_delete_with_wrong_confirm_name_fails(self):
+        r = self._post({'project_id': self.project.id, 'confirm_name': 'WrongName'})
+        self.assertEqual(r.status_code, 400)
+        self.assertTrue(Project.objects.filter(id=self.project.id).exists())
+
+    def test_delete_case_sensitive(self):
+        r = self._post({'project_id': self.project.id, 'confirm_name': 'myproject'})
+        self.assertEqual(r.status_code, 400)
+        self.assertTrue(Project.objects.filter(id=self.project.id).exists())
+
+    def test_delete_with_correct_confirm_name_succeeds(self):
+        r = self._post({'project_id': self.project.id, 'confirm_name': 'MyProject'})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Project.objects.filter(id=self.project.id).exists())
+
+    def test_delete_other_users_project_still_403_even_with_name(self):
+        other = User.objects.create_user(username='thief', password='pw123456')
+        r = self._post(
+            {'project_id': self.project.id, 'confirm_name': 'MyProject'},
+            user=other,
+        )
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(Project.objects.filter(id=self.project.id).exists())
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Past Due banner + billing portal
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class PastDueBannerTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='alice', email='alice@test.com', password='pass123456',
+        )
+
+    def test_context_processor_returns_false_for_anon(self):
+        from solaradocs.context_processors import past_due_banner
+        from django.contrib.auth.models import AnonymousUser
+        req = self.factory.get('/')
+        req.user = AnonymousUser()
+        self.assertEqual(past_due_banner(req), {'show_past_due_banner': False})
+
+    def test_context_processor_returns_false_when_not_past_due(self):
+        from solaradocs.context_processors import past_due_banner
+        self.user.subscription_status = 'active'
+        self.user.save()
+        req = self.factory.get('/')
+        req.user = self.user
+        self.assertEqual(past_due_banner(req), {'show_past_due_banner': False})
+
+    def test_context_processor_returns_true_when_past_due(self):
+        from solaradocs.context_processors import past_due_banner
+        self.user.subscription_status = 'past_due'
+        self.user.save()
+        req = self.factory.get('/')
+        req.user = self.user
+        self.assertEqual(past_due_banner(req), {'show_past_due_banner': True})
+
+    def test_banner_renders_via_profile_when_past_due(self):
+        from solaradocs.views import profile
+        self.user.subscription_status = 'past_due'
+        self.user.save()
+        from solaradocs import views as v
+        req = self.factory.get('/profile/')
+        req.user = self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': self.user.id}):
+            r = profile(req)
+        body = r.content.decode()
+        self.assertIn('Your subscription is past due', body)
+        self.assertIn('/billing-portal/', body)
+
+    def test_banner_hidden_when_not_past_due(self):
+        from solaradocs.views import profile
+        self.user.subscription_status = 'active'
+        self.user.save()
+        from solaradocs import views as v
+        req = self.factory.get('/profile/')
+        req.user = self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': self.user.id}):
+            r = profile(req)
+        self.assertNotIn('Your subscription is past due', r.content.decode())
+
+    def test_all_main_templates_include_banner_partial(self):
+        from pathlib import Path
+        base = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates')
+        for name in [
+            'dashboard.html', 'profile.html', 'edit.html', 'collaborations.html',
+            'changelog.html', 'docs.html', 'setup.html', 'success.html',
+            'admin.html', 'buy.html', 'index.html',
+        ]:
+            self.assertIn(
+                'partials/past_due_banner.html', (base / name).read_text(),
+                msg=f'{name} is missing the past-due banner include',
+            )
+
+
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class BillingPortalTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='alice', email='alice@test.com', password='pass123456',
+        )
+
+    def _post(self, user=None):
+        from solaradocs import views as v
+        req = self.factory.post('/billing-portal/')
+        req.user = user or self.user
+        return v.billing_portal_session(req)
+
+    def test_no_stripe_customer_redirects_to_profile(self):
+        r = self._post()
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/profile/', r.url)
+
+    def test_creates_stripe_session_and_redirects_when_customer_exists(self):
+        self.user.stripe_customer_id = 'cus_abc'
+        self.user.save()
+        fake = MagicMock(url='https://billing.stripe.com/p/session_xyz')
+        with patch('solaradocs.views.stripe.billing_portal.Session.create', return_value=fake) as mock_create:
+            r = self._post()
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r.url, 'https://billing.stripe.com/p/session_xyz')
+        kwargs = mock_create.call_args.kwargs
+        self.assertEqual(kwargs['customer'], 'cus_abc')
+        self.assertIn('/profile/', kwargs['return_url'])
+
+    def test_stripe_error_falls_back_to_profile(self):
+        import stripe as _stripe
+        self.user.stripe_customer_id = 'cus_abc'
+        self.user.save()
+        with patch(
+            'solaradocs.views.stripe.billing_portal.Session.create',
+            side_effect=_stripe.error.StripeError('boom'),
+        ):
+            r = self._post()
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/profile/', r.url)
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 — Changelog rewrite migration (scaffold)
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class ChangelogRewriteMigrationTests(TestCase):
+    def test_empty_entries_is_noop(self):
+        from importlib import import_module
+        mod = import_module('solaradocs.migrations.0016_rewrite_changelog')
+        # Reset to a known state (migration may have populated rows already)
+        Changelog.objects.all().delete()
+        Changelog.objects.create(version='1.0.0', title='Pre-existing', description='x')
+        # Safety guarantee: if NEW_ENTRIES is ever blanked out the rewrite
+        # function must not wipe the table.
+        with patch.object(mod, 'NEW_ENTRIES', []):
+            mod.rewrite(_FakeApps(), schema_editor=None)
+        self.assertEqual(Changelog.objects.count(), 1)
+        self.assertEqual(Changelog.objects.first().title, 'Pre-existing')
+
+    def test_populated_entries_wipe_and_replace(self):
+        from importlib import import_module
+        mod = import_module('solaradocs.migrations.0016_rewrite_changelog')
+        Changelog.objects.create(version='0.0.1', title='Old', description='legacy')
+        sample = [
+            {'version': '1.0.0', 'title': 'A', 'description': 'a', 'version_type': 'major'},
+            {'version': '1.1.0', 'title': 'B', 'description': 'b', 'version_type': 'minor'},
+        ]
+        with patch.object(mod, 'NEW_ENTRIES', sample):
+            mod.rewrite(_FakeApps(), schema_editor=None)
+        titles = list(Changelog.objects.values_list('title', flat=True))
+        self.assertNotIn('Old', titles)
+        self.assertIn('A', titles)
+        self.assertIn('B', titles)
+
+    def test_actual_entries_have_15_in_chronological_order(self):
+        """Snapshot: confirms the populated migration writes the historical set
+        in order so newest sorts to the top via Meta.ordering = ['-created_at']."""
+        from importlib import import_module
+        mod = import_module('solaradocs.migrations.0016_rewrite_changelog')
+        self.assertEqual(len(mod.NEW_ENTRIES), 15)
+        timestamps = [e['created_at'] for e in mod.NEW_ENTRIES]
+        self.assertEqual(timestamps, sorted(timestamps),
+                         msg='NEW_ENTRIES must be ordered oldest-first')
+        mod.rewrite(_FakeApps(), schema_editor=None)
+        first = Changelog.objects.order_by('-created_at').first()
+        self.assertEqual(first.version, '1.1.3')
+        self.assertEqual(first.title, 'Rejection feedback and editor resubmission')
+
+
+class _FakeApps:
+    """Minimal stand-in for apps registry — returns the real Changelog model."""
+    def get_model(self, app_label, model_name):
+        from solaradocs.models import Changelog as _C
+        return _C
+
+
+# ---------------------------------------------------------------------------
+# Template tag: cents_to_dollars
+# ---------------------------------------------------------------------------
+class CentsToDollarsFilterTests(TestCase):
+    def test_round_dollar(self):
+        from solaradocs.templatetags.billing_extras import cents_to_dollars
+        self.assertEqual(cents_to_dollars(1600), '16.00')
+        self.assertEqual(cents_to_dollars(100), '1.00')
+
+    def test_sub_dollar(self):
+        from solaradocs.templatetags.billing_extras import cents_to_dollars
+        self.assertEqual(cents_to_dollars(50), '0.50')
+        self.assertEqual(cents_to_dollars(5), '0.05')
+        self.assertEqual(cents_to_dollars(0), '0.00')
+
+    def test_large_amounts_and_negatives(self):
+        from solaradocs.templatetags.billing_extras import cents_to_dollars
+        self.assertEqual(cents_to_dollars(123456), '1234.56')
+        self.assertEqual(cents_to_dollars(-100), '-1.00')
+
+    def test_invalid_input(self):
+        from solaradocs.templatetags.billing_extras import cents_to_dollars
+        self.assertEqual(cents_to_dollars(None), '0.00')
+        self.assertEqual(cents_to_dollars('not-a-number'), '0.00')
+
+
+# ---------------------------------------------------------------------------
+# Past-due banner POST shape (regression guard)
+# ---------------------------------------------------------------------------
+class PastDueBannerPostShapeTests(TestCase):
+    def test_banner_uses_post_form_not_get_link(self):
+        from pathlib import Path
+        body = Path(
+            '/Users/solara/Desktop/solaradocs/solaradocs/templates/partials/past_due_banner.html'
+        ).read_text()
+        self.assertIn('method="post"', body)
+        self.assertIn('action="/billing-portal/"', body)
+        self.assertIn('{% csrf_token %}', body)
+        self.assertNotIn('<a href="/billing-portal/"', body)
+
+
+# ---------------------------------------------------------------------------
+# User.redirect_to_dashboard toggle
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class RedirectToDashboardTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='alice', email='alice@test.com', password='pass123456',
+        )
+
+    def test_default_is_true(self):
+        self.assertTrue(self.user.redirect_to_dashboard)
+
+    def test_home_redirects_when_flag_true(self):
+        from solaradocs.views import home
+        req = self.factory.get('/')
+        req.user = self.user
+        r = home(req)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r.url, '/dashboard/')
+
+    def test_home_does_not_redirect_when_flag_false(self):
+        from solaradocs.views import home
+        self.user.redirect_to_dashboard = False
+        self.user.save(update_fields=['redirect_to_dashboard'])
+        req = self.factory.get('/')
+        req.user = self.user
+        r = home(req)
+        # Should render the landing page (200), NOT redirect
+        self.assertEqual(r.status_code, 200)
+
+    def test_home_does_not_redirect_for_anon(self):
+        from solaradocs.views import home
+        from django.contrib.auth.models import AnonymousUser
+        req = self.factory.get('/')
+        req.user = AnonymousUser()
+        r = home(req)
+        self.assertEqual(r.status_code, 200)
+
+    def _toggle(self, enabled, user=None):
+        from solaradocs import views as v
+        req = self.factory.post(
+            '/profile/redirect-toggle/',
+            data=json.dumps({'enabled': enabled}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION='Bearer t',
+        )
+        req.user = user or self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': req.user.id}):
+            return v.toggle_redirect_to_dashboard(req)
+
+    def test_toggle_endpoint_flips_value(self):
+        r = self._toggle(False)
+        self.assertEqual(r.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.redirect_to_dashboard)
+
+        r = self._toggle(True)
+        self.assertEqual(r.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.redirect_to_dashboard)
+
+    def test_toggle_endpoint_rejects_non_boolean(self):
+        from solaradocs import views as v
+        req = self.factory.post(
+            '/profile/redirect-toggle/',
+            data=json.dumps({'enabled': 'yes'}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION='Bearer t',
+        )
+        req.user = self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': self.user.id}):
+            r = v.toggle_redirect_to_dashboard(req)
+        self.assertEqual(r.status_code, 400)
+
+
+# ---------------------------------------------------------------------------
+# Cmd+K command palette
+# ---------------------------------------------------------------------------
+@override_settings(
+    RATELIMIT_ENABLE=False,
+    CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}},
+)
+class CommandPaletteTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='alice', email='alice@test.com', password='pass123456',
+        )
+
+    def test_recent_projects_endpoint_returns_only_users_projects(self):
+        from solaradocs import views as v
+        other = User.objects.create_user(username='bob', password='pw123456')
+        Project.objects.create(owner=self.user, project_name='Mine 1', tier='team')
+        Project.objects.create(owner=self.user, project_name='Mine 2', tier='team')
+        Project.objects.create(owner=other, project_name='Not mine', tier='team')
+
+        req = self.factory.get('/api/recent-projects/', HTTP_AUTHORIZATION='Bearer t')
+        req.user = self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': self.user.id}):
+            r = v.recent_projects(req)
+        self.assertEqual(r.status_code, 200)
+        data = json.loads(r.content)
+        names = [p['name'] for p in data['projects']]
+        self.assertIn('Mine 1', names)
+        self.assertIn('Mine 2', names)
+        self.assertNotIn('Not mine', names)
+        # Each project has id, name, url
+        self.assertEqual(data['projects'][0]['url'], f'/project/{data["projects"][0]["id"]}/')
+
+    def test_recent_projects_caps_at_5(self):
+        from solaradocs import views as v
+        for i in range(8):
+            Project.objects.create(owner=self.user, project_name=f'P{i}', tier='team')
+        req = self.factory.get('/api/recent-projects/', HTTP_AUTHORIZATION='Bearer t')
+        req.user = self.user
+        with patch.object(v, 'verify_auth_token', return_value={'user_id': self.user.id}):
+            r = v.recent_projects(req)
+        data = json.loads(r.content)
+        self.assertEqual(len(data['projects']), 5)
+
+    def test_all_main_templates_include_palette_partial(self):
+        from pathlib import Path
+        base = Path('/Users/solara/Desktop/solaradocs/solaradocs/templates')
+        for name in [
+            'dashboard.html', 'profile.html', 'edit.html', 'collaborations.html',
+            'changelog.html', 'docs.html', 'setup.html', 'success.html',
+            'admin.html', 'buy.html', 'index.html',
+        ]:
+            self.assertIn(
+                'partials/command_palette.html', (base / name).read_text(),
+                msg=f'{name} is missing the command-palette include',
+            )
+
+    def test_palette_partial_has_static_options_and_keyboard_handling(self):
+        from pathlib import Path
+        body = Path(
+            '/Users/solara/Desktop/solaradocs/solaradocs/templates/partials/command_palette.html'
+        ).read_text()
+        # Static nav targets
+        for url in ['/dashboard/', '/profile/', '/billing-history/', '/buy/', '/collaborations/', '/changelog/']:
+            self.assertIn(url, body, msg=f'palette missing link to {url}')
+        # Cmd+K / Ctrl+K + Escape handling
+        self.assertIn("metaKey || e.ctrlKey", body)
+        self.assertIn("'k'", body)
+        self.assertIn("'Escape'", body)
+        # Fetches recent projects from the backend
+        self.assertIn("/api/recent-projects/", body)
+        # XSS-safe: escapes user-controlled project names
+        self.assertIn('escapeHtml', body)
