@@ -1,0 +1,18 @@
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://__LOKI_IP__:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: django-errors
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: solaradocs
+          type: error-log
+          __path__: /home/ec2-user/solaradocs/errors.log

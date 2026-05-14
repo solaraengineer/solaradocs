@@ -1,0 +1,73 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - '__ALERTMANAGER_IP__:9093'
+
+rule_files:
+  - /etc/prometheus/alert-rules.yml
+
+storage:
+  tsdb:
+    out_of_order_time_window: 30m
+
+scrape_configs:
+  # sol-ctl auto-discovery — Django metrics arrive via this job. Every
+  # container appears in targets.json on :upstream_port (8000); non-web
+  # containers would scrape as "down" since only Django serves /metrics
+  # there. The relabel keeps only solaradocs-web.
+  - job_name: 'sol-ctl'
+    file_sd_configs:
+      - files:
+          - '/etc/prometheus/targets.json'
+        refresh_interval: 10s
+    relabel_configs:
+      - source_labels: [service]
+        regex: 'solaradocs-web'
+        action: keep
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          vpc: 'soldocs'
+          service: 'prometheus'
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['__REDIS_EXPORTER_IP__:9121']
+        labels:
+          vpc: 'soldocs'
+          service: 'redis-exporter'
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['__NODE_EXPORTER_IP__:9100']
+        labels:
+          vpc: 'soldocs'
+          service: 'node-exporter'
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['__ALERTMANAGER_IP__:9093']
+        labels:
+          vpc: 'soldocs'
+          service: 'alertmanager'
+
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['__TEMPO_IP__:3200']
+        labels:
+          vpc: 'soldocs'
+          service: 'tempo'
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['__LOKI_IP__:3100']
+        labels:
+          vpc: 'soldocs'
+          service: 'loki'
