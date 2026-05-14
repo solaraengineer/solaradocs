@@ -258,7 +258,8 @@ docker_pull "$CELERY_EXPORTER_IMAGE"
 
 # Retag to hyphen-only image bases so container names are clean (no underscores).
 rsh "sudo docker tag $OTEL_IMAGE_SRC $OTEL_IMAGE \
-  && sudo docker tag $REDIS_EXPORTER_SRC $REDIS_EXPORTER_IMAGE"
+  && sudo docker tag $REDIS_EXPORTER_SRC $REDIS_EXPORTER_IMAGE \
+  && sudo docker tag $CELERY_EXPORTER_IMAGE celery-exporter:latest"
 
 # -------- 6. generate the deployed .env + ship via solctl addenv -------------
 log "generating deployed .env (REDIS pointed at $REDIS_IP)"
@@ -276,13 +277,15 @@ sed -E \
 # Append vars the deployed containers need that may not be in the local .env.
 # These are idempotent: addenv overwrites the previous env file on each run.
 {
-    grep -q '^OTEL_EXPORTER_OTLP_ENDPOINT=' "$TMP_ENV" || \
-        echo "OTEL_EXPORTER_OTLP_ENDPOINT=http://$OTEL_IP:4317"
-    grep -q '^PROMETHEUS_MULTIPROC_DIR='   "$TMP_ENV" || \
-        echo "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc"
+    grep -q '^OTEL_EXPORTER_OTLP_ENDPOINT=' "$TMP_ENV" || echo "OTEL_EXPORTER_OTLP_ENDPOINT=http://$OTEL_IP:4317"
+    grep -q '^PROMETHEUS_MULTIPROC_DIR=' "$TMP_ENV" || echo "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc"
     # Grafana env vars (image expects GF_*, .env uses GRAFANA_*).
     echo "GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}"
     echo "GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}"
+    # Redis exporter reads REDIS_ADDR (not REDIS_URL)
+    echo "REDIS_ADDR=redis://:${REDIS_PASSWORD}@${REDIS_IP}:6379"
+    # Celery exporter reads CE_BROKER_URL
+    echo "CE_BROKER_URL=redis://:${REDIS_PASSWORD}@${REDIS_IP}:6379/0"
 } >> "$TMP_ENV"
 
 rcp "$TMP_ENV" "$REMOTE:/tmp/soldocs.env"
@@ -415,6 +418,8 @@ rsh "sudo solctl assign grafana/grafana:latest $VPC_NAME \
         --volume /var/sol-ctl/volumes/$VPC_NAME/grafana/provisioning:/etc/grafana/provisioning"
 
 log "assigning alertmanager ($ALERTMANAGER_IP)"
+# Default CMD: --config.file=/etc/alertmanager/alertmanager.yml
+# Gossip cluster should find mesh IP as private address.
 rsh "sudo solctl assign \
         --volume /var/sol-ctl/volumes/$VPC_NAME/alertmanager/config:/etc/alertmanager \
         --volume /var/sol-ctl/volumes/$VPC_NAME/alertmanager/data:/alertmanager \
@@ -427,11 +432,8 @@ log "assigning node-exporter ($NODE_EXPORTER_IP)"
 rsh "sudo solctl assign prom/node-exporter:latest $VPC_NAME"
 
 log "assigning redis-exporter ($REDIS_EXPORTER_IP)"
-# REDIS_PASSWORD is in the container's env (baked from .env). Use sh -c so
-# it's expanded at container start, not pre-baked into state.toml.
-REDIS_EXPORTER_CMD="sh -c 'redis_exporter --redis.addr=redis://:\$REDIS_PASSWORD@$REDIS_IP:6379'"
-rsh "sudo solctl assign $REDIS_EXPORTER_IMAGE $VPC_NAME \
-        --cmd $(printf %q "$REDIS_EXPORTER_CMD")"
+# Reads REDIS_ADDR from the VPC .env — no --cmd needed.
+rsh "sudo solctl assign $REDIS_EXPORTER_IMAGE $VPC_NAME"
 
 log "assigning loki ($LOKI_IP)"
 rsh "sudo solctl assign \
@@ -445,11 +447,13 @@ rsh "sudo solctl assign \
         grafana/promtail:3.0.0 $VPC_NAME"
 
 log "assigning celery-exporter ($CELERY_EXPORTER_IP)"
-# danihodovic/celery-exporter listens on :9808 by default. Broker URL needs
-# the redis password expanded at container start, so sh -c.
-CELERY_EXPORTER_CMD="sh -c 'celery-exporter --broker-url=redis://:\$REDIS_PASSWORD@$REDIS_IP:6379/0'"
-rsh "sudo solctl assign $CELERY_EXPORTER_IMAGE $VPC_NAME \
-        --cmd $(printf %q "$CELERY_EXPORTER_CMD")"
+# Reads CE_BROKER_URL from the VPC .env — no --cmd needed.
+# Volume mount ensures /tmp/prometheus_multiproc exists at container start —
+# the shared .env leaks PROMETHEUS_MULTIPROC_DIR and prometheus_client flips
+# to mmap mode, crashing if the dir is missing.
+rsh "sudo solctl assign \
+        --volume /var/sol-ctl/volumes/$VPC_NAME/celery-exporter/multiproc:/tmp/prometheus_multiproc \
+        celery-exporter:latest $VPC_NAME"
 
 # -------- 9. deploy ----------------------------------------------------------
 log "deploying all containers"
@@ -457,6 +461,8 @@ rsh "sudo solctl deploy $VPC_NAME"
 
 # Give services a moment to come up before validation curls.
 sleep 8
+
+
 
 # -------- 10. validate -------------------------------------------------------
 log "validation"
