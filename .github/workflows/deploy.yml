@@ -1,91 +1,146 @@
-name: Deploy
+name: Deploy (v2 sol-ctl)
+
+# Manual trigger only — does NOT auto-fire on push.
+# Use this to test v2 deploys against the prod EC2 alongside (or instead of)
+# the existing v1 deploy.yml. Once you're confident in v2, you can either:
+#   - delete .github/workflows/deploy.yml (the v1 one), so push-to-master
+#     triggers v2 by adding `on: push: branches: [master]` here, OR
+#   - keep manual-trigger semantics so deploys are explicit.
 
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Server to deploy to (1 = primary)"
+        required: true
+        default: "1"
+        type: choice
+        options:
+          - "1"
 
 jobs:
   validate:
-    name: Validate Build
+    name: Validate manifests
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Check for .env and .venv in repo
-      run: |
-        FOUND_ENV=$(find . -name '.env' -not -path './.git/*' | head -20)
-        FOUND_VENV=$(find . -name '.venv' -not -path './.git/*' -type d | head -20)
-        
-        if [ -n "$FOUND_ENV" ]; then
-          echo "❌ .env file(s) found in repo:"
-          echo "$FOUND_ENV"
-          exit 1
-        fi
-        
-        if [ -n "$FOUND_VENV" ]; then
-          echo "❌ .venv directory found in repo:"
-          echo "$FOUND_VENV"
-          exit 1
-        fi
-        
-        echo "✅ No .env or .venv found"
+      - name: Check no .env in repo
+        run: |
+          FOUND=$(find . -name '.env' -not -path './.git/*' | head -5)
+          if [ -n "$FOUND" ]; then
+            echo "❌ .env found in repo: $FOUND"; exit 1
+          fi
+          echo "✅ no .env in repo"
 
-    - name: Build Docker images
-      run: |
-        docker compose build --no-cache
-        echo "✅ Build succeeded"
+      - name: Check manifests exist
+        run: |
+          test -f manifests/vpc.yaml || { echo "❌ manifests/vpc.yaml missing"; exit 1; }
+          test -f manifests/services.yaml || { echo "❌ manifests/services.yaml missing"; exit 1; }
+          test -f deploy/v2/deploy.sh || { echo "❌ deploy/v2/deploy.sh missing"; exit 1; }
+          echo "✅ manifests present"
 
-    - name: Check Python dependencies
-      run: |
-        docker compose run --rm --no-deps -T web pip check
-        echo "✅ Dependencies check out"
+      - name: Validate manifest YAML syntax (lightweight)
+        run: |
+          # Full validation requires solctl-v2 binary; we just check parseable YAML.
+          # The server-side deploy.sh runs `solctl-v2 validate -f` as step 6
+          # before any apply — that's the real gate.
+          python3 -c "
+          import yaml, sys
+          for f in ['manifests/vpc.yaml', 'manifests/services.yaml']:
+              docs = list(yaml.safe_load_all(open(f)))
+              print(f'{f}: {len(docs)} document(s)')
+              for d in docs:
+                  assert 'apiVersion' in d and 'kind' in d, f'bad doc in {f}: {d}'
+          "
 
   deploy:
-    name: Deploy to Servers
+    name: Deploy to Server ${{ github.event.inputs.target }}
     runs-on: ubuntu-latest
     needs: validate
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Deploy to Server 1
-      env:
-        SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
-        SERVER_IP: ${{ secrets.SERVER_IP_1 }}
-      run: |
-        echo "$SSH_PRIVATE_KEY_BASE64" > SOLARA
-        chmod 600 SOLARA
-        
-        echo "Deploying to Server 1 ($SERVER_IP)..."
-        
-        for i in {1..10}; do
-          if ssh -i SOLARA -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
-            break
+      - name: Pick target server IP
+        id: target
+        run: |
+          case "${{ github.event.inputs.target }}" in
+            1) echo "ip=${{ secrets.SERVER_IP_1 }}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::unknown target"; exit 1 ;;
+          esac
+
+      - name: Deploy
+        env:
+          SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
+          SERVER_IP: ${{ steps.target.outputs.ip }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
+          chmod 600 SOLARA
+
+          echo "Deploying v2 to $SERVER_IP (sha=$GIT_SHA)"
+
+          # Wait for SSH
+          for i in {1..10}; do
+            if ssh -i SOLARA -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+                ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
+              break
+            fi
+            echo "Waiting for SSH... ($i/10)"
+            sleep 10
+          done
+
+          # 1. Rsync source (same exclusions as v1 deploy.yml; ADD manifests/
+          #    and deploy/v2/ since those ARE needed on the server).
+          rsync -avz --delete \
+            -e "ssh -i SOLARA -o StrictHostKeyChecking=no" \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'terraform' \
+            --exclude '*.pyc' \
+            --exclude '__pycache__' \
+            --exclude '.env' \
+            --exclude 'staticfiles' \
+            --exclude 'media' \
+            --exclude '.venv' \
+            --exclude 'k8s' \
+            . ubuntu@$SERVER_IP:/home/ubuntu/solaradocs/
+
+          # 2. Run the v2 deploy script on the server. GIT_SHA is the short
+          #    git SHA of the deployed commit — used as the image tag so
+          #    every deploy makes v2 surge-replace web + celery.
+          SHORT_SHA="$(echo "$GIT_SHA" | cut -c1-7)"
+          ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+              "sudo GIT_SHA=$SHORT_SHA bash /home/ubuntu/solaradocs/deploy/v2/deploy.sh"
+
+          echo "✅ Server ${{ github.event.inputs.target }} deployed (v2, sha=$SHORT_SHA)"
+
+      - name: Smoke from CI
+        if: success()
+        env:
+          SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
+          SERVER_IP: ${{ steps.target.outputs.ip }}
+        run: |
+          # Verify wardent→router→web path works end-to-end externally.
+          # WARDENT_SECRET lives in the server's env file; we read it
+          # via SSH for this smoke (CI doesn't carry secrets it doesn't
+          # need long-term).
+          echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
+          chmod 600 SOLARA
+          WARDENT_SECRET=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+            "sudo grep -E '^WARDENT_SECRET=' /var/sol-ctl/soldocs/.env | cut -d= -f2- | tr -d '\"'")
+          if [ -z "$WARDENT_SECRET" ]; then
+            echo "⚠️  WARDENT_SECRET not in server env — skipping external smoke"
+            exit 0
           fi
-          echo "Waiting for server... ($i/10)"
-          sleep 10
-        done
-        
-        rsync -avz --delete \
-          -e "ssh -i SOLARA -o StrictHostKeyChecking=no" \
-          --exclude '.git' \
-          --exclude '.github' \
-          --exclude 'terraform' \
-          --exclude '*.pyc' \
-          --exclude '__pycache__' \
-          --exclude '.env' \
-          --exclude 'staticfiles' \
-          --exclude 'media' \
-          --exclude '.venv' \
-          --exclude 'k8s' \
-          . ubuntu@$SERVER_IP:/home/ubuntu/solaradocs/
-        
-        ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'ENDSSH'
-        cd /home/ubuntu/solaradocs
-        docker-compose down || true
-        docker-compose up -d --build
-        docker ps
-        ENDSSH
-        
-        echo "✅ Server 1 deployed"
+          CODE=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+            "curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+             -H 'X-Wardent-Secret: $WARDENT_SECRET' \
+             -H 'X-Sol-Environment: soldocs' \
+             http://127.0.0.1:9040/metrics")
+          if [ "$CODE" != "200" ]; then
+            echo "❌ smoke: router /metrics returned $CODE"; exit 1
+          fi
+          echo "✅ router smoke: /metrics → 200"

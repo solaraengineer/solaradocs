@@ -76,6 +76,8 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def save_user(self, request, sociallogin, form=None):
         user = super().save_user(request, sociallogin, form)
+        user.redirect_to_dashboard = False
+        user.save(update_fields=['redirect_to_dashboard'])
         return user
 
 
