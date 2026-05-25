@@ -95,7 +95,7 @@ jobs:
             . ubuntu@$SERVER_IP:/home/ubuntu/solaradocs/
 
           SHORT_SHA="$(echo "$GIT_SHA" | cut -c1-7)"
-          ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+          ssh -i SOLARA -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=20 ubuntu@$SERVER_IP \
               "sudo GIT_SHA=$SHORT_SHA bash /home/ubuntu/solaradocs/deploy/v2/deploy.sh"
 
           echo "✅ Deployed (v2, sha=$SHORT_SHA)"
