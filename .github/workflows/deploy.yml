@@ -4,14 +4,20 @@ name: Deploy (v2 sol-ctl)
 # Use this to test v2 deploys against the prod EC2 alongside (or instead of)
 # the existing v1 deploy.yml. Once you're confident in v2, you can either:
 #   - delete .github/workflows/deploy.yml (the v1 one), so push-to-master
-#     triggers v2 by adding `on: push: branches: [master]` here, OR
+#     triggers v2 by adding `on:
+  push:
+    branches: [master] push: branches: [master]` here, OR
 #   - keep manual-trigger semantics so deploys are explicit.
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
     inputs:
       target:
-        description: "Server to deploy to (1 = primary)"
+        description:
+  push:
+    branches: [master] "Server to deploy to (1 = primary)"
         required: true
         default: "1"
         type: choice
@@ -21,7 +27,9 @@ on:
 jobs:
   validate:
     name: Validate manifests
-    runs-on: ubuntu-latest
+    runs-on:
+  push:
+    branches: [master] ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -56,7 +64,9 @@ jobs:
 
   deploy:
     name: Deploy to Server ${{ github.event.inputs.target }}
-    runs-on: ubuntu-latest
+    runs-on:
+  push:
+    branches: [master] ubuntu-latest
     needs: validate
 
     steps:
