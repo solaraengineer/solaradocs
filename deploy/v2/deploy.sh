@@ -18,8 +18,7 @@
 #      write to a tmp file (manifest stays repo-pure).
 #   7. solctl-v2 validate -f, then apply -f.
 #   8. Poll solctl-v2 status until all services Healthy (10 min max).
-#   9. docker exec web → manage.py migrate --noinput.
-#  10. Smoke: curl router :9040 with secret + soldocs env, expect 200.
+#   9. Smoke: curl router :9040 with secret + soldocs env, expect 200.
 #
 # Exit codes: 0 OK, 1 deploy failure, 2 preflight failure.
 #
@@ -189,15 +188,7 @@ if ! docker ps --format '{{.Names}}' | grep -qE "^celery-${VPC}-1(-g[0-9]+)?\$";
 fi
 ok "celery Running (no probe by design)"
 
-# 9. Django migrations.
-log "running Django migrations"
-WEB_NAME="$(etcdctl get /solctl/state/services/web --print-value-only \
-  | python3 -c 'import json,sys;print(json.load(sys.stdin)["replicas"][0]["name"])')"
-docker exec "$WEB_NAME" python manage.py migrate --noinput \
-  || fail "django migrate failed"
-ok "migrations applied"
-
-# 10. Smoke: router accepts traffic.
+# 9. Smoke: router accepts traffic.
 log "smoking router :9040"
 WARDENT_SECRET="$(grep -E '^WARDENT_SECRET=' "$ENV_FILE" | cut -d= -f2- | tr -d '"' || echo '')"
 if [ -z "$WARDENT_SECRET" ]; then
