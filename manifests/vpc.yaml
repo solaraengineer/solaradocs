@@ -2,3 +2,4 @@ apiVersion: solctl/v1
 kind: VPC
 vpcs:
   - name: soldocs
+  - name: soldocs-blue

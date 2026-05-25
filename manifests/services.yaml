@@ -153,6 +153,7 @@ spec:
   # covers worker liveness.
 
 ---
+---
 apiVersion: solctl/v1
 kind: Service
 metadata:
@@ -169,6 +170,9 @@ spec:
       mode: ro
     - host: /var/sol-ctl/volumes/soldocs/configs/alert-rules.yml
       container: /etc/prometheus/alert-rules.yml
+      mode: ro
+    - host: /var/sol-ctl/volumes/soldocs/prometheus-config/targets.json
+      container: /etc/prometheus/targets.json
       mode: ro
     - host: /var/sol-ctl/volumes/soldocs/prometheus-data
       container: /prometheus
