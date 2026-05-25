@@ -32,6 +32,9 @@ STRIPE_ENTERPRISE_PRICE_ID = os.getenv('STRIPE_ENTERPRISE_PRICE_ID', '')
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
+USE_X_FORWARDED_HOST = True
+CSRF_TRUSTED_ORIGINS = ['https://solaradocs.net', 'https://www.solaradocs.net']
+
 INSTALLED_APPS = [
     'django_prometheus',
     'django.contrib.admin',

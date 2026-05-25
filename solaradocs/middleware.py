@@ -32,4 +32,7 @@ class WardentSecretMiddleware:
         if request.headers.get("X-Wardent-Secret") != self.secret:
             return JsonResponse({"error": "Forbidden"}, status=403)
 
+        request.META['HTTP_HOST'] = 'solaradocs.net'
+        request.META['HTTP_X_FORWARDED_PROTO'] = 'https'
+        request.META['wsgi.url_scheme'] = 'https'
         return self.get_response(request)
