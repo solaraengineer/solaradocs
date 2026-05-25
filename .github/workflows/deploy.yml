@@ -66,7 +66,7 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
+          echo "$SSH_PRIVATE_KEY_BASE64" > SOLARA
           chmod 600 SOLARA
 
           echo "Deploying v2 to $SERVER_IP (sha=$GIT_SHA)"
@@ -106,7 +106,7 @@ jobs:
           SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
           SERVER_IP: ${{ steps.target.outputs.ip }}
         run: |
-          echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
+          echo "$SSH_PRIVATE_KEY_BASE64" > SOLARA
           chmod 600 SOLARA
           WARDENT_SECRET=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
             "sudo grep -E '^WARDENT_SECRET=' /var/sol-ctl/soldocs/.env | cut -d= -f2- | tr -d '\"'")
