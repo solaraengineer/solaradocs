@@ -40,10 +40,18 @@ jobs:
           python3 -c "
           import yaml, sys
           for f in ['manifests/vpc.yaml', 'manifests/services.yaml']:
-              docs = list(yaml.safe_load_all(open(f)))
-              print(f'{f}: {len(docs)} document(s)')
-              for d in docs:
-                  assert 'apiVersion' in d and 'kind' in d, f'bad doc in {f}: {d}'
+              raw = list(yaml.safe_load_all(open(f)))
+              # Skip empty docs (stray '---' separators between blocks are
+              # legal YAML but parse as None). Server-side 'solctl-v2
+              # validate -f' is the real schema gate; this is just a syntax
+              # smoke that the YAML itself parses.
+              docs = [d for d in raw if d is not None]
+              print(f'{f}: {len(docs)} non-empty document(s) ({len(raw)} total incl. empty)')
+              for i, d in enumerate(docs):
+                  if not isinstance(d, dict):
+                      sys.exit(f'doc #{i} in {f} is not a mapping: {type(d).__name__}')
+                  if 'apiVersion' not in d or 'kind' not in d:
+                      sys.exit(f'doc #{i} in {f} missing apiVersion/kind: {d}')
           "
 
   deploy:
