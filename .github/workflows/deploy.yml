@@ -1,23 +1,12 @@
 name: Deploy (v2 sol-ctl)
 
-# Manual trigger only — does NOT auto-fire on push.
-# Use this to test v2 deploys against the prod EC2 alongside (or instead of)
-# the existing v1 deploy.yml. Once you're confident in v2, you can either:
-#   - delete .github/workflows/deploy.yml (the v1 one), so push-to-master
-#     triggers v2 by adding `on:
-  push:
-    branches: [master] push: branches: [master]` here, OR
-#   - keep manual-trigger semantics so deploys are explicit.
-
 on:
   push:
     branches: [master]
   workflow_dispatch:
     inputs:
       target:
-        description:
-  push:
-    branches: [master] "Server to deploy to (1 = primary)"
+        description: "Server to deploy to (1 = primary)"
         required: true
         default: "1"
         type: choice
@@ -27,9 +16,7 @@ on:
 jobs:
   validate:
     name: Validate manifests
-    runs-on:
-  push:
-    branches: [master] ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -50,9 +37,6 @@ jobs:
 
       - name: Validate manifest YAML syntax (lightweight)
         run: |
-          # Full validation requires solctl-v2 binary; we just check parseable YAML.
-          # The server-side deploy.sh runs `solctl-v2 validate -f` as step 6
-          # before any apply — that's the real gate.
           python3 -c "
           import yaml, sys
           for f in ['manifests/vpc.yaml', 'manifests/services.yaml']:
@@ -63,22 +47,17 @@ jobs:
           "
 
   deploy:
-    name: Deploy to Server ${{ github.event.inputs.target }}
-    runs-on:
-  push:
-    branches: [master] ubuntu-latest
+    name: Deploy to server
+    runs-on: ubuntu-latest
     needs: validate
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Pick target server IP
+      - name: Set target server IP
         id: target
         run: |
-          case "${{ github.event.inputs.target }}" in
-            1) echo "ip=${{ secrets.SERVER_IP_1 }}" >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::unknown target"; exit 1 ;;
-          esac
+          echo "ip=${{ secrets.SERVER_IP_1 }}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy
         env:
@@ -92,7 +71,6 @@ jobs:
 
           echo "Deploying v2 to $SERVER_IP (sha=$GIT_SHA)"
 
-          # Wait for SSH
           for i in {1..10}; do
             if ssh -i SOLARA -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
                 ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
@@ -102,8 +80,6 @@ jobs:
             sleep 10
           done
 
-          # 1. Rsync source (same exclusions as v1 deploy.yml; ADD manifests/
-          #    and deploy/v2/ since those ARE needed on the server).
           rsync -avz --delete \
             -e "ssh -i SOLARA -o StrictHostKeyChecking=no" \
             --exclude '.git' \
@@ -118,14 +94,11 @@ jobs:
             --exclude 'k8s' \
             . ubuntu@$SERVER_IP:/home/ubuntu/solaradocs/
 
-          # 2. Run the v2 deploy script on the server. GIT_SHA is the short
-          #    git SHA of the deployed commit — used as the image tag so
-          #    every deploy makes v2 surge-replace web + celery.
           SHORT_SHA="$(echo "$GIT_SHA" | cut -c1-7)"
           ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
               "sudo GIT_SHA=$SHORT_SHA bash /home/ubuntu/solaradocs/deploy/v2/deploy.sh"
 
-          echo "✅ Server ${{ github.event.inputs.target }} deployed (v2, sha=$SHORT_SHA)"
+          echo "✅ Deployed (v2, sha=$SHORT_SHA)"
 
       - name: Smoke from CI
         if: success()
@@ -133,10 +106,6 @@ jobs:
           SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
           SERVER_IP: ${{ steps.target.outputs.ip }}
         run: |
-          # Verify wardent→router→web path works end-to-end externally.
-          # WARDENT_SECRET lives in the server's env file; we read it
-          # via SSH for this smoke (CI doesn't carry secrets it doesn't
-          # need long-term).
           echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > SOLARA
           chmod 600 SOLARA
           WARDENT_SECRET=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
