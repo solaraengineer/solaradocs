@@ -34,7 +34,7 @@
 set -euo pipefail
 
 SOLARADOCS_DIR="${SOLARADOCS_DIR:-/home/ubuntu/solaradocs}"
-VPC="${VPC:-soldocs}"
+VPC="${VPC:-sd-blue}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
 REGISTRY_NAME="${REGISTRY_NAME:-sol-prod-registry}"
 HEALTHY_TIMEOUT="${HEALTHY_TIMEOUT:-600}"

@@ -125,7 +125,7 @@ jobs:
           CODE=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
             "curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
              -H 'X-Wardent-Secret: $WARDENT_SECRET' \
-             -H 'X-Sol-Environment: soldocs' \
+             -H 'X-Sol-Environment: sd-blue' \
              http://127.0.0.1:9040/metrics")
           if [ "$CODE" != "200" ]; then
             echo "❌ smoke: router /metrics returned $CODE"; exit 1
