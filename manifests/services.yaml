@@ -32,7 +32,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: redis
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: redis
   tag: 7-alpine
@@ -59,7 +59,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: tempo
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: grafana/tempo
   tag: 2.7.0
@@ -86,7 +86,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: otel-collector
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: otel/opentelemetry-collector-contrib
   tag: 0.96.0
@@ -110,7 +110,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: web
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   # IMAGE_TAG_PLACEHOLDER — deploy/v2/deploy.sh sed-substitutes the next
   # `tag:` line with the git SHA before apply. Keep the placeholder as
@@ -140,7 +140,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: celery
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: localhost:5000/solaradocs
   tag: __IMAGE_TAG__
@@ -158,7 +158,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: prometheus
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: prom/prometheus
   tag: latest
@@ -191,7 +191,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: grafana
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: grafana/grafana
   tag: latest
@@ -215,7 +215,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: alertmanager
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: prom/alertmanager
   tag: v0.27.0
@@ -249,7 +249,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: node-exporter
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: prom/node-exporter
   tag: latest
@@ -275,7 +275,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: redis-exporter
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: oliver006/redis_exporter
   tag: latest
@@ -296,7 +296,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: loki
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: grafana/loki
   tag: 3.0.0
@@ -323,7 +323,7 @@ apiVersion: solctl/v1
 kind: Service
 metadata:
   name: promtail
-  assign_to: soldocs
+  assign_to: sd-blue
 spec:
   image: grafana/promtail
   tag: 3.0.0
