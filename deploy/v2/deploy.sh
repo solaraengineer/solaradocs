@@ -34,12 +34,56 @@
 set -euo pipefail
 
 SOLARADOCS_DIR="${SOLARADOCS_DIR:-/home/ubuntu/solaradocs}"
-VPC="${VPC:-sd-blue}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
 REGISTRY_NAME="${REGISTRY_NAME:-sol-prod-registry}"
 HEALTHY_TIMEOUT="${HEALTHY_TIMEOUT:-600}"
+
+log()  { printf '\033[1;34m[v2-deploy]\033[0m %s\n' "$*"; }
+ok()   { printf '\033[1;32m[v2-deploy]   OK\033[0m %s\n' "$*"; }
+fail() { printf '\033[1;31m[v2-deploy] FAIL\033[0m %s\n' "$*" >&2; exit 1; }
+
+# 0a. Preconditions (host-level)
+[ "$(id -u)" -eq 0 ] || fail "must be run as root"
+[ -d "$SOLARADOCS_DIR" ] || fail "$SOLARADOCS_DIR not found (rsync source first)"
+[ -f "$SOLARADOCS_DIR/Dockerfile" ] || fail "$SOLARADOCS_DIR/Dockerfile missing"
+[ -f "$SOLARADOCS_DIR/manifests/vpc.yaml" ] || fail "manifests/vpc.yaml missing"
+[ -f "$SOLARADOCS_DIR/manifests/blue-green.yaml" ] || fail "manifests/blue-green.yaml missing"
+command -v solctl-v2 >/dev/null || fail "solctl-v2 not installed (run 'sudo make install-v2' from sol-ctl repo)"
+
+# 0b. Pick TARGET vpc — read /solctl/deploy/active to find the standby
+# (value == 0). Per the design doc: the key MUST exist (operator seeds
+# it once before first deploy); if both values are 0, this is a fresh
+# bootstrap and we default to sd-blue.
+ACTIVE_JSON="$(etcdctl get /solctl/deploy/active --print-value-only 2>/dev/null || echo '')"
+if [ -z "$ACTIVE_JSON" ]; then
+  fail "/solctl/deploy/active is missing in etcd. Operator must seed it once: \
+etcdctl put /solctl/deploy/active '{\"sd-blue\":0,\"sd-green\":0}'"
+fi
+VPC="$(echo "$ACTIVE_JSON" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+# Standby = the one with value 0. If both 0, bootstrap to sd-blue.
+zeros = [k for k, v in d.items() if v == 0]
+ones  = [k for k, v in d.items() if v == 1]
+if not zeros:
+    print("__NONE__")
+elif len(ones) == 0:
+    # fresh bootstrap: both zero → pick sd-blue if present, else first
+    print("sd-blue" if "sd-blue" in d else zeros[0])
+else:
+    print(zeros[0])
+')"
+if [ "$VPC" = "__NONE__" ]; then
+  fail "/solctl/deploy/active has no standby VPC (no zeros). Refusing to deploy onto active."
+fi
+log "target VPC (standby): $VPC"
+
+SERVICES_MANIFEST="$SOLARADOCS_DIR/manifests/services-${VPC}.yaml"
+[ -f "$SERVICES_MANIFEST" ] || fail "$SERVICES_MANIFEST missing — manifests must include services-<vpc>.yaml for each VPC"
+
 ENV_FILE="/var/sol-ctl/${VPC}/.env"
 VOLROOT="/var/sol-ctl/volumes/${VPC}"
+[ -f "$ENV_FILE" ] || fail "$ENV_FILE missing — operator must place per-VPC env file once before first deploy"
 
 if [ -z "${GIT_SHA:-}" ]; then
   GIT_SHA="$(cd "$SOLARADOCS_DIR" && git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d-%H%M%S)"
@@ -47,19 +91,7 @@ fi
 IMAGE_TAG="$GIT_SHA"
 IMAGE_REF="localhost:${REGISTRY_PORT}/solaradocs:${IMAGE_TAG}"
 
-log()  { printf '\033[1;34m[v2-deploy]\033[0m %s\n' "$*"; }
-ok()   { printf '\033[1;32m[v2-deploy]   OK\033[0m %s\n' "$*"; }
-fail() { printf '\033[1;31m[v2-deploy] FAIL\033[0m %s\n' "$*" >&2; exit 1; }
-
 log "GIT_SHA=$GIT_SHA   IMAGE_REF=$IMAGE_REF"
-
-# 0. Preconditions
-[ "$(id -u)" -eq 0 ] || fail "must be run as root"
-[ -d "$SOLARADOCS_DIR" ] || fail "$SOLARADOCS_DIR not found (rsync source first)"
-[ -f "$SOLARADOCS_DIR/Dockerfile" ] || fail "$SOLARADOCS_DIR/Dockerfile missing"
-[ -f "$SOLARADOCS_DIR/manifests/services.yaml" ] || fail "manifests/ missing in rsynced source"
-[ -f "$ENV_FILE" ] || fail "$ENV_FILE missing — operator must place prod env file once before first deploy (see CUTOVER.md §1.4)"
-command -v solctl-v2 >/dev/null || fail "solctl-v2 not installed (run 'sudo make install-v2' from sol-ctl repo)"
 
 # 1. Daemon up
 if ! systemctl is-active --quiet sol-control-v2; then
@@ -135,37 +167,43 @@ touch "$VOLROOT/app-logs/errors.log"
 chmod 666 "$VOLROOT/app-logs/errors.log"
 ok "configs staged"
 
-# 5. Substitute __IMAGE_TAG__ in services.yaml → actual tag.
+# 5. Substitute __IMAGE_TAG__ in services-${VPC}.yaml → actual tag.
 RESOLVED_MANIFEST="$(mktemp --suffix=.yaml)"
-sed "s|__IMAGE_TAG__|${IMAGE_TAG}|g" \
-  "$SOLARADOCS_DIR/manifests/services.yaml" > "$RESOLVED_MANIFEST"
+sed "s|__IMAGE_TAG__|${IMAGE_TAG}|g" "$SERVICES_MANIFEST" > "$RESOLVED_MANIFEST"
 
 # 6. Validate (no etcd touch).
 log "validating manifests"
 solctl-v2 validate -f "$SOLARADOCS_DIR/manifests/vpc.yaml" > /dev/null \
   || fail "vpc.yaml failed validation"
+solctl-v2 validate -f "$SOLARADOCS_DIR/manifests/blue-green.yaml" > /dev/null \
+  || fail "blue-green.yaml failed validation"
 solctl-v2 validate -f "$RESOLVED_MANIFEST" > /dev/null \
-  || { echo "--- failing manifest ---"; cat "$RESOLVED_MANIFEST"; fail "services.yaml failed validation"; }
+  || { echo "--- failing manifest ---"; cat "$RESOLVED_MANIFEST"; fail "services-${VPC}.yaml failed validation"; }
 ok "manifests validated"
 
-# 7. Apply.
-log "applying vpc.yaml"
+# 7. Apply (VPCs first, then blue/green route, then services for STANDBY only).
+log "applying vpc.yaml (both sd-blue and sd-green)"
 solctl-v2 apply -f "$SOLARADOCS_DIR/manifests/vpc.yaml" || fail "vpc apply failed"
 sleep 2
 
-log "applying services.yaml (image tag = $IMAGE_TAG)"
+log "applying blue-green.yaml (route policy)"
+solctl-v2 apply -f "$SOLARADOCS_DIR/manifests/blue-green.yaml" || fail "blue-green apply failed"
+
+log "applying services-${VPC}.yaml (image tag = $IMAGE_TAG)"
 solctl-v2 apply -f "$RESOLVED_MANIFEST" || fail "services apply failed"
 rm -f "$RESOLVED_MANIFEST"
 ok "manifests applied"
 
-# 8. Wait for all services Healthy (except celery which has no probe).
-log "waiting for HealthStatus=Healthy in etcd state (up to ${HEALTHY_TIMEOUT}s)"
+# 8. Wait for all services in the STANDBY VPC to be Healthy. Vpc-scoped
+#    etcd keys (Phase 14.E) make this a clean lookup:
+#    /solctl/state/services/${VPC}/${svc}
+log "waiting for HealthStatus=Healthy on standby (${VPC}) services (up to ${HEALTHY_TIMEOUT}s)"
 HEALTH_SERVICES=(redis tempo otel-collector web prometheus grafana
                  alertmanager node-exporter redis-exporter loki promtail)
 START="$(date +%s)"
 for svc in "${HEALTH_SERVICES[@]}"; do
   while true; do
-    if etcdctl get "/solctl/state/services/${svc}" --print-value-only 2>/dev/null \
+    if etcdctl get "/solctl/state/services/${VPC}/${svc}" --print-value-only 2>/dev/null \
        | grep -q '"kind":"healthy"'; then
       break
     fi
@@ -175,43 +213,58 @@ for svc in "${HEALTH_SERVICES[@]}"; do
       solctl-v2 status || true
       log "--- last 40 lines of daemon log ---"
       journalctl -u sol-control-v2 -n 40 --no-pager || true
-      fail "service '${svc}' did not become Healthy within ${HEALTHY_TIMEOUT}s"
+      fail "service '${VPC}/${svc}' did not become Healthy within ${HEALTHY_TIMEOUT}s — \
+NOT flipping; active VPC keeps serving"
     fi
     sleep 2
   done
-  ok "${svc} Healthy"
+  ok "${VPC}/${svc} Healthy"
 done
 
-# Celery has no probe — just confirm container is Running.
 if ! docker ps --format '{{.Names}}' | grep -qE "^celery-${VPC}-1(-g[0-9]+)?\$"; then
-  fail "celery container is not Running"
+  fail "celery container is not Running in ${VPC}"
 fi
-ok "celery Running (no probe by design)"
+ok "${VPC}/celery Running (no probe by design)"
 
-# 9. Smoke: router accepts traffic.
-log "smoking router :9040"
+# 9. PROMOTE: flip ${VPC} from standby → active. solctl-v2 promote runs
+# the full atomic flip machinery in sol-control-v2 (etcd lease lock,
+# docker start standby + sed wardent + restart wardent + docker stop
+# old active + CAS active map). If promote fails the old VPC keeps
+# serving — half-down is safer than half-up.
+log "promoting ${VPC} to active (flip)"
+if ! solctl-v2 promote "${VPC}"; then
+  log "--- last 40 lines of daemon log ---"
+  journalctl -u sol-control-v2 -n 40 --no-pager || true
+  fail "promote ${VPC} failed — old active still serving (run 'solctl-v2 status' to inspect)"
+fi
+ok "${VPC} is now active"
+
+# 10. Smoke: router accepts traffic AFTER the flip (new active should serve).
+log "post-flip smoke: router :9040"
 WARDENT_SECRET="$(grep -E '^WARDENT_SECRET=' "$ENV_FILE" | cut -d= -f2- | tr -d '"' || echo '')"
 if [ -z "$WARDENT_SECRET" ]; then
   log "WARNING: WARDENT_SECRET not in env file — router smoke SKIPPED"
 else
+  # X-Sol-Environment is wardent's view (fixed = "production"); router
+  # resolves to the currently-active VPC via /solctl/deploy/active.
   CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
           -H "X-Wardent-Secret: ${WARDENT_SECRET}" \
-          -H "X-Sol-Environment: ${VPC}" \
+          -H "X-Sol-Environment: production" \
           http://127.0.0.1:9040/metrics)"
   if [ "$CODE" != "200" ]; then
-    fail "router smoke: /metrics returned HTTP ${CODE} (expected 200)"
+    fail "router smoke: /metrics returned HTTP ${CODE} (expected 200) — \
+flip went through but new active isn't serving cleanly. Consider 'solctl-v2 rollback'."
   fi
-  ok "router /metrics → 200"
+  ok "router /metrics → 200 (active = ${VPC})"
 fi
 
 # Done.
 echo
-log "v2 deploy OK"
+log "v2 deploy OK (blue/green flipped active = ${VPC})"
 log "  - image:       $IMAGE_REF"
-log "  - manifest:    $SOLARADOCS_DIR/manifests/{vpc,services}.yaml"
+log "  - manifests:   ${SERVICES_MANIFEST}"
 log "  - daemon:      $(systemctl is-active sol-control-v2)"
 log "  - services:    $(docker ps --format '{{.Names}}' | grep -cE "\-${VPC}-[0-9]+(-g[0-9]+)?\$")/12 running"
 log
-log "  Grafana:       http://127.0.0.1:3000  (admin/$(grep '^GRAFANA_PASSWORD=' "$ENV_FILE" | cut -d= -f2- | head -c4)...)"
-log "  Prom:          http://127.0.0.1:9090"
-log "  Alertmanager:  http://127.0.0.1:9093"
+log "  Rollback if anything looks wrong:  sudo solctl-v2 rollback"
+log "  Watch monitor logs:                sudo journalctl -u sol-control-v2 -f"

@@ -1,0 +1,347 @@
+# Solaradocs blue half — 12 services in VPC `sd-blue`.
+# Translated from docker-compose.yml for sol-ctl v2.
+#
+# Differences from docker-compose.yml:
+#   - NO postgres service. Prod DB is Neon (external) — reached via DB_MAIN
+#     in /var/sol-ctl/sd-blue/.env. The smoke fixture added a local postgres;
+#     prod does not need it.
+#   - NO --build for web/celery. v2 is registry-pull-only. deploy/v2/deploy.sh
+#     builds the image locally on the EC2 + pushes to a local registry:2
+#     container as localhost:5000/solaradocs:<git-sha>; the IMAGE_TAG
+#     placeholder below is sed-substituted by the deploy script before apply.
+#   - Redis cmd uses `sh -c` so $REDIS_PASSWORD from the env file is expanded
+#     at container start (v2's shell_words split does NOT do env expansion).
+#   - Alertmanager runs with --cluster.listen-address= because sol-ctl uses
+#     172.100.0.0/24 (outside RFC1918); AM's gossip-mesh auto-detect refuses
+#     to advertise non-private IPs and crashes. Single-replica deploy doesn't
+#     need a mesh.
+#   - All volumes under /var/sol-ctl/volumes/sd-blue/. The configs/ subdir
+#     is populated by the deploy script from the rsynced repo (prometheus.yml,
+#     alertmanager.yml, etc.).
+#
+# IMPORTANT before first apply — operator must update /var/sol-ctl/sd-blue/.env:
+#   REDIS_HOST=redis              (was 172.100.0.2)
+#   REDIS_URL=redis://:Mucia850@@redis:6379
+#   REDIS_ADDR=redis://:Mucia850@@redis:6379
+#   CE_BROKER_URL=redis://:Mucia850@@redis:6379/0
+# (use the service-name DNS that v2's hosts-file bind provides instead of
+# the v1 bridge IP — IPs are dynamic in v2.)
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: redis
+  assign_to: sd-blue
+spec:
+  image: redis
+  tag: 7-alpine
+  replicas: 1
+  ports: []
+  env_file: /var/sol-ctl/sd-blue/.env
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/redis-data
+      container: /data
+  # sh -c so $REDIS_PASSWORD from env_file gets expanded at start.
+  # v2's shell_words split preserves the inner quotes for sh to interpret.
+  cmd: >-
+    sh -c 'redis-server --appendonly yes --requirepass "$REDIS_PASSWORD"'
+  health_check:
+    type: tcp
+    port: 6379
+    interval: 5s
+    timeout: 2s
+    retries: 5
+    start_period: 10s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: tempo
+  assign_to: sd-blue
+spec:
+  image: grafana/tempo
+  tag: 2.7.0
+  replicas: 1
+  ports: [3200]
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/configs/tempo.yaml
+      container: /etc/tempo.yaml
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/tempo-data
+      container: /var/tempo
+  cmd: "-config.file=/etc/tempo.yaml"
+  health_check:
+    type: http
+    path: /ready
+    port: 3200
+    interval: 5s
+    timeout: 3s
+    retries: 6
+    start_period: 30s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: otel-collector
+  assign_to: sd-blue
+spec:
+  image: otel/opentelemetry-collector-contrib
+  tag: 0.96.0
+  replicas: 1
+  ports: []
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/configs/otel-collector-config.yaml
+      container: /etc/otel-collector-config.yaml
+      mode: ro
+  cmd: "--config /etc/otel-collector-config.yaml"
+  health_check:
+    type: tcp
+    port: 4317
+    interval: 5s
+    timeout: 2s
+    retries: 6
+    start_period: 20s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: web
+  assign_to: sd-blue
+spec:
+  # IMAGE_TAG_PLACEHOLDER — deploy/v2/deploy.sh sed-substitutes the next
+  # `tag:` line with the git SHA before apply. Keep the placeholder as
+  # the literal string `__IMAGE_TAG__` so the substitution is precise.
+  image: localhost:5000/solaradocs
+  tag: __IMAGE_TAG__
+  replicas: 1
+  ports: [8000]
+  env_file: /var/sol-ctl/sd-blue/.env
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/prom-multiproc
+      container: /tmp/prometheus_multiproc
+    - host: /var/sol-ctl/volumes/sd-blue/app-logs
+      container: /home/ubuntu/solaradocs
+  cmd: "gunicorn logic.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"
+  health_check:
+    type: http
+    path: /metrics
+    port: 8000
+    interval: 10s
+    timeout: 5s
+    retries: 6
+    start_period: 60s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: celery
+  assign_to: sd-blue
+spec:
+  image: localhost:5000/solaradocs
+  tag: __IMAGE_TAG__
+  replicas: 1
+  ports: []
+  env_file: /var/sol-ctl/sd-blue/.env
+  cmd: "celery -A logic worker --loglevel=info"
+  # No HTTP listener → no probe. Reconciler detects container exit via
+  # docker.is_running and restarts; Prom celery_workers_active alert
+  # covers worker liveness.
+
+---
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: prometheus
+  assign_to: sd-blue
+spec:
+  image: prom/prometheus
+  tag: latest
+  replicas: 1
+  ports: [9090]
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/configs/prometheus.yml
+      container: /etc/prometheus/prometheus.yml
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/configs/alert-rules.yml
+      container: /etc/prometheus/alert-rules.yml
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/prometheus-config/targets.json
+      container: /etc/prometheus/targets.json
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/prometheus-data
+      container: /prometheus
+  cmd: "--config.file=/etc/prometheus/prometheus.yml --web.enable-remote-write-receiver --storage.tsdb.path=/prometheus"
+  health_check:
+    type: http
+    path: /-/healthy
+    port: 9090
+    interval: 5s
+    timeout: 3s
+    retries: 6
+    start_period: 30s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: grafana
+  assign_to: sd-blue
+spec:
+  image: grafana/grafana
+  tag: latest
+  replicas: 1
+  ports: []
+  env_file: /var/sol-ctl/sd-blue/.env
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/grafana-data
+      container: /var/lib/grafana
+  health_check:
+    type: http
+    path: /api/health
+    port: 3000
+    interval: 10s
+    timeout: 5s
+    retries: 10
+    start_period: 120s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: alertmanager
+  assign_to: sd-blue
+spec:
+  image: prom/alertmanager
+  tag: v0.27.0
+  replicas: 1
+  ports: [9093]
+  env_file: /var/sol-ctl/sd-blue/.env
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/configs/alertmanager.yml
+      container: /etc/alertmanager/alertmanager.yml
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/alertmanager-data
+      container: /alertmanager
+  # NOTE: compose used a sed-substitution entrypoint to template
+  # {BREVO_API_KEY} into alertmanager.yml at start. v2's cmd doesn't
+  # override ENTRYPOINT, so the template must be pre-substituted on the
+  # host. deploy/v2/deploy.sh handles this: reads alertmanager.yml,
+  # substitutes ${BREVO_API_KEY} from the env file, writes resolved
+  # version to /var/sol-ctl/volumes/sd-blue/configs/alertmanager.yml.
+  cmd: "--config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager --cluster.listen-address="
+  health_check:
+    type: http
+    path: /-/healthy
+    port: 9093
+    interval: 10s
+    timeout: 5s
+    retries: 8
+    start_period: 90s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: node-exporter
+  assign_to: sd-blue
+spec:
+  image: prom/node-exporter
+  tag: latest
+  replicas: 1
+  ports: [9100]
+  # NOTE: compose mounted /proc, /sys, /rootfs and ran with pid: host so
+  # node-exporter could report HOST-level stats. v2 doesn't expose pid_mode
+  # AND its per-VPC volume isolation rejects '/'. Prod node-exporter
+  # reports container-scoped stats only. If you need real host stats,
+  # run node-exporter directly on the EC2 (outside the mesh, on 0.0.0.0:9100)
+  # and remove it from this manifest — Prometheus can scrape both.
+  health_check:
+    type: http
+    path: /metrics
+    port: 9100
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 10s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: redis-exporter
+  assign_to: sd-blue
+spec:
+  image: oliver006/redis_exporter
+  tag: latest
+  replicas: 1
+  ports: [9121]
+  env_file: /var/sol-ctl/sd-blue/.env
+  health_check:
+    type: http
+    path: /metrics
+    port: 9121
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 10s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: loki
+  assign_to: sd-blue
+spec:
+  image: grafana/loki
+  tag: 3.0.0
+  replicas: 1
+  ports: []
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/configs/loki-config.yaml
+      container: /etc/loki/loki-config.yaml
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/loki-data
+      container: /loki
+  cmd: "-config.file=/etc/loki/loki-config.yaml"
+  health_check:
+    type: http
+    path: /ready
+    port: 3100
+    interval: 10s
+    timeout: 5s
+    retries: 10
+    start_period: 120s
+
+---
+apiVersion: solctl/v1
+kind: Service
+metadata:
+  name: promtail
+  assign_to: sd-blue
+spec:
+  image: grafana/promtail
+  tag: 3.0.0
+  replicas: 1
+  ports: []
+  volumes:
+    - host: /var/sol-ctl/volumes/sd-blue/configs/promtail-config.yaml
+      container: /etc/promtail/promtail-config.yaml
+      mode: ro
+    - host: /var/sol-ctl/volumes/sd-blue/app-logs
+      container: /home/ubuntu/solaradocs
+      mode: ro
+  cmd: "-config.file=/etc/promtail/promtail-config.yaml"
+  health_check:
+    type: http
+    path: /ready
+    port: 9080
+    interval: 5s
+    timeout: 3s
+    retries: 6
+    start_period: 20s

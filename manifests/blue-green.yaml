@@ -1,0 +1,34 @@
+# Blue/green route declaration. The sol-ctl-v2 daemon reads this from
+# etcd (/solctl/bluegreen/production) and starts an alertmanager-polling
+# loop that auto-flips traffic from the active VPC to the standby if any
+# of the listed alerts fire in the active half.
+#
+# `metadata.name` MUST match the route name the sol-control-v2 daemon
+# is configured to look for (default: "production").
+#
+# The `alerts_endpoint` hostname is resolved at runtime to the CURRENT
+# active VPC's alertmanager container IP — operator doesn't need to
+# update this when flipping. See src/v2/blue_green.rs::resolve_alerts_endpoint.
+
+apiVersion: solctl/v1
+kind: BlueGreen
+metadata:
+  name: production
+spec:
+  vpcs:
+    - sd-blue
+    - sd-green
+  rollback:
+    alerts_endpoint: http://alertmanager:9093/api/v2/alerts
+    triggers:
+      - HighErrorRate         # 2+ Django 5xx in 5 min
+      - ContainerDown         # any scrape target's `up == 0` for 30s
+      - RedisDown             # redis_up == 0
+      - CeleryWorkerDown      # celery_workers_active == 0
+    action: flip
+    # Suppress further flips for 120s after ANY flip. Handles both the
+    # alertmanager-still-booting case (services come up one-by-one
+    # post-flip; some briefly look down) AND oscillation between blue
+    # and green on flapping alerts.
+    post_flip_burn_in_seconds: 120
+    poll_interval_seconds: 10
