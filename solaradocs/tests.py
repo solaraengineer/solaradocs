@@ -2041,34 +2041,49 @@ class GoogleImportViewTests(BaseTestCase):
             )
         self.assertEqual(r.status_code, 403)
 
-    def test_list_google_docs(self):
-        mock_docs = [
-            {'id': 'doc1', 'name': 'My Doc', 'modifiedTime': '2024-01-01T00:00:00Z'},
-        ]
-        with patch('solaradocs.views_import.list_user_google_docs', return_value=mock_docs):
-            r = self._get(f'/api/project/{self.project.id}/google/docs')
+    @override_settings(
+        GOOGLE_PICKER_API_KEY='fake-api-key',
+        GOOGLE_OAUTH_CLIENT_ID='12345-abc.apps.googleusercontent.com',
+    )
+    def test_picker_config_authenticated(self):
+        with patch('solaradocs.views_import.get_picker_access_token', return_value='ya29.fake'):
+            r = self._get(f'/api/project/{self.project.id}/google/picker-config')
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json()['docs']), 1)
-        self.assertEqual(r.json()['docs'][0]['id'], 'doc1')
+        data = r.json()
+        self.assertEqual(data['access_token'], 'ya29.fake')
+        self.assertEqual(data['api_key'], 'fake-api-key')
+        self.assertEqual(data['app_id'], '12345')
 
-    def test_list_google_docs_failure(self):
-        with patch('solaradocs.views_import.list_user_google_docs', return_value=None):
-            r = self._get(f'/api/project/{self.project.id}/google/docs')
+    def test_picker_config_unauthenticated(self):
+        with patch('solaradocs.views_import.get_picker_access_token', return_value=None):
+            r = self._get(f'/api/project/{self.project.id}/google/picker-config')
         self.assertEqual(r.status_code, 401)
+        self.assertTrue(r.json().get('reauth_required'))
 
     @patch('solaradocs.views_import.import_google_docs_task')
     def test_start_import(self, mock_task):
-        r = self._post(
-            f'/api/project/{self.project.id}/google/import',
-            {
-                'doc_ids': ['doc1', 'doc2'],
-                'doc_titles': {'doc1': 'First', 'doc2': 'Second'},
-                'team_id': self.public_team.id,
-            },
-        )
+        with patch('solaradocs.views_import.validate_picker_doc_ids',
+                   return_value=({'doc1': 'First', 'doc2': 'Second'}, {})):
+            r = self._post(
+                f'/api/project/{self.project.id}/google/import',
+                {
+                    'doc_ids': ['doc1', 'doc2'],
+                    'team_id': self.public_team.id,
+                },
+            )
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.json()['job_started'])
         mock_task.delay.assert_called_once()
+
+    def test_start_import_rejects_non_google_doc(self):
+        with patch('solaradocs.views_import.validate_picker_doc_ids',
+                   return_value=({}, {'pdf1': 'Only Google Docs are supported for import'})):
+            r = self._post(
+                f'/api/project/{self.project.id}/google/import',
+                {'doc_ids': ['pdf1'], 'team_id': self.public_team.id},
+            )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('Google Docs', r.json()['error'])
 
     def test_start_import_no_docs(self):
         r = self._post(
@@ -2104,10 +2119,12 @@ class GoogleImportViewTests(BaseTestCase):
                 project=self.project, document_name=f'D{i}',
                 team_assigned=self.public_team,
             )
-        r = self._post(
-            f'/api/project/{self.project.id}/google/import',
-            {'doc_ids': ['doc1'], 'team_id': self.public_team.id},
-        )
+        with patch('solaradocs.views_import.validate_picker_doc_ids',
+                   return_value=({'doc1': 'Doc1'}, {})):
+            r = self._post(
+                f'/api/project/{self.project.id}/google/import',
+                {'doc_ids': ['doc1'], 'team_id': self.public_team.id},
+            )
         self.assertEqual(r.status_code, 403)
 
     @patch('solaradocs.views_import.get_import_job_status')

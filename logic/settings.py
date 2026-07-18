@@ -179,6 +179,7 @@ AUTHENTICATION_BACKENDS = [
 
 GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
+GOOGLE_PICKER_API_KEY = os.getenv('GOOGLE_PICKER_API_KEY', '')
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -190,8 +191,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'profile',
             'email',
-            'https://www.googleapis.com/auth/documents.readonly',
-            'https://www.googleapis.com/auth/drive.readonly',
+            'https://www.googleapis.com/auth/drive.file',
         ],
         'AUTH_PARAMS': {
             'access_type': 'offline',

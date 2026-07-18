@@ -245,11 +245,12 @@ WARDENT_SECRET="$(grep -E '^WARDENT_SECRET=' "$ENV_FILE" | cut -d= -f2- | tr -d 
 if [ -z "$WARDENT_SECRET" ]; then
   log "WARNING: WARDENT_SECRET not in env file — router smoke SKIPPED"
 else
-  # X-Sol-Environment is wardent's view (fixed = "production"); router
-  # resolves to the currently-active VPC via /solctl/deploy/active.
+  # The v2 router does literal env-name → vpc lookup (src/v2/router.rs).
+  # Wardent's X-Sol-Environment was just sed-rewritten by promote to the
+  # new active VPC, so the smoke must use the same value, not "production".
   CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
           -H "X-Wardent-Secret: ${WARDENT_SECRET}" \
-          -H "X-Sol-Environment: production" \
+          -H "X-Sol-Environment: ${VPC}" \
           http://127.0.0.1:9040/metrics)"
   if [ "$CODE" != "200" ]; then
     fail "router smoke: /metrics returned HTTP ${CODE} (expected 200) — \

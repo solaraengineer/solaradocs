@@ -31,7 +31,9 @@ jobs:
       - name: Check manifests exist
         run: |
           test -f manifests/vpc.yaml || { echo "❌ manifests/vpc.yaml missing"; exit 1; }
-          test -f manifests/services.yaml || { echo "❌ manifests/services.yaml missing"; exit 1; }
+          test -f manifests/blue-green.yaml || { echo "❌ manifests/blue-green.yaml missing"; exit 1; }
+          test -f manifests/services-sd-blue.yaml || { echo "❌ manifests/services-sd-blue.yaml missing"; exit 1; }
+          test -f manifests/services-sd-green.yaml || { echo "❌ manifests/services-sd-green.yaml missing"; exit 1; }
           test -f deploy/v2/deploy.sh || { echo "❌ deploy/v2/deploy.sh missing"; exit 1; }
           echo "✅ manifests present"
 
@@ -39,7 +41,8 @@ jobs:
         run: |
           python3 -c "
           import yaml, sys
-          for f in ['manifests/vpc.yaml', 'manifests/services.yaml']:
+          for f in ['manifests/vpc.yaml', 'manifests/blue-green.yaml',
+                    'manifests/services-sd-blue.yaml', 'manifests/services-sd-green.yaml']:
               raw = list(yaml.safe_load_all(open(f)))
               # Skip empty docs (stray '---' separators between blocks are
               # legal YAML but parse as None). Server-side 'solctl-v2
@@ -116,18 +119,29 @@ jobs:
         run: |
           echo "$SSH_PRIVATE_KEY_BASE64" > SOLARA
           chmod 600 SOLARA
+          # Resolve the currently-active VPC from etcd — deploy.sh just
+          # flipped it, so the post-deploy env file lives at
+          # /var/sol-ctl/<active>/.env. Hardcoding sd-blue here would 502
+          # on every other deploy (alternating with the flip parity).
+          ACTIVE_VPC=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+            "sudo etcdctl get /solctl/deploy/active --print-value-only | python3 -c \"import json,sys; d=json.load(sys.stdin); print(next((k for k,v in d.items() if v==1), ''))\"")
+          if [ -z "$ACTIVE_VPC" ]; then
+            echo "⚠️  no active VPC in /solctl/deploy/active — skipping external smoke"
+            exit 0
+          fi
+          echo "active VPC = $ACTIVE_VPC"
           WARDENT_SECRET=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
-            "sudo grep -E '^WARDENT_SECRET=' /var/sol-ctl/soldocs/.env | cut -d= -f2- | tr -d '\"'")
+            "sudo grep -E '^WARDENT_SECRET=' /var/sol-ctl/${ACTIVE_VPC}/.env | cut -d= -f2- | tr -d '\"'")
           if [ -z "$WARDENT_SECRET" ]; then
-            echo "⚠️  WARDENT_SECRET not in server env — skipping external smoke"
+            echo "⚠️  WARDENT_SECRET not in /var/sol-ctl/${ACTIVE_VPC}/.env — skipping external smoke"
             exit 0
           fi
           CODE=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
             "curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
              -H 'X-Wardent-Secret: $WARDENT_SECRET' \
-             -H 'X-Sol-Environment: sd-blue' \
+             -H 'X-Sol-Environment: $ACTIVE_VPC' \
              http://127.0.0.1:9040/metrics")
           if [ "$CODE" != "200" ]; then
             echo "❌ smoke: router /metrics returned $CODE"; exit 1
           fi
-          echo "✅ router smoke: /metrics → 200"
+          echo "✅ router smoke: /metrics → 200 (active=$ACTIVE_VPC)"

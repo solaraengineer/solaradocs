@@ -11,6 +11,7 @@
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <style>
         * {
             margin: 0;
@@ -2770,18 +2771,9 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div id="importDocsLoading" class="gdocs-loading">
-                    <svg class="spinner-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                    </svg>
-                    Loading your Google Docs...
-                </div>
-                <div id="importDocsList" style="display:none;">
-                    <div class="gdocs-select-all" id="selectAllDocs">
-                        <input type="checkbox" id="selectAllCheckbox">
-                        <label for="selectAllCheckbox">Select all</label>
-                    </div>
-                    <div class="gdocs-list" id="gdocsListContainer"></div>
+                <div id="importPickedDocs" style="display:none;">
+                    <div style="font-size: 0.85rem; color: var(--text-tertiary); margin-bottom: 0.5rem;">Selected from Google Drive:</div>
+                    <div class="gdocs-list" id="importPickedDocsList" style="max-height: 220px; overflow-y: auto;"></div>
                     <div class="import-selected-count" id="importSelectedCount">0 selected</div>
                     <div class="form-group" style="margin-top: 0.75rem;">
                         <label class="form-label">Assign to Team</label>
@@ -3214,24 +3206,23 @@
                 }
             },
 
-            async listGoogleDocs() {
+            async getPickerConfig() {
                 try {
-                    const response = await authFetch(`/api/project/${projectId}/google/docs`);
+                    const response = await authFetch(`/api/project/${projectId}/google/picker-config`);
                     if (!response) return { success: false };
                     return await safeJson(response);
                 } catch (error) {
-                    console.error('Failed to list Google Docs:', error);
+                    console.error('Failed to fetch picker config:', error);
                     return { success: false, error };
                 }
             },
 
-            async startGoogleImport(docIds, docTitles, teamId) {
+            async startGoogleImport(docIds, teamId) {
                 try {
                     const response = await authFetch(`/api/project/${projectId}/google/import`, {
                         method: 'POST',
                         body: JSON.stringify({
                             doc_ids: docIds,
-                            doc_titles: docTitles,
                             team_id: parseInt(teamId)
                         })
                     });
@@ -3629,15 +3620,111 @@
         const progressModal = document.getElementById('importProgressModal');
         let importPollInterval = null;
         let importTeamId = null;
+        let pickerLibLoaded = false;
+        let pickedDocs = []; // [{id, name}] from the most recent Picker callback
 
-        function openImportModal() {
+        function ensurePickerLib() {
+            if (pickerLibLoaded) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                if (typeof gapi === 'undefined') {
+                    reject(new Error('Google API script failed to load'));
+                    return;
+                }
+                gapi.load('picker', {
+                    callback: () => { pickerLibLoaded = true; resolve(); },
+                    onerror: () => reject(new Error('Failed to load Google Picker')),
+                });
+            });
+        }
+
+        async function openImportFlow() {
+            // 1. Confirm Google account is linked.
+            const authData = await API.checkGoogleAuth();
+            if (!authData.success) {
+                showToast('Failed to check Google authentication', 'error');
+                return;
+            }
+            if (!authData.authenticated) {
+                window.location.href = authData.reauth_url || '/accounts/google/login/';
+                return;
+            }
+
+            // 2. Load Picker libs + fetch fresh access token + api key.
+            try {
+                await ensurePickerLib();
+            } catch (e) {
+                showToast(e.message || 'Failed to load Google Picker', 'error');
+                return;
+            }
+            const cfg = await API.getPickerConfig();
+            if (!cfg.success) {
+                if (cfg.reauth_required) {
+                    window.location.href = cfg.reauth_url || '/accounts/google/login/';
+                    return;
+                }
+                showToast(cfg.error || 'Failed to load Picker config', 'error');
+                return;
+            }
+
+            // 3. Build + show Picker.
+            const docsView = new google.picker.DocsView(google.picker.ViewId.DOCUMENTS)
+                .setMimeTypes('application/vnd.google-apps.document')
+                .setMode(google.picker.DocsViewMode.LIST)
+                .setIncludeFolders(true);
+
+            const picker = new google.picker.PickerBuilder()
+                .addView(docsView)
+                .setOAuthToken(cfg.access_token)
+                .setDeveloperKey(cfg.api_key)
+                .setAppId(cfg.app_id)
+                .setCallback(pickerCallback)
+                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .setTitle('Select Google Docs to import')
+                .build();
+            picker.setVisible(true);
+        }
+
+        async function pickerCallback(data) {
+            if (data.action !== google.picker.Action.PICKED) return;
+            const docs = data.docs || [];
+            pickedDocs = docs.map(d => ({ id: d.id, name: d.name || 'Untitled' }));
+            if (pickedDocs.length === 0) return;
+            await openConfirmModal();
+        }
+
+        async function openConfirmModal() {
             importModal.classList.add('show');
             quill.disable();
-            document.getElementById('importDocsLoading').style.display = 'flex';
-            document.getElementById('importDocsList').style.display = 'none';
             document.getElementById('importDocsError').style.display = 'none';
-            document.getElementById('startImportBtn').disabled = true;
-            loadImportData();
+            document.getElementById('importPickedDocs').style.display = 'block';
+
+            // Render picked-doc summary.
+            const listEl = document.getElementById('importPickedDocsList');
+            listEl.innerHTML = pickedDocs.map(d => `
+                <div class="gdocs-list-item">
+                    <div class="doc-info">
+                        <div class="doc-title">${escapeHtml(d.name)}</div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('importSelectedCount').textContent =
+                `${pickedDocs.length} selected`;
+
+            // Load teams into selector.
+            const select = document.getElementById('importDocTeam');
+            select.innerHTML = '<option value="">Loading teams...</option>';
+            const teamsData = await API.getTeams();
+            if (teamsData.success) {
+                if (teamsData.teams.length === 0) {
+                    select.innerHTML = '<option value="">No teams available</option>';
+                    document.getElementById('startImportBtn').disabled = true;
+                } else {
+                    select.innerHTML = teamsData.teams.map(team =>
+                        `<option value="${team.id}">${escapeHtml(team.team_name)}</option>`
+                    ).join('');
+                    document.getElementById('startImportBtn').disabled = false;
+                }
+            }
         }
 
         function closeImportModal() {
@@ -3663,112 +3750,15 @@
             }
         }
 
-        async function loadImportData() {
-            // Load teams into import team selector
-            const teamsData = await API.getTeams();
-            if (teamsData.success) {
-                const select = document.getElementById('importDocTeam');
-                if (teamsData.teams.length === 0) {
-                    select.innerHTML = '<option value="">No teams available</option>';
-                } else {
-                    select.innerHTML = teamsData.teams.map(team =>
-                        `<option value="${team.id}">${escapeHtml(team.team_name)}</option>`
-                    ).join('');
-                }
-            }
-
-            // Check Google auth first
-            const authData = await API.checkGoogleAuth();
-            if (!authData.success) {
-                showImportError('Failed to check authentication');
-                return;
-            }
-
-            if (!authData.authenticated) {
-                // Redirect to Google OAuth
-                closeImportModal();
-                window.location.href = authData.reauth_url || '/accounts/google/login/';
-                return;
-            }
-
-            // Fetch Google Docs list
-            const docsData = await API.listGoogleDocs();
-            if (!docsData.success) {
-                if (docsData.reauth_required) {
-                    closeImportModal();
-                    window.location.href = '/accounts/google/login/';
-                    return;
-                }
-                showImportError(docsData.error || 'Failed to load Google Docs');
-                return;
-            }
-
-            if (docsData.docs.length === 0) {
-                showImportError('No Google Docs found in your account');
-                return;
-            }
-
-            renderGDocsList(docsData.docs);
-        }
-
         function showImportError(msg) {
-            document.getElementById('importDocsLoading').style.display = 'none';
-            document.getElementById('importDocsList').style.display = 'none';
+            document.getElementById('importPickedDocs').style.display = 'none';
             const errEl = document.getElementById('importDocsError');
             errEl.textContent = msg;
             errEl.style.display = 'block';
         }
 
-        function renderGDocsList(docs) {
-            document.getElementById('importDocsLoading').style.display = 'none';
-            document.getElementById('importDocsList').style.display = 'block';
-
-            const container = document.getElementById('gdocsListContainer');
-            container.innerHTML = docs.map(doc => {
-                const modDate = doc.modified_time ? new Date(doc.modified_time).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric'
-                }) : '';
-                return `
-                    <label class="gdocs-list-item">
-                        <input type="checkbox" class="gdoc-checkbox" data-doc-id="${escapeHtml(doc.id)}" data-doc-title="${escapeHtml(doc.name)}">
-                        <div class="doc-info">
-                            <div class="doc-title">${escapeHtml(doc.name)}</div>
-                            <div class="doc-date">${modDate}</div>
-                        </div>
-                    </label>
-                `;
-            }).join('');
-
-            updateSelectedCount();
-
-            // Checkbox change events
-            container.addEventListener('change', updateSelectedCount);
-        }
-
-        function updateSelectedCount() {
-            const checked = document.querySelectorAll('.gdoc-checkbox:checked');
-            const countEl = document.getElementById('importSelectedCount');
-            countEl.textContent = `${checked.length} selected`;
-            document.getElementById('startImportBtn').disabled = checked.length === 0;
-
-            // Update select-all checkbox state
-            const all = document.querySelectorAll('.gdoc-checkbox');
-            const selectAllCb = document.getElementById('selectAllCheckbox');
-            if (all.length > 0) {
-                selectAllCb.checked = checked.length === all.length;
-                selectAllCb.indeterminate = checked.length > 0 && checked.length < all.length;
-            }
-        }
-
-        // Select all checkbox
-        document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
-            const checkboxes = document.querySelectorAll('.gdoc-checkbox');
-            checkboxes.forEach(cb => cb.checked = e.target.checked);
-            updateSelectedCount();
-        });
-
-        // Import button click
-        document.getElementById('importGDocsBtn').addEventListener('click', openImportModal);
+        // Button wiring
+        document.getElementById('importGDocsBtn').addEventListener('click', openImportFlow);
         document.getElementById('closeImportModal').addEventListener('click', closeImportModal);
         document.getElementById('cancelImport').addEventListener('click', closeImportModal);
         importModal.addEventListener('click', (e) => {
@@ -3777,8 +3767,7 @@
 
         // Start import
         document.getElementById('startImportBtn').addEventListener('click', async () => {
-            const checked = document.querySelectorAll('.gdoc-checkbox:checked');
-            if (checked.length === 0) {
+            if (pickedDocs.length === 0) {
                 showToast('No documents selected', 'error');
                 return;
             }
@@ -3790,32 +3779,26 @@
             }
 
             importTeamId = parseInt(teamId);
-            const docIds = [];
-            const docTitles = {};
-            checked.forEach(cb => {
-                const id = cb.dataset.docId;
-                docIds.push(id);
-                docTitles[id] = cb.dataset.docTitle || '';
-            });
+            const docIds = pickedDocs.map(d => d.id);
+            const titleByid = Object.fromEntries(pickedDocs.map(d => [d.id, d.name]));
 
-            const data = await API.startGoogleImport(docIds, docTitles, teamId);
+            const data = await API.startGoogleImport(docIds, teamId);
             if (!data.success) {
-                showToast(data.error || 'Failed to start import', 'error');
+                showImportError(data.error || 'Failed to start import');
                 return;
             }
 
             closeImportModal();
             openProgressModal();
 
-            // Initialize progress UI
+            // Initialize progress UI from the docs we just confirmed.
             renderProgressList(docIds.map(id => ({
                 doc_id: id,
-                title: docTitles[id] || id,
+                title: titleByid[id] || id,
                 state: 'pending',
                 reason: ''
             })));
 
-            // Start polling
             startImportPolling();
         });
 

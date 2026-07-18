@@ -131,26 +131,57 @@ def get_google_credentials(user):
     return creds
 
 
-def list_user_google_docs(user, page_size=100):
+GOOGLE_DOC_MIME = 'application/vnd.google-apps.document'
+
+
+def get_picker_access_token(user):
     creds = get_google_credentials(user)
     if creds is None:
         return None
+    return creds.token
+
+
+def validate_picker_doc_ids(user, doc_ids):
+    """Confirm each picker-returned ID is a Google Doc the user actually
+    has access to under the `drive.file` scope. Returns (valid, invalid)
+    where valid is {doc_id: title} and invalid is {doc_id: reason}.
+    """
+    creds = get_google_credentials(user)
+    if creds is None:
+        return None, None
 
     try:
         service = build('drive', 'v3', credentials=creds, cache_discovery=False)
-        results = service.files().list(
-            q="mimeType='application/vnd.google-apps.document'",
-            fields='files(id, name, modifiedTime)',
-            pageSize=page_size,
-            orderBy='modifiedTime desc',
-        ).execute()
-        return results.get('files', [])
-    except HttpError as e:
-        logger.error("Google Drive API error listing docs for user %s: %s", user.id, e)
-        return None
     except Exception:
-        logger.exception("Unexpected error listing Google Docs for user %s", user.id)
-        return None
+        logger.exception("Failed to build Drive client for user %s", user.id)
+        return None, None
+
+    valid = {}
+    invalid = {}
+    for did in doc_ids:
+        try:
+            meta = service.files().get(fileId=did, fields='id,name,mimeType').execute()
+        except HttpError as e:
+            status = getattr(e.resp, 'status', None)
+            if status == 404:
+                invalid[did] = 'File not found or not granted access via Picker'
+            elif status == 403:
+                invalid[did] = 'Permission denied'
+            else:
+                invalid[did] = f'Drive API error ({status})'
+            continue
+        except Exception:
+            logger.exception("Unexpected error validating doc %s", did)
+            invalid[did] = 'Validation failed'
+            continue
+
+        mime = meta.get('mimeType', '')
+        if mime != GOOGLE_DOC_MIME:
+            invalid[did] = 'Only Google Docs are supported for import'
+            continue
+        valid[did] = meta.get('name', '') or 'Untitled'
+
+    return valid, invalid
 
 
 def fetch_google_doc_text(creds, doc_id):
