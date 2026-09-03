@@ -149,7 +149,10 @@ if [ -n "${SKIP_BUILD:-}" ]; then
   log "SKIP_BUILD set — assuming $IMAGE_REF is already in the registry"
 else
   log "building $IMAGE_REF"
-  docker build -q -t "$IMAGE_REF" "$SOLARADOCS_DIR" > /dev/null
+  # --network=host: docker bridge can't reach the AWS VPC DNS at 172.31.0.2
+  # on this host (sol-ctl netns/iptables interference), so pip install
+  # can't resolve pypi.org. Host network sidesteps the bridge.
+  docker build --network=host -q -t "$IMAGE_REF" "$SOLARADOCS_DIR" > /dev/null
   log "pushing $IMAGE_REF"
   docker push -q "$IMAGE_REF" > /dev/null
   ok "image pushed"
