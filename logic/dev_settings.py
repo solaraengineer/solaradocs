@@ -30,3 +30,28 @@ CACHES = {
 
 DEBUG = True
 ALLOWED_HOSTS = ['*']
+
+# Aggressive no-cache: browsers cache Django dev pages too eagerly during
+# local UI iteration. Inject a change-every-request ETag so Safari (which
+# ignores Cache-Control: no-store for back/forward navigation) always
+# revalidates and gets fresh HTML.
+import secrets as _secrets
+class _NoCacheMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+    def __call__(self, request):
+        response = self.get_response(request)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        response['Vary'] = '*'
+        response['Surrogate-Control'] = 'no-store'
+        response['Clear-Site-Data'] = '"cache"'
+        # Random ETag per response forces Safari to treat every load as new.
+        response['ETag'] = '"' + _secrets.token_hex(8) + '"'
+        # Strip Last-Modified so 304 short-circuit can't kick in.
+        if 'Last-Modified' in response:
+            del response['Last-Modified']
+        return response
+
+MIDDLEWARE = list(MIDDLEWARE) + ['logic.dev_settings._NoCacheMiddleware']

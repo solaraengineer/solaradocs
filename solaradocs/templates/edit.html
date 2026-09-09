@@ -3,6 +3,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project.project_name }} - Solara docs</title>
     <link rel="icon" type="image/png" href="{% static 'assets/favicon-512.png' %}">
@@ -20,22 +23,21 @@
         }
 
         :root {
-            /* Warm sunset palette — tightened for Figma-density polish */
-            --bg-primary:   #17160f;
-            --bg-secondary: #1c1b15;
-            --bg-tertiary:  #232219;
-            --bg-elevated:  #2b291f;
-            --border:        rgba(232, 228, 221, 0.14);
-            --border-subtle: rgba(232, 228, 221, 0.07);
-            --text-primary:   #ebe6dc;
-            --text-secondary: #a29e94;
-            --text-tertiary:  #6b6863;
-            --accent-orange: #e8a268;
-            --accent-blue:   #6b9ece;
+            --bg-primary: #1a1915;
+            --bg-secondary: #21201c;
+            --bg-tertiary: #2a2924;
+            --bg-elevated: #32312b;
+            --border: #3d3b35;
+            --border-subtle: #2e2d28;
+            --text-primary: #e8e4dd;
+            --text-secondary: #a8a59e;
+            --text-tertiary: #6b6963;
+            --accent-orange: #d4a574;
+            --accent-blue: #6b9ece;
             --accent-purple: #9d7cd8;
-            --accent-teal:   #5fb3a1;
-            --accent-green:  #7fb069;
-            --accent-red:    #d46a6a;
+            --accent-teal: #5fb3a1;
+            --accent-green: #7fb069;
+            --accent-red: #d46a6a;
         }
 
         html, body {
@@ -49,15 +51,7 @@
             color: var(--text-primary);
             display: flex;
             flex-direction: column;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
-
-        ::selection { background: var(--accent-orange); color: var(--bg-primary); }
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(232, 228, 221, 0.10); border-radius: 5px; border: 2px solid var(--bg-primary); }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(232, 228, 221, 0.18); }
 
         /* Top Bar */
         .top-bar {
@@ -2218,6 +2212,307 @@
                 margin: 1rem;
             }
         }
+
+        /* ────────────────────────────────────────────────────────────
+           Doc editor right-click context menu
+           bg #2C2C2C · 8px radius · #E8915A accent · 200ms scale-in
+           ──────────────────────────────────────────────────────────── */
+        .doc-ctx {
+            position: fixed; z-index: 9000;
+            min-width: 240px;
+            max-height: 60vh;              /* JS overrides with the exact fits-in-viewport height */
+            overflow-y: auto;
+            background: #2C2C2C;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 6px;
+            box-shadow:
+                0 1px 0 rgba(255,255,255,0.04) inset,
+                0 10px 24px rgba(0,0,0,0.4),
+                0 24px 60px rgba(0,0,0,0.5);
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 13px;
+            color: #e8e4dd;
+            user-select: none;
+            opacity: 0;
+            transform: scale(0.95);
+            transform-origin: top left;
+            transition: opacity 200ms ease-out, transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+        .doc-ctx.open { opacity: 1; transform: scale(1); pointer-events: auto; }
+        /* Force a visible scrollbar in Safari when content overflows — otherwise
+           the menu looks cut off. */
+        .doc-ctx::-webkit-scrollbar { width: 8px; }
+        .doc-ctx::-webkit-scrollbar-track { background: transparent; }
+        .doc-ctx::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.16);
+            border-radius: 4px;
+        }
+        .doc-ctx::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+        .doc-ctx-span { }   /* legacy — no-op now */
+
+        .doc-ctx-group { padding: 2px; }
+        .doc-ctx-sep {
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+            margin: 4px 6px;
+        }
+        .doc-ctx-heading {
+            padding: 6px 10px 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            color: #7a736b;
+        }
+        .doc-ctx-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 4px 10px;    /* tighter for shorter menu */
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 60ms;
+            font-size: 12px;
+        }
+        .doc-ctx-row:hover, .doc-ctx-row.focused {
+            background: rgba(232, 145, 90, 0.14);
+            color: #E8915A;
+        }
+        .doc-ctx-row .icon {
+            width: 14px; height: 14px;
+            display: grid; place-items: center;
+            color: #a29e94;
+            flex-shrink: 0;
+        }
+        .doc-ctx-row:hover .icon, .doc-ctx-row.focused .icon { color: #E8915A; }
+        .doc-ctx-row .icon svg { width: 13px; height: 13px; }
+        .doc-ctx-row .label { flex: 1; }
+        .doc-ctx-row .hint {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #7a736b;
+            letter-spacing: 0.02em;
+        }
+        .doc-ctx-row:hover .hint, .doc-ctx-row.focused .hint {
+            color: #E8915A; opacity: 0.75;
+        }
+        .doc-ctx-row.active {
+            background: rgba(232, 145, 90, 0.10);
+            color: #E8915A;
+        }
+        .doc-ctx-row.active .icon { color: #E8915A; }
+        .doc-ctx-row.danger { color: #d46a6a; }
+        .doc-ctx-row.danger .icon { color: #d46a6a; }
+        .doc-ctx-row.danger:hover { background: rgba(212,106,106,0.14); color: #d46a6a; }
+        .doc-ctx-row.danger:hover .icon { color: #d46a6a; }
+
+        /* Colour swatch row */
+        .doc-ctx-swatches {
+            display: flex; gap: 5px;
+            padding: 4px 10px 8px;
+        }
+        .doc-ctx-swatch {
+            width: 18px; height: 18px; border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.08);
+            cursor: pointer;
+            transition: transform 80ms;
+        }
+        .doc-ctx-swatch:hover { transform: scale(1.15); border-color: #a29e94; }
+        .doc-ctx-swatch.clear {
+            background:
+                linear-gradient(45deg, transparent 45%, #d46a6a 46%, #d46a6a 54%, transparent 55%),
+                #3a3a3a;
+        }
+
+        /* AI prompt block */
+        .doc-ctx-ai {
+            padding: 6px 8px 8px;
+            background: linear-gradient(180deg,
+                rgba(232, 145, 90, 0.05),
+                rgba(232, 145, 90, 0.10));
+            border-radius: 6px;
+            margin: 2px;
+        }
+        .doc-ctx-ai-label {
+            display: flex; align-items: center; gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            color: #E8915A;
+            padding: 4px 4px 6px;
+        }
+        .doc-ctx-ai-label .sparkle {
+            width: 12px; height: 12px;
+            display: grid; place-items: center;
+        }
+        .doc-ctx-ai-input-wrap {
+            position: relative;
+            display: flex; align-items: center;
+        }
+        .doc-ctx-ai-input {
+            width: 100%;
+            padding: 7px 32px 7px 10px;
+            background: #1e1e1e;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            color: #e8e4dd;
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 12px;
+            outline: none;
+            transition: border-color 100ms;
+        }
+        .doc-ctx-ai-input:focus { border-color: #E8915A; }
+        .doc-ctx-ai-input::placeholder { color: #6b6963; font-style: italic; }
+        .doc-ctx-ai-submit {
+            position: absolute; right: 5px;
+            width: 22px; height: 22px;
+            display: grid; place-items: center;
+            background: #E8915A; color: #1e1e1e;
+            border: none; border-radius: 4px;
+            cursor: pointer;
+            transition: background 80ms;
+        }
+        .doc-ctx-ai-submit:hover:not(:disabled) { background: #f0a473; }
+        .doc-ctx-ai-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+        .doc-ctx-ai-submit svg { width: 11px; height: 11px; }
+        .doc-ctx-ai-hint {
+            padding: 5px 4px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: #7a736b;
+            letter-spacing: 0.02em;
+        }
+        .doc-ctx-ai-hint kbd {
+            font-family: inherit;
+            background: #1e1e1e;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 3px;
+            padding: 1px 4px;
+            color: #a29e94;
+        }
+        .doc-ctx-ai.loading .doc-ctx-ai-submit svg { display: none; }
+        .doc-ctx-ai.loading .doc-ctx-ai-submit::after {
+            content: '';
+            width: 10px; height: 10px;
+            border: 2px solid #1e1e1e;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: doc-ctx-spin 0.6s linear infinite;
+        }
+        @keyframes doc-ctx-spin { to { transform: rotate(360deg); } }
+        .doc-ctx-ai-msg {
+            padding: 4px 4px 0;
+            font-size: 11px;
+            display: none;
+        }
+        .doc-ctx-ai-msg.error { display: block; color: #d46a6a; }
+        .doc-ctx-ai-msg.ok { display: block; color: #7fb069; }
+
+        /* ── "Frequent" section at top of right-click menu ── */
+        .doc-ctx-frequent {
+            padding: 2px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 4px;
+        }
+        .doc-ctx-frequent:empty { display: none; }
+        .doc-ctx-frequent .doc-ctx-heading { padding-top: 4px; }
+
+        /* ────────────────────────────────────────────────────────────
+           Selection bubble — learned quick-pick above text selection
+           ──────────────────────────────────────────────────────────── */
+        .doc-bubble {
+            position: fixed; z-index: 8900;
+            display: none;
+            align-items: center; gap: 2px;
+            padding: 4px;
+            background: #2C2C2C;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            box-shadow:
+                0 1px 0 rgba(255,255,255,0.05) inset,
+                0 6px 20px rgba(0,0,0,0.35),
+                0 12px 32px rgba(0,0,0,0.4);
+            font-family: 'Inter', -apple-system, sans-serif;
+            user-select: none;
+            opacity: 0;
+            transform: scale(0.94);
+            transform-origin: left center;
+            transition: opacity 120ms ease-out, transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+        .doc-bubble.open { display: flex; opacity: 1; transform: scale(1); pointer-events: auto; }
+        .doc-bubble .doc-bubble-tip { display: none; }   /* side-anchored, no tip */
+        .doc-bubble-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 26px; height: 26px;
+            padding: 0 8px;
+            background: transparent; border: none;
+            color: #e8e4dd;
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 12px; font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 60ms, color 60ms;
+            position: relative;
+        }
+        .doc-bubble-btn:hover {
+            background: rgba(232, 145, 90, 0.16);
+            color: #E8915A;
+        }
+        .doc-bubble-btn.active {
+            background: rgba(232, 145, 90, 0.14);
+            color: #E8915A;
+        }
+        .doc-bubble-btn .glyph {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-weight: 700; font-size: 11px;
+            letter-spacing: 0.02em;
+        }
+        .doc-bubble-btn.bold .glyph   { font-family: 'Inter', sans-serif; font-weight: 800; }
+        .doc-bubble-btn.italic .glyph { font-family: 'Inter', sans-serif; font-style: italic; font-weight: 600; }
+        .doc-bubble-btn.underline .glyph { font-family: 'Inter', sans-serif; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+        .doc-bubble-btn.strike .glyph { font-family: 'Inter', sans-serif; font-weight: 600; text-decoration: line-through; }
+        .doc-bubble-sep {
+            width: 1px; height: 16px;
+            background: rgba(255,255,255,0.08);
+            margin: 0 2px;
+        }
+        .doc-bubble-more, .doc-bubble-dismiss {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px;
+            background: transparent; border: none;
+            color: #7a736b;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .doc-bubble-more:hover { background: rgba(255,255,255,0.06); color: #e8e4dd; }
+        .doc-bubble-dismiss:hover { background: rgba(212,106,106,0.14); color: #d46a6a; }
+        .doc-bubble-more svg, .doc-bubble-dismiss svg { width: 12px; height: 12px; }
+        .doc-bubble-tip {
+            position: absolute;
+            bottom: -10px; left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #2C2C2C;
+            filter: drop-shadow(0 1px 0 rgba(255,255,255,0.05));
+        }
+        /* Hover tooltip with the action label */
+        .doc-bubble-btn::after {
+            content: attr(data-tip);
+            position: absolute; bottom: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%);
+            padding: 3px 7px;
+            background: #17160f;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 500;
+            color: #a29e94;
+            white-space: nowrap;
+            opacity: 0; pointer-events: none;
+            transition: opacity 120ms 200ms;
+        }
+        .doc-bubble-btn:hover::after { opacity: 1; }
     </style>
 </head>
 <body>
@@ -5658,6 +5953,656 @@ if (document.cookie && document.cookie !== '') {
 }
 return cookieValue;
 }
+
+// ────────────────────────────────────────────────────────────
+// Doc editor right-click context menu
+// ────────────────────────────────────────────────────────────
+function initDocContextMenu() {
+    'use strict';
+    if (typeof quill === 'undefined') return;
+
+    const menu = document.getElementById('doc-ctx');
+    if (!menu) { console.warn('[doc-ctx] menu element not found in DOM'); return; }
+
+    let savedRange = null;   // Quill selection at moment of right-click
+
+    function currentRange() {
+        return savedRange || quill.getSelection(true) || { index: 0, length: 0 };
+    }
+    function hasSelection() {
+        const r = currentRange();
+        return r && r.length > 0;
+    }
+
+    // Reflect current formatting on menu rows so hover highlights stay meaningful.
+    function refreshActiveStates() {
+        const r = currentRange();
+        const fmt = r ? quill.getFormat(r) : {};
+        menu.querySelectorAll('[data-fmt]').forEach(el => {
+            const key = el.getAttribute('data-fmt');
+            const val = el.getAttribute('data-fmt-val');
+            let active = false;
+            if (val === null || val === undefined) {
+                active = !!fmt[key];
+            } else if (val === 'toggle') {
+                active = !!fmt[key];
+            } else {
+                active = String(fmt[key]) === val;
+            }
+            el.classList.toggle('active', active);
+        });
+    }
+
+    function openMenu(x, y) {
+        savedRange = quill.getSelection(true);   // capture BEFORE focus leaves editor
+        if (typeof hideBubble === 'function') hideBubble();
+        if (typeof populateFrequent === 'function') populateFrequent();
+        refreshActiveStates();
+
+        // Measure natural menu size (no height cap) so we can decide which side has room.
+        menu.style.left = '0px'; menu.style.top = '0px';
+        menu.style.maxHeight = 'none';
+        menu.classList.add('open');
+        const natural = menu.getBoundingClientRect();
+        const mw = natural.width, naturalH = natural.height;
+        menu.classList.remove('open');
+
+        const GAP = 6;
+        const MARGIN = 8;             // keep this far off any viewport edge
+        const MIN_H = 160;            // never squeeze below this — scroll instead
+        const editorRect = quill.container.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const vw = window.innerWidth;
+        const leftBound  = Math.max(MARGIN, editorRect.left  + 8);
+        const rightBound = Math.min(vw - MARGIN, editorRect.right - 8);
+
+        // Full selection bounding rect: top = top of first line, bottom = bottom of last line.
+        const nativeSel = window.getSelection();
+        const selRect = (nativeSel && nativeSel.rangeCount > 0 && !nativeSel.getRangeAt(0).collapsed)
+            ? nativeSel.getRangeAt(0).getBoundingClientRect()
+            : null;
+        const lineBottom  = selRect ? selRect.bottom : (y + 12);
+        const lineTop     = selRect ? selRect.top    : (y - 12);
+        const selLeftEdge  = selRect ? selRect.left  : x;
+        const selRightEdge = selRect ? selRect.right : x;
+
+        // Available room on each side of the selection.
+        const roomBelow = (vh - MARGIN) - (lineBottom + GAP);
+        const roomAbove = (lineTop - GAP) - MARGIN;
+        const roomRight = rightBound - (selRightEdge + GAP);
+        const roomLeft  = (selLeftEdge - GAP) - leftBound;
+
+        // Pick the side with the most usable room (that also has enough for MIN_H or a decent fraction).
+        // Priority when multiple sides fit: below > above > right > left (feels most natural).
+        let side = null, top, left;
+        const fitsBelow = roomBelow >= MIN_H;
+        const fitsAbove = roomAbove >= MIN_H;
+        const fitsRight = roomRight >= mw;
+        const fitsLeft  = roomLeft  >= mw;
+
+        if (fitsBelow)      side = 'below';
+        else if (fitsAbove) side = 'above';
+        else if (fitsRight) side = 'right';
+        else if (fitsLeft)  side = 'left';
+        else {
+            // Nothing fits cleanly — pick the vertical side with more room.
+            side = (roomBelow >= roomAbove) ? 'below' : 'above';
+        }
+
+        let cappedH;
+        if (side === 'below') {
+            cappedH = Math.max(MIN_H, Math.min(naturalH, roomBelow));
+            top = lineBottom + GAP;
+            left = x;
+        } else if (side === 'above') {
+            cappedH = Math.max(MIN_H, Math.min(naturalH, roomAbove));
+            top = lineTop - GAP - cappedH;
+            left = x;
+        } else if (side === 'right') {
+            cappedH = Math.min(naturalH, vh - 2 * MARGIN);
+            left = selRightEdge + GAP;
+            top  = Math.max(MARGIN, Math.min(vh - cappedH - MARGIN, lineTop));
+        } else { // left
+            cappedH = Math.min(naturalH, vh - 2 * MARGIN);
+            left = selLeftEdge - GAP - mw;
+            top  = Math.max(MARGIN, Math.min(vh - cappedH - MARGIN, lineTop));
+        }
+
+        // Clamp horizontally into the editor column, and also into the viewport.
+        left = Math.max(leftBound, Math.min(rightBound - mw, left));
+        left = Math.max(MARGIN,    Math.min(vw - mw - MARGIN, left));
+        // Clamp vertically as a final safety net.
+        top  = Math.max(MARGIN,    Math.min(vh - cappedH - MARGIN, top));
+
+        menu.style.maxHeight = cappedH + 'px';
+        menu.style.left = left + 'px';
+        menu.style.top  = top  + 'px';
+        menu.classList.add('open');
+    }
+    function closeMenu() {
+        menu.classList.remove('open');
+        savedRange = null;
+        // Suppress bubble for a beat so it doesn't pop back up right away
+        // as the selection settles after menu actions.
+        if (typeof menuBusyUntil !== 'undefined') menuBusyUntil = Date.now() + 500;
+    }
+
+    // Global capture — replace the browser context menu everywhere on this page.
+    // Skip only if the right-click is INSIDE our own menu (so you can right-click
+    // the AI input field to paste, etc.).
+    document.addEventListener('contextmenu', function (e) {
+        if (menu.contains(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openMenu(e.clientX, e.clientY);
+    }, true);
+
+    // Dismiss on outside click / Esc / scroll / resize
+    document.addEventListener('mousedown', function (e) {
+        if (menu.classList.contains('open') && !menu.contains(e.target)) closeMenu();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && menu.classList.contains('open')) { closeMenu(); quill.focus(); }
+    });
+    window.addEventListener('resize', closeMenu);
+    // Close on scroll ONLY when the page scrolls — not when the user is
+    // scrolling inside the menu itself.
+    document.addEventListener('scroll', function (e) {
+        if (!menu.classList.contains('open')) return;
+        if (menu.contains(e.target)) return;   // scrolling inside menu → keep open
+        closeMenu();
+    }, true);
+
+    // ── Action handlers ──────────────────────────────────────
+
+    function applyFormat(key, val) {
+        const r = currentRange();
+        if (!r) return;
+        const cur = quill.getFormat(r);
+        // Toggle boolean formats
+        let next = val;
+        if (val === 'toggle') next = !cur[key];
+        if (r.length > 0) quill.formatText(r.index, r.length, key, next, 'user');
+        else quill.format(key, next, 'user');
+        refreshActiveStates();
+    }
+
+    function applyLineFormat(key, val) {
+        const r = currentRange();
+        if (!r) return;
+        let idx = r.index, len = Math.max(r.length, 0);
+        if (len === 0) { len = 1; }
+        // Toggle: if the current line format matches the requested value,
+        // clicking it again removes it (feels natural for H1/H2/list/quote).
+        const cur = quill.getFormat({ index: idx, length: 0 })[key];
+        let next = val;
+        if (val !== false && cur !== undefined && cur !== false && String(cur) === String(val)) {
+            next = false;
+        }
+        quill.formatLine(idx, len, key, next, 'user');
+        refreshActiveStates();
+    }
+
+    async function doCopy() {
+        const r = currentRange();
+        if (!r || r.length === 0) return;
+        const text = quill.getText(r.index, r.length);
+        try { await navigator.clipboard.writeText(text); showToast && showToast('Copied'); }
+        catch (e) { showToast && showToast('Copy failed', 'error'); }
+    }
+
+    async function doPaste() {
+        const r = currentRange(); if (!r) return;
+        try {
+            const text = await navigator.clipboard.readText();
+            if (r.length) quill.deleteText(r.index, r.length, 'user');
+            quill.insertText(r.index, text, 'user');
+            quill.setSelection(r.index + text.length, 0, 'user');
+        } catch (e) { showToast && showToast('Paste needs clipboard permission', 'error'); }
+    }
+
+    function doDuplicate() {
+        const r = currentRange();
+        if (!r) return;
+        if (r.length > 0) {
+            const text = quill.getText(r.index, r.length);
+            quill.insertText(r.index + r.length, text, 'user');
+            quill.setSelection(r.index + r.length, text.length, 'user');
+        } else {
+            // Duplicate current line
+            const [line] = quill.getLine(r.index);
+            if (!line) return;
+            const lineIdx = quill.getIndex(line);
+            const lineLen = line.length();
+            const text = quill.getText(lineIdx, lineLen);
+            quill.insertText(lineIdx + lineLen, text, 'user');
+        }
+    }
+
+    function doDelete() {
+        const r = currentRange(); if (!r || r.length === 0) return;
+        quill.deleteText(r.index, r.length, 'user');
+    }
+
+    function applyColor(color) {
+        const r = currentRange(); if (!r || r.length === 0) return;
+        quill.formatText(r.index, r.length, 'color', color || false, 'user');
+        // Move cursor to end of the coloured range and clear the trailing
+        // format state so subsequent typing does NOT inherit the color.
+        quill.setSelection(r.index + r.length, 0, 'silent');
+        quill.format('color', false, 'silent');
+    }
+
+    // Expose action functions for testing (window.docCtx.*)
+    window.docCtx = {
+        openMenu, closeMenu, currentRange, hasSelection,
+        applyFormat, applyLineFormat, applyColor,
+        doCopy, doPaste, doDuplicate, doDelete,
+        indent: (dir) => quill.format('indent', dir, 'user'),
+        _menu: menu, _quill: () => quill,
+    };
+
+    // ─────────────────────────────────────────────────────────
+    // Learned quick-pick: usage counts + floating bubble
+    // ─────────────────────────────────────────────────────────
+
+    const PREFS_KEY = 'soldocs:prefs:v1';
+    const SEED_TOP = ['bold', 'italic', 'h1', 'ul'];   // defaults for new users
+    const BUBBLE_N = 4;
+    let bubbleDismissedThisSession = false;
+
+    function loadPrefs() {
+        try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'); }
+        catch (e) { return {}; }
+    }
+    function savePrefs(p) {
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) {}
+    }
+    function autoRecommendEnabled() {
+        const p = loadPrefs();
+        return p.autoRecommend !== false;   // default ON
+    }
+    function bumpAction(key) {
+        if (!key) return;
+        const p = loadPrefs();
+        p.actionCounts = p.actionCounts || {};
+        p.actionCounts[key] = (p.actionCounts[key] || 0) + 1;
+        savePrefs(p);
+    }
+    function topActions(n) {
+        const counts = (loadPrefs().actionCounts) || {};
+        const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+        const seen = new Set();
+        const out = [];
+        keys.forEach(k => { if (ACTIONS[k] && !seen.has(k)) { out.push(k); seen.add(k); } });
+        // Fill from seed if we don't have enough history yet.
+        SEED_TOP.forEach(k => { if (out.length < n && ACTIONS[k] && !seen.has(k)) { out.push(k); seen.add(k); } });
+        return out.slice(0, n);
+    }
+
+    // Canonical registry: label + short glyph + runner. Only the "trackable"
+    // subset of menu items — color/copy/paste/etc. are excluded from stats.
+    const ACTIONS = {
+        bold:      { label: 'Bold',           glyph: 'B',   cls: 'bold',      run: () => applyFormat('bold', 'toggle') },
+        italic:    { label: 'Italic',         glyph: 'I',   cls: 'italic',    run: () => applyFormat('italic', 'toggle') },
+        underline: { label: 'Underline',      glyph: 'U',   cls: 'underline', run: () => applyFormat('underline', 'toggle') },
+        strike:    { label: 'Strikethrough',  glyph: 'S',   cls: 'strike',    run: () => applyFormat('strike', 'toggle') },
+        code:      { label: 'Inline code',    glyph: '<>',  cls: '',          run: () => applyFormat('code', 'toggle') },
+        h1:        { label: 'Heading 1',      glyph: 'H1',  cls: '',          run: () => applyLineFormat('header', 1) },
+        h2:        { label: 'Heading 2',      glyph: 'H2',  cls: '',          run: () => applyLineFormat('header', 2) },
+        p:         { label: 'Paragraph',      glyph: '¶',   cls: '',          run: () => applyLineFormat('header', false) },
+        ul:        { label: 'Bulleted list',  glyph: '•',   cls: '',          run: () => applyLineFormat('list', 'bullet') },
+        ol:        { label: 'Numbered list',  glyph: '1.',  cls: '',          run: () => applyLineFormat('list', 'ordered') },
+        quote:     { label: 'Quote',          glyph: '“',   cls: '',          run: () => applyLineFormat('blockquote', true) },
+    };
+
+    // Populate the "Frequent" section at the top of the right-click menu
+    // whenever it opens, so the same learned actions surface both places.
+    const freqSlot = document.getElementById('doc-ctx-frequent');
+    function populateFrequent() {
+        if (!freqSlot) return;
+        if (!autoRecommendEnabled()) { freqSlot.innerHTML = ''; return; }
+        const top = topActions(BUBBLE_N);
+        freqSlot.innerHTML =
+            '<div class="doc-ctx-heading">Frequent</div>' +
+            '<div class="doc-ctx-group">' +
+            top.map(k => {
+                const a = ACTIONS[k];
+                return `<div class="doc-ctx-row" data-freq="${k}" role="menuitem">
+                    <span class="icon"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;">${a.glyph}</span></span>
+                    <span class="label">${a.label}</span>
+                    <span class="hint">frequent</span>
+                </div>`;
+            }).join('') +
+            '</div>';
+    }
+
+    // Bubble element — MOVE to <body> so no transformed ancestor
+    // breaks position:fixed (Quill applies transforms to inner elements).
+    const bubble = document.getElementById('doc-bubble');
+    if (bubble.parentNode !== document.body) document.body.appendChild(bubble);
+    // Same for the right-click menu, just to be safe.
+    if (menu.parentNode !== document.body) document.body.appendChild(menu);
+    const bubbleBtns = document.getElementById('doc-bubble-buttons');
+    const bubbleMore = document.getElementById('doc-bubble-more');
+    const bubbleDismiss = document.getElementById('doc-bubble-dismiss');
+
+    function renderBubbleButtons() {
+        const top = topActions(BUBBLE_N);
+        bubbleBtns.innerHTML = top.map(k => {
+            const a = ACTIONS[k];
+            return `<button type="button" class="doc-bubble-btn ${a.cls}" data-freq="${k}" data-tip="${a.label}">
+                <span class="glyph">${a.glyph}</span>
+            </button>`;
+        }).join('');
+    }
+
+    // Cursor-relative offset. Push RIGHT of the cursor by OFFSET so the menu
+    // sits past most words on the same line; flip LEFT if there's no room right.
+    // Not so far away that it feels disconnected, not so close that it covers text.
+    function computeAnchoredPos(anchorRect, w, h) {
+        const OFFSET = 40;   // px away from cursor horizontally — small so it's close
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const cx = (anchorRect.left + anchorRect.right) / 2;
+        const cy = (anchorRect.top + anchorRect.bottom) / 2;
+
+        let left, side;
+        if (cx + OFFSET + w <= vw - 8) {
+            left = cx + OFFSET;
+            side = 'right-of-cursor';
+        } else if (cx - OFFSET - w >= 8) {
+            left = cx - OFFSET - w;
+            side = 'left-of-cursor';
+        } else {
+            // Narrow viewport — clamp to right edge as last resort.
+            left = Math.max(8, vw - w - 8);
+            side = 'clamped';
+        }
+        // Vertically nudge slightly DOWN from cursor so the top row of the menu
+        // sits at eye level with where they clicked.
+        const top = Math.max(8, Math.min(vh - h - 8, cy - 20));
+        return { left, top, side };
+    }
+
+    // Anchor rect = last client rect of the selection (i.e. the END of the
+    // selection). Anchoring to the end means the bubble sits where the cursor
+    // just released — feels natural.
+    function selectionAnchorRect() {
+        const nativeSel = window.getSelection();
+        if (nativeSel && nativeSel.rangeCount > 0 && !nativeSel.getRangeAt(0).collapsed) {
+            const rects = nativeSel.getRangeAt(0).getClientRects();
+            if (rects && rects.length) return rects[rects.length - 1];
+            return nativeSel.getRangeAt(0).getBoundingClientRect();
+        }
+        return null;
+    }
+
+    // Bubble sits ABOVE the selection's first-line rect (or BELOW if no room).
+    // Horizontal center-aligned with the selection's start. Never uses the
+    // cursor-offset logic — that's for the right-click menu only.
+    function positionBubble(range) {
+        // Prefer the FIRST client rect (start of selection) for anchoring —
+        // that's where the user's eye is when they finish dragging left→right.
+        let anchor;
+        const nativeSel = window.getSelection();
+        if (nativeSel && nativeSel.rangeCount > 0 && !nativeSel.getRangeAt(0).collapsed) {
+            const rects = nativeSel.getRangeAt(0).getClientRects();
+            anchor = rects && rects.length ? rects[0] : nativeSel.getRangeAt(0).getBoundingClientRect();
+        } else {
+            const b = quill.getBounds(range.index, range.length);
+            const cr = quill.container.getBoundingClientRect();
+            anchor = { left: cr.left + b.left, right: cr.left + b.left + b.width,
+                       top: cr.top + b.top,   bottom: cr.top + b.top + b.height };
+        }
+
+        // Measure real bubble size.
+        bubble.classList.remove('below');
+        bubble.style.visibility = 'hidden';
+        bubble.classList.add('open');
+        const br = bubble.getBoundingClientRect();
+        const bw = br.width || 220;
+        const bh = br.height || 34;
+        bubble.classList.remove('open');
+        bubble.style.visibility = '';
+
+        const GAP = 12;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const centerX = (anchor.left + anchor.right) / 2;
+        let left = centerX - bw / 2;   // center bubble over selection
+        let top, below = false;
+        if (anchor.top - GAP - bh >= 8) {
+            top = anchor.top - GAP - bh;
+        } else {
+            top = Math.min(vh - bh - 8, anchor.bottom + GAP);
+            below = true;
+        }
+        // Clamp horizontally to viewport.
+        left = Math.max(8, Math.min(vw - bw - 8, left));
+        bubble.style.left = left + 'px';
+        bubble.style.top  = top + 'px';
+        bubble.classList.toggle('below', below);
+    }
+
+    function showBubble(range) {
+        if (!autoRecommendEnabled() || bubbleDismissedThisSession) return;
+        if (!range || range.length === 0) return;
+        renderBubbleButtons();
+        positionBubble(range);
+        bubble.classList.add('open');
+    }
+    function hideBubble() { bubble.classList.remove('open'); }
+
+    // Show bubble on non-empty selection. NEVER auto-hide it just because
+    // the selection collapsed. Skip if the full menu is (or was very
+    // recently) open — user has clearly chosen the full menu path.
+    let menuBusyUntil = 0;   // ms epoch; suppress bubble show until this time
+    quill.on('selection-change', function (range, oldRange, source) {
+        if (source === 'silent') return;
+        if (menu.classList.contains('open')) return;
+        if (Date.now() < menuBusyUntil) return;
+        if (range && range.length > 0) {
+            setTimeout(() => {
+                if (menu.classList.contains('open')) return;
+                if (Date.now() < menuBusyUntil) return;
+                showBubble(range);
+            }, 10);
+        }
+    });
+    // Reposition (not hide) on scroll/resize so it tracks the selection.
+    window.addEventListener('resize', function () {
+        if (bubble.classList.contains('open')) {
+            const r = quill.getSelection();
+            if (r && r.length > 0) positionBubble(r); else hideBubble();
+        }
+    });
+    document.addEventListener('scroll', function () {
+        if (bubble.classList.contains('open')) {
+            const r = quill.getSelection();
+            if (r && r.length > 0) positionBubble(r); else hideBubble();
+        }
+    }, true);
+    // Click OUTSIDE the bubble → hide (temp). Click INSIDE → keep open.
+    document.addEventListener('mousedown', function (e) {
+        if (!bubble.classList.contains('open')) return;
+        if (bubble.contains(e.target)) return;
+        // Right-click on editor is handled elsewhere (opens the full menu
+        // and hides bubble). Left-click outside → hide bubble.
+        hideBubble();
+    }, true);
+    // Esc hides the bubble.
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && bubble.classList.contains('open')) hideBubble();
+    });
+
+    // Bubble action clicks
+    bubble.addEventListener('mousedown', function (e) {
+        // Prevent losing the selection when clicking a button.
+        e.preventDefault();
+    });
+    bubbleBtns.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-freq]');
+        if (!btn) return;
+        const key = btn.getAttribute('data-freq');
+        const a = ACTIONS[key];
+        if (!a) return;
+        // Save + restore selection so runners have a valid range.
+        const r = quill.getSelection();
+        if (r) savedRange = r;
+        a.run();
+        bumpAction(key);
+        renderBubbleButtons();   // top-N may have shifted
+    });
+    bubbleMore.addEventListener('click', function (e) {
+        // Open the full right-click menu at the bubble's position.
+        const rect = bubble.getBoundingClientRect();
+        savedRange = quill.getSelection();
+        openMenu(rect.left, rect.bottom + 6);
+        hideBubble();
+    });
+    bubbleDismiss.addEventListener('click', function () {
+        bubbleDismissedThisSession = true;
+        hideBubble();
+    });
+
+    // ── Bind row clicks via data-action ──────────────────────
+    // STICKY menu — actions apply but menu stays open. Close via ×, Esc, or
+    // click outside. Destructive actions (copy/paste/duplicate/delete) DO
+    // close since they usually mean "I'm done".
+    menu.addEventListener('click', function (e) {
+        // "Frequent" section rows use data-freq → run from ACTIONS registry.
+        const freqRow = e.target.closest('[data-freq]');
+        if (freqRow) {
+            const key = freqRow.getAttribute('data-freq');
+            const a = ACTIONS[key];
+            if (a) { a.run(); bumpAction(key); refreshActiveStates(); }
+            return;   // stay open
+        }
+        const row = e.target.closest('[data-action]');
+        if (!row) return;
+        const act = row.getAttribute('data-action');
+        const fmt = row.getAttribute('data-fmt');   // format key (bold, italic, header, list, ...)
+        const arg = row.getAttribute('data-arg');   // value / arg for the action
+        const track = row.getAttribute('data-track');
+        let argVal = arg;
+        // Convert string arg to native types where needed.
+        if (arg === 'false') argVal = false;
+        else if (arg === 'true') argVal = true;
+        else if (arg !== null && !isNaN(arg) && arg !== '') argVal = parseInt(arg, 10);
+
+        switch (act) {
+            case 'format':      applyFormat(fmt, arg === null ? 'toggle' : argVal); break;
+            case 'line-format': applyLineFormat(fmt, argVal); break;
+            case 'indent':      quill.format('indent', arg, 'user'); break;
+            case 'color':       applyColor(arg); break;
+            case 'copy':        doCopy(); break;
+            case 'paste':       doPaste(); break;
+            case 'duplicate':   doDuplicate(); break;
+            case 'delete':      doDelete(); break;
+        }
+        if (track) bumpAction(track);
+        refreshActiveStates();
+
+        // These are "I'm done" actions — close after.
+        if (act === 'copy' || act === 'paste' || act === 'duplicate' || act === 'delete') {
+            closeMenu();
+        }
+        // Everything else (format / line-format / indent / color) → stay open.
+    });
+}
+// Menu markup lives AFTER this script tag, so defer init until DOM is parsed.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDocContextMenu);
+} else {
+    initDocContextMenu();
+}
     </script>
+
+    <!-- Selection bubble (top-N learned quick-pick, appears above selection) -->
+    <div class="doc-bubble" id="doc-bubble" role="toolbar" aria-label="Quick format">
+        <div id="doc-bubble-buttons" style="display:flex;align-items:center;gap:2px;"></div>
+        <span class="doc-bubble-sep"></span>
+        <button class="doc-bubble-more" id="doc-bubble-more" title="More (open full menu)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        </button>
+        <button class="doc-bubble-dismiss" id="doc-bubble-dismiss" title="Hide for this session">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="doc-bubble-tip"></div>
+    </div>
+
+    <!-- ────────────────────────────────────────────────────────────
+         Doc editor right-click context menu (Figma-style)
+         ──────────────────────────────────────────────────────────── -->
+    <div class="doc-ctx" id="doc-ctx" role="menu" aria-label="Editor actions">
+
+        <!-- ── Frequent (learned, populated at open) ────────── -->
+        <div class="doc-ctx-frequent" id="doc-ctx-frequent"></div>
+
+        <!-- ── Text formatting ─────────────────────────────── -->
+        <div class="doc-ctx-heading">Format</div>
+        <div class="doc-ctx-group">
+            <div class="doc-ctx-row" data-action="format" data-fmt="bold" data-track="bold" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg></span>
+                <span class="label">Bold</span>
+                <span class="hint">⌘B</span>
+            </div>
+            <div class="doc-ctx-row" data-action="format" data-fmt="italic" data-track="italic" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></span>
+                <span class="label">Italic</span>
+                <span class="hint">⌘I</span>
+            </div>
+            <div class="doc-ctx-row" data-action="format" data-fmt="underline" data-track="underline" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg></span>
+                <span class="label">Underline</span>
+                <span class="hint">⌘U</span>
+            </div>
+        </div>
+        <div class="doc-ctx-heading" style="padding-top:8px;">Color</div>
+        <div class="doc-ctx-swatches" role="group" aria-label="Text color">
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#e8e4dd" style="background:#e8e4dd" title="Default"></div>
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#d4a574" style="background:#d4a574" title="Sunset"></div>
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#d46a6a" style="background:#d46a6a" title="Red"></div>
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#7fb069" style="background:#7fb069" title="Green"></div>
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#6b9ece" style="background:#6b9ece" title="Blue"></div>
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#9d7cd8" style="background:#9d7cd8" title="Purple"></div>
+            <div class="doc-ctx-swatch" data-action="color" data-arg="#5fb3a1" style="background:#5fb3a1" title="Teal"></div>
+            <div class="doc-ctx-swatch clear" data-action="color" data-arg="" title="Clear color"></div>
+        </div>
+
+        <div class="doc-ctx-sep"></div>
+
+        <!-- ── Paragraph ───────────────────────────────────── -->
+        <div class="doc-ctx-heading">Paragraph</div>
+        <div class="doc-ctx-group">
+            <div class="doc-ctx-row" data-action="line-format" data-fmt="header" data-arg="1" data-track="h1" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4v16M18 4v16M6 12h12"/></svg></span>
+                <span class="label">Heading 1</span>
+                <span class="hint">⌘⌥1</span>
+            </div>
+            <div class="doc-ctx-row" data-action="line-format" data-fmt="header" data-arg="2" data-track="h2" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16M14 4v16M4 12h10M18 20c0-1 .5-2 2-2s2 1 2 2-2 2-2 4h4"/></svg></span>
+                <span class="label">Heading 2</span>
+                <span class="hint">⌘⌥2</span>
+            </div>
+            <div class="doc-ctx-row" data-action="line-format" data-fmt="header" data-arg="false" data-track="p" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h-9M20 12H4M14 20H4"/></svg></span>
+                <span class="label">Paragraph</span>
+                <span class="hint">⌘⌥0</span>
+            </div>
+            <div class="doc-ctx-row" data-action="line-format" data-fmt="list" data-arg="bullet" data-track="ul" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.5" fill="currentColor"/><circle cx="4.5" cy="12" r="1.5" fill="currentColor"/><circle cx="4.5" cy="18" r="1.5" fill="currentColor"/></svg></span>
+                <span class="label">Bulleted list</span>
+                <span class="hint">⌘⇧8</span>
+            </div>
+            <div class="doc-ctx-row" data-action="line-format" data-fmt="list" data-arg="ordered" data-track="ol" role="menuitem">
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></span>
+                <span class="label">Numbered list</span>
+                <span class="hint">⌘⇧7</span>
+            </div>
+        </div>
+
+    </div>
 </body>
 </html>
