@@ -20,21 +20,22 @@
         }
 
         :root {
-            --bg-primary: #1a1915;
-            --bg-secondary: #21201c;
-            --bg-tertiary: #2a2924;
-            --bg-elevated: #32312b;
-            --border: #3d3b35;
-            --border-subtle: #2e2d28;
-            --text-primary: #e8e4dd;
-            --text-secondary: #a8a59e;
-            --text-tertiary: #6b6963;
-            --accent-orange: #d4a574;
-            --accent-blue: #6b9ece;
+            /* Warm sunset palette — tightened for Figma-density polish */
+            --bg-primary:   #17160f;
+            --bg-secondary: #1c1b15;
+            --bg-tertiary:  #232219;
+            --bg-elevated:  #2b291f;
+            --border:        rgba(232, 228, 221, 0.14);
+            --border-subtle: rgba(232, 228, 221, 0.07);
+            --text-primary:   #ebe6dc;
+            --text-secondary: #a29e94;
+            --text-tertiary:  #6b6863;
+            --accent-orange: #e8a268;
+            --accent-blue:   #6b9ece;
             --accent-purple: #9d7cd8;
-            --accent-teal: #5fb3a1;
-            --accent-green: #7fb069;
-            --accent-red: #d46a6a;
+            --accent-teal:   #5fb3a1;
+            --accent-green:  #7fb069;
+            --accent-red:    #d46a6a;
         }
 
         html, body {
@@ -48,7 +49,15 @@
             color: var(--text-primary);
             display: flex;
             flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
+
+        ::selection { background: var(--accent-orange); color: var(--bg-primary); }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(232, 228, 221, 0.10); border-radius: 5px; border: 2px solid var(--bg-primary); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(232, 228, 221, 0.18); }
 
         /* Top Bar */
         .top-bar {
