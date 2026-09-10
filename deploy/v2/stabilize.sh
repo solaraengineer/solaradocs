@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# deploy/v2/stabilize.sh — bring solaradocs to a stable single-VPC state.
+# deploy/v2/stabilize.sh — EMERGENCY hotfix path. Use deploy.sh for
+# normal deploys; only reach for this when the mesh is stuck (exhausted
+# IP counters, half-alive containers, unrecoverable etcd state, etc).
 #
 # One script, one job: nuke ALL soldocs containers on both VPCs, wipe etcd
 # clean (including the exhausted IP counters), rebuild the app image from
-# whatever source is currently at /home/ubuntu/solaradocs, and deploy fresh
-# to ONE VPC. No blue/green, no rollback monitor, no CI.
+# whatever source is currently at /home/ubuntu, and deploy fresh to ONE
+# VPC. No blue/green, no rollback monitor, no CI. Downtime is expected.
 #
 # Run manually on the server (as root):
 #   sudo bash /home/ubuntu/solaradocs/deploy/v2/stabilize.sh
@@ -30,7 +32,7 @@ case "$TARGET_VPC" in
   *) echo "TARGET_VPC must be sd-blue or sd-green (got: $TARGET_VPC)" >&2; exit 2 ;;
 esac
 
-SOLARADOCS_DIR="${SOLARADOCS_DIR:-/home/ubuntu/solaradocs}"
+SOLARADOCS_DIR="${SOLARADOCS_DIR:-/home/ubuntu}"
 REGISTRY_PORT="${REGISTRY_PORT:-5000}"
 REGISTRY_NAME="${REGISTRY_NAME:-sol-prod-registry}"
 WARDENT_TOML="${WARDENT_TOML:-/etc/wardent/wardent.toml}"
