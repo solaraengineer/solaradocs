@@ -3871,7 +3871,6 @@ def token_allows(request, project_id, action):
     return (True, None)
 
 
-@require_auth_token
 @login_required
 @ratelimit(key='user', rate='5/h', block=True)
 @csrf_protect
@@ -3935,7 +3934,6 @@ def create_api_token(request):
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
-@require_auth_token
 @login_required
 @csrf_protect
 @require_POST
@@ -3955,7 +3953,6 @@ def revoke_api_token(request, token_id):
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
 
 
-@require_auth_token
 @login_required
 @require_GET
 def list_api_tokens(request):
