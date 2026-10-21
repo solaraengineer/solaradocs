@@ -1784,6 +1784,125 @@ def privacy(request):
 @require_auth_token
 @login_required
 @ratelimit(key='ip', rate='30/m', block=True)
+def list_user_projects(request):
+    """Return every project the user can act on (owned + contributor).
+
+    Account-wide tokens need a discovery hop: Claude.ai or any MCP client
+    first calls this to learn which project IDs it may pass to the other
+    endpoints. Legacy project-scoped tokens are restricted to that one
+    project's row — same token_allows contract as the per-project views.
+    """
+    try:
+        tok = getattr(request, 'api_token', None)
+
+        owned = Project.objects.filter(owner=request.user).only('id', 'project_name', 'tier')
+        contrib_ids = Contributor.objects.filter(username=request.user.username).values_list('project_id', flat=True)
+        contrib = Project.objects.filter(id__in=contrib_ids).exclude(owner=request.user).only('id', 'project_name', 'tier')
+
+        rows = []
+        for p in list(owned) + list(contrib):
+            if tok is not None and tok.project_id is not None and tok.project_id != p.id:
+                continue
+            rows.append({
+                'id': p.id,
+                'project_name': p.project_name,
+                'tier': p.tier,
+                'role': 'owner' if p.owner_id == request.user.id else 'contributor',
+            })
+        rows.sort(key=lambda r: r['project_name'].lower())
+        return JsonResponse({'success': True, 'projects': rows})
+    except Exception:
+        logger.exception('list_user_projects failed')
+        return JsonResponse({'success': False, 'error': 'Could not list projects.'}, status=500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='20/m', block=True)
+def search_documents(request):
+    """Full-text search across documents the user can read.
+
+    GET /api/search?q=<term>&project_id=<optional>
+
+    Case-insensitive match on document_name OR content. If project_id is
+    omitted, scans every project the user has access to (unless the token
+    is legacy project-scoped, in which case only that project is searched).
+    Capped at 50 hits, 3-120 char query.
+    """
+    try:
+        q = (request.GET.get('q') or '').strip()
+        if len(q) < 3 or len(q) > 120:
+            return JsonResponse({'success': False, 'error': 'q must be 3-120 chars'}, status=400)
+
+        project_id_raw = request.GET.get('project_id') or ''
+        tok = getattr(request, 'api_token', None)
+
+        if project_id_raw:
+            try:
+                project_id = int(project_id_raw)
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid project_id'}, status=400)
+            ok, resp = token_allows(request, project_id, 'read')
+            if not ok: return resp
+            project_ids = [project_id]
+        else:
+            owned = Project.objects.filter(owner=request.user).values_list('id', flat=True)
+            contrib = Contributor.objects.filter(username=request.user.username).values_list('project_id', flat=True)
+            project_ids = list(set(list(owned) + list(contrib)))
+            if tok is not None and tok.project_id is not None:
+                project_ids = [tok.project_id] if tok.project_id in project_ids else []
+
+        if not project_ids:
+            return JsonResponse({'success': True, 'results': []})
+
+        # Access control already enforced via project_ids above. For contributor
+        # projects without team access, individual docs still need the per-doc
+        # team-visibility rules — enforced by filtering docs whose team the
+        # user can see.
+        from django.db.models import Q
+        matches = Documents.objects.filter(
+            project_id__in=project_ids,
+        ).filter(
+            Q(document_name__icontains=q) | Q(content__icontains=q),
+        ).select_related('project', 'team_assigned').order_by('-created_at')[:50]
+
+        visible = []
+        for d in matches:
+            # Owner / project admin bypass team filter.
+            is_owner = d.project.owner_id == request.user.id
+            is_project_admin = Contributor.objects.filter(
+                project_id=d.project_id, username=request.user.username, role='ADMIN',
+            ).exists() if not is_owner else False
+            if is_owner or is_project_admin or d.team_assigned.team_name == 'Public':
+                allowed = True
+            else:
+                allowed = TeamMember.objects.filter(team_id=d.team_assigned_id, user=request.user).exists()
+            if not allowed:
+                continue
+            # Short content snippet around the first match (strip HTML tags cheaply)
+            import re
+            text = re.sub(r'<[^>]+>', ' ', d.content or '')
+            idx = text.lower().find(q.lower())
+            snippet = text[max(0, idx - 40):idx + 120].strip() if idx >= 0 else text[:160].strip()
+            visible.append({
+                'project_id': d.project_id,
+                'project_name': d.project.project_name,
+                'document_id': d.id,
+                'document_name': d.document_name,
+                'team_name': d.team_assigned.team_name,
+                'snippet': snippet,
+            })
+        return JsonResponse({'success': True, 'results': visible})
+    except Exception:
+        logger.exception('search_documents failed')
+        return JsonResponse({'success': False, 'error': 'Search failed.'}, status=500)
+
+
+@require_GET
+@require_auth_token
+@login_required
+@ratelimit(key='ip', rate='30/m', block=True)
 def get_documents(request, project_id):
     try:
         if not isinstance(project_id, int) or project_id < 1:
@@ -2332,6 +2451,9 @@ def get_teams(request, project_id):
         if not isinstance(project_id, int) or project_id < 1:
             return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
+        ok, resp = token_allows(request, project_id, 'read')
+        if not ok: return resp
+
         project = Project.objects.filter(id=project_id).first()
 
         if not project:
@@ -2460,6 +2582,9 @@ def get_audits(request, project_id):
     try:
         if not isinstance(project_id, int) or project_id < 1:
             return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
+
+        ok, resp = token_allows(request, project_id, 'read')
+        if not ok: return resp
 
         project = Project.objects.filter(id=project_id).first()
 
