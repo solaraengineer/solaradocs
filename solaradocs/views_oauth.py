@@ -232,6 +232,16 @@ def oauth_authorize(request):
         return _redirect_with_error(redirect_uri, 'invalid_request',
                                     'code_challenge required (43-128 chars)', state)
 
+    # Tier gate: MCP / API-token issuance requires Personal plan or above.
+    # Blocking at the consent screen so Claude.ai's OAuth flow fails with
+    # a clear "upgrade required" page instead of silently issuing an sdtk_
+    # that would then 402 on every subsequent request anyway.
+    from .models import user_has_mcp
+    if not user_has_mcp(request.user):
+        return render(request, 'oauth_upgrade_required.html', {
+            'client_name': client.client_name or 'An MCP client',
+        }, status=402)
+
     if request.method == 'GET':
         return render(request, 'oauth_consent.html', {
             'client': client,
@@ -322,10 +332,16 @@ def oauth_token(request):
         return _oauth_error('invalid_grant', 'PKCE verifier failed')
 
     from django.contrib.auth import get_user_model
+    from .models import user_has_mcp
     User = get_user_model()
     user = User.objects.filter(id=entry['user_id']).first()
     if user is None:
         return _oauth_error('invalid_grant', 'User no longer exists')
+    # Second line of defense: user may have downgraded in the 10-min
+    # window between consent and token exchange. Refuse to mint a token
+    # that'd just 402 on first use.
+    if not user_has_mcp(user):
+        return _oauth_error('invalid_grant', 'User tier no longer includes API / MCP access')
 
     client = OAuthClient.objects.filter(client_id=client_id).first()
     if client is not None:

@@ -19,14 +19,24 @@ class User(AbstractUser):
 
 TIER_LIMITS = {
     'free': {'projects': 2, 'documents': 5, 'teams': 2, 'members': 3, 'collaborations': 2,
-             'backups': False, 'audit': False, 'pending': False},
+             'backups': False, 'audit': False, 'pending': False, 'mcp': False},
     'personal': {'projects': 4, 'documents': 10, 'teams': 4, 'members': 6, 'collaborations': 5,
-                 'backups': True, 'audit': False, 'pending': False},
+                 'backups': True, 'audit': False, 'pending': False, 'mcp': True},
     'team': {'projects': 8, 'documents': 20, 'teams': 6, 'members': 20, 'collaborations': 8,
-             'backups': True, 'audit': True, 'pending': True},
+             'backups': True, 'audit': True, 'pending': True, 'mcp': True},
     'enterprise': {'projects': None, 'documents': None, 'teams': None, 'members': None, 'collaborations': None,
-                   'backups': True, 'audit': True, 'pending': True},
+                   'backups': True, 'audit': True, 'pending': True, 'mcp': True},
 }
+
+
+def user_has_mcp(user) -> bool:
+    """Return True iff the user's tier includes MCP / API-token access.
+
+    Single-source-of-truth for the paywall. Also safe when passed None
+    (returns False) or an anonymous user.
+    """
+    tier = getattr(user, 'Tier', None) or 'free'
+    return bool(TIER_LIMITS.get(tier, TIER_LIMITS['free']).get('mcp'))
 
 TIER_CHOICES = [
     ('free', 'Free'),

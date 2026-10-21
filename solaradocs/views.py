@@ -4000,8 +4000,15 @@ def token_allows(request, project_id, action):
 @csrf_protect
 @require_POST
 def create_api_token(request):
-    from .models import UserApiToken, MAX_TOKENS_PER_USER, TOKEN_ACCESS_LEVELS
+    from .models import UserApiToken, MAX_TOKENS_PER_USER, TOKEN_ACCESS_LEVELS, user_has_mcp
     try:
+        if not user_has_mcp(request.user):
+            return JsonResponse({
+                'success': False,
+                'error': 'API tokens require the Personal plan or above. Upgrade to connect Claude or other integrations.',
+                'error_code': 'tier_required',
+                'upgrade_url': '/buy/',
+            }, status=402)
         name = (request.POST.get('name') or '').strip()
         access_level = request.POST.get('access_level') or 'READ'
         expires = request.POST.get('expires') or '30'

@@ -3476,6 +3476,11 @@ class CommandPaletteTests(TestCase):
 class ApiTokenTests(BaseTestCase):
     def setUp(self):
         super().setUp()
+        # Paywall: MCP / API tokens require Personal+ tier. Upgrade the test
+        # owner so the ApiTokenAuthMiddleware doesn't 402 every call under
+        # test. (BaseTestCase defaults to tier=free on the user.)
+        self.owner.Tier = 'personal'
+        self.owner.save(update_fields=['Tier'])
         from solaradocs.models import UserApiToken
         self.UserApiToken = UserApiToken
         self.raw = UserApiToken.generate_raw_token()
@@ -3600,3 +3605,29 @@ class ApiTokenTests(BaseTestCase):
         )
         self.token.refresh_from_db()
         self.assertIsNotNone(self.token.last_used_at)
+
+    def test_free_tier_token_blocked_with_402(self):
+        """Tier paywall: a valid token owned by a free-tier user 402s on API calls."""
+        self.owner.Tier = 'free'
+        self.owner.save(update_fields=['Tier'])
+        r = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(r.status_code, 402)
+        body = r.json()
+        self.assertEqual(body.get('error_code'), 'tier_required')
+        self.assertEqual(body.get('upgrade_url'), '/buy/')
+
+    def test_free_tier_user_cannot_create_token(self):
+        """Tier paywall: /profile/api-tokens/create/ returns 402 for free users."""
+        self.owner.Tier = 'free'
+        self.owner.save(update_fields=['Tier'])
+        self.client.force_login(self.owner)
+        r = self.client.post(
+            '/profile/api-tokens/create/',
+            {'name': 't', 'access_level': 'READ', 'expires': '30'},
+        )
+        self.assertEqual(r.status_code, 402)
+        self.assertEqual(r.json().get('error_code'), 'tier_required')

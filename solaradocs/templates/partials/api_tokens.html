@@ -5,13 +5,24 @@
             <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
         </svg>
         API Tokens
+        {% if request.user.Tier != 'free' %}
         <button class="btn btn-secondary" style="margin-left:auto;font-size:0.85rem;padding:4px 12px;" onclick="openCreateTokenModal()">+ New token</button>
+        {% endif %}
     </div>
     <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 16px 0;">
         Give Claude or other integrations access to your account. Each token applies one permission
-        level (read / read+write / full) across every project you can access — your existing project
+        level (read / read+write / full) across every project you can access. Your existing project
         roles and tier limits still apply.
     </p>
+    {% if request.user.Tier == 'free' %}
+    <div style="padding:14px 16px; background:rgba(232,160,72,0.08); border:1px solid rgba(232,160,72,0.2); border-radius:6px; margin-bottom:12px;">
+        <div style="color:var(--text-primary); font-size:0.9rem; font-weight:500; margin-bottom:4px;">Upgrade to connect Claude</div>
+        <div style="color:var(--text-secondary); font-size:0.82rem; line-height:1.5;">
+            API tokens and the Claude connector are included on the Personal plan ($6/mo) and above.
+        </div>
+        <a href="/buy/" style="display:inline-block; margin-top:10px; padding:6px 14px; background:var(--accent-orange); color:#fff; text-decoration:none; border-radius:4px; font-size:0.85rem;">View plans</a>
+    </div>
+    {% endif %}
     <div id="api-tokens-list" style="font-size:0.875rem;">
         <div style="color: var(--text-tertiary); padding: 8px 0;">Loading…</div>
     </div>

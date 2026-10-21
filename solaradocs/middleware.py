@@ -46,16 +46,29 @@ class ApiTokenAuthMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        from django.http import JsonResponse
         auth = request.headers.get('Authorization', '')
         if auth.startswith('Bearer sdtk_'):
             raw = auth[7:].strip()
-            from solaradocs.models import UserApiToken
+            from solaradocs.models import UserApiToken, user_has_mcp
             token_hash = UserApiToken.hash_token(raw)
             tok = (UserApiToken.objects
                    .select_related('user', 'project')
                    .filter(token_hash=token_hash)
                    .first())
             if tok is not None and tok.is_valid():
+                # Paywall: API tokens require Personal+ tier. If the user
+                # downgrades (or was never upgraded), reject the request
+                # here before any view runs. Grandfathering: don't revoke
+                # the token row — if the user upgrades again later, their
+                # existing token starts working without re-issuing.
+                if not user_has_mcp(tok.user):
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'API / MCP access requires the Personal plan or above.',
+                        'error_code': 'tier_required',
+                        'upgrade_url': '/buy/',
+                    }, status=402)
                 request.user = tok.user
                 request.api_token = tok
                 request._dont_enforce_csrf_checks = True
