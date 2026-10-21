@@ -8,10 +8,18 @@
         <button class="btn btn-secondary" style="margin-left:auto;font-size:0.85rem;padding:4px 12px;" onclick="openCreateTokenModal()">+ New token</button>
     </div>
     <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 16px 0;">
-        Give Claude or other integrations limited access to one project at a time. Each token is scoped to one project and one permission level.
+        Give Claude or other integrations access to your account. Each token applies one permission
+        level (read / read+write / full) across every project you can access — your existing project
+        roles and tier limits still apply.
     </p>
     <div id="api-tokens-list" style="font-size:0.875rem;">
         <div style="color: var(--text-tertiary); padding: 8px 0;">Loading…</div>
+    </div>
+    <div id="api-tokens-footer" style="display:none; padding:10px 0 0; font-size:0.8rem; color:var(--text-tertiary);">
+        <label style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="tokenShowRevoked" style="margin:0;">
+            Show <span id="tokenRevokedCount">0</span> revoked
+        </label>
     </div>
 </div>
 
@@ -156,10 +164,12 @@
                 return;
             }
             let html = '<div class="token-row"><div>Name</div><div>Scope</div><div>Access</div><div>Expires</div><div>Last used</div><div></div></div>';
+            let revokedCount = 0;
             for (const t of data.tokens) {
+                if (t.state === 'revoked') revokedCount++;
                 const stateHtml = `<span class="token-state token-state-${t.state}">${t.state}</span>`;
                 const revokeBtn = t.state === 'active' ? `<button class="token-revoke" onclick="revokeApiToken(${t.id})">revoke</button>` : '';
-                html += `<div class="token-row">
+                html += `<div class="token-row" data-state="${t.state}">
                     <div><div>${esc(t.name)}</div><div class="token-prefix">${esc(t.prefix)}…</div></div>
                     <div>${esc(t.scope || 'All projects')}</div>
                     <div>${stateHtml} ${esc(t.access_level)}</div>
@@ -169,10 +179,28 @@
                 </div>`;
             }
             container.innerHTML = html;
+            const footer = document.getElementById('api-tokens-footer');
+            if (revokedCount > 0) {
+                document.getElementById('tokenRevokedCount').textContent = revokedCount;
+                footer.style.display = 'block';
+            } else {
+                footer.style.display = 'none';
+            }
+            applyRevokedFilter();
         } catch (e) {
             container.innerHTML = `<div style="color: #D9544A;">Failed to load tokens: ${esc(e.message)}</div>`;
         }
     };
+
+    function applyRevokedFilter() {
+        const show = document.getElementById('tokenShowRevoked')?.checked ?? false;
+        for (const row of document.querySelectorAll('#api-tokens-list .token-row[data-state="revoked"]')) {
+            row.style.display = show ? '' : 'none';
+        }
+    }
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'tokenShowRevoked') applyRevokedFilter();
+    });
 
     window.openCreateTokenModal = function() {
         document.getElementById('tokenModalBackdrop').classList.add('open');
