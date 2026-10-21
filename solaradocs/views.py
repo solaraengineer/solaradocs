@@ -4032,7 +4032,9 @@ def create_api_token(request):
             access_level=access_level,
             expires_at=expires_at,
         )
-        Audit.objects.create(project=None, user=request.user, action=f'api_token.create:{tok.id}')
+        # Audit log is per-project. Account-wide token issuance has no
+        # single project to attribute to; UserApiToken.created_at already
+        # captures when the token was issued, so we skip the Audit row.
         return JsonResponse({
             'success': True,
             'token': raw,
@@ -4057,7 +4059,10 @@ def revoke_api_token(request, token_id):
         if tok.revoked_at is None:
             tok.revoked_at = timezone.now()
             tok.save(update_fields=['revoked_at'])
-            Audit.objects.create(project=tok.project, user=request.user, action=f'api_token.revoke:{tok.id}')
+            # Same reason as create: account-wide tokens have no project
+            # to attach the audit row to. Only log for legacy scoped tokens.
+            if tok.project_id is not None:
+                Audit.objects.create(project=tok.project, user=request.user, action=f'api_token.revoke:{tok.id}')
         return JsonResponse({'success': True})
     except Exception:
         logger.exception('revoke_api_token failed')
