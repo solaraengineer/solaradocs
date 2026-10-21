@@ -284,6 +284,27 @@ class UserApiToken(models.Model):
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
+class OAuthClient(models.Model):
+    """Registered OAuth 2.1 client (RFC 7591 Dynamic Client Registration).
+
+    Claude.ai's custom MCP connector POSTs to /oauth/register with its
+    redirect_uris; we persist that row and hand back the generated
+    client_id. Public clients only (no secret) — PKCE is the security
+    floor on the code exchange.
+    """
+    client_id = models.CharField(max_length=64, unique=True, db_index=True)
+    client_name = models.CharField(max_length=200, blank=True)
+    redirect_uris = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.client_name or '(unnamed)'} [{self.client_id[:12]}…]"
+
+
 class InvoicePayment(models.Model):
     stripe_invoice_id = models.CharField(max_length=255, unique=True)
     tier = models.CharField(max_length=20, choices=TIER_CHOICES)

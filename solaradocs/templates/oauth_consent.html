@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Authorize access — SolaraDocs</title>
+<style>
+    :root {
+        --bg: #0f0f0f;
+        --card: #1a1a1a;
+        --border: rgba(255,255,255,0.08);
+        --text-primary: #f3f3f3;
+        --text-secondary: #a0a0a0;
+        --text-tertiary: #6b6b6b;
+        --accent: #e8a048;
+        --accent-text: #1a0f00;
+        --danger: #d9544a;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 32px;
+        max-width: 480px;
+        width: 100%;
+    }
+    h1 {
+        margin: 0 0 8px;
+        font-size: 1.4rem;
+        font-weight: 600;
+    }
+    .lead {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin: 0 0 24px;
+        line-height: 1.5;
+    }
+    .lead strong { color: var(--text-primary); }
+    .user {
+        font-size: 0.8rem;
+        color: var(--text-tertiary);
+        padding: 10px 12px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+    .field { margin-bottom: 20px; }
+    .field > label.title {
+        display: block;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-tertiary);
+        margin-bottom: 8px;
+    }
+    .radio-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 6px;
+        cursor: pointer;
+    }
+    .radio-row:hover { border-color: rgba(255,255,255,0.15); }
+    .radio-row input { margin-top: 3px; }
+    .radio-label {
+        color: var(--text-primary);
+        font-size: 0.95rem;
+    }
+    .radio-desc {
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+        margin-top: 2px;
+    }
+    .expires-row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+    .expires-row label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 24px;
+    }
+    .btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .btn-primary {
+        background: var(--accent);
+        color: var(--accent-text);
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-secondary {
+        background: transparent;
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.04); }
+    .warn {
+        font-size: 0.8rem;
+        color: var(--text-tertiary);
+        margin: 16px 0 0;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+</style>
+</head>
+<body>
+<div class="card">
+    <h1>Authorize access</h1>
+    <p class="lead">
+        <strong>{{ client.client_name|default:"An MCP client" }}</strong>
+        is asking to access your SolaraDocs account. If you approve, it can
+        act on every project you can access, at the permission level you pick below.
+    </p>
+    <div class="user">Signed in as <strong>{{ request.user.username }}</strong></div>
+
+    <form method="post" action="{% url 'oauth_authorize' %}">
+        {% csrf_token %}
+        <input type="hidden" name="client_id" value="{{ client_id }}">
+        <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+        <input type="hidden" name="response_type" value="{{ response_type }}">
+        <input type="hidden" name="scope" value="{{ scope }}">
+        <input type="hidden" name="state" value="{{ state }}">
+        <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
+        <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}">
+
+        <div class="field">
+            <label class="title">Access level</label>
+            <label class="radio-row">
+                <input type="radio" name="access_level" value="READ" checked>
+                <div>
+                    <div class="radio-label">Read only</div>
+                    <div class="radio-desc">Read documents, see collaborators. No writes.</div>
+                </div>
+            </label>
+            <label class="radio-row">
+                <input type="radio" name="access_level" value="WRITE">
+                <div>
+                    <div class="radio-label">Read + write</div>
+                    <div class="radio-desc">Read + edit existing docs + create new ones.</div>
+                </div>
+            </label>
+            <label class="radio-row">
+                <input type="radio" name="access_level" value="DELETE">
+                <div>
+                    <div class="radio-label">Full access</div>
+                    <div class="radio-desc">Everything above + delete documents. Use with caution.</div>
+                </div>
+            </label>
+        </div>
+
+        <div class="field">
+            <label class="title">Expires</label>
+            <div class="expires-row">
+                <label><input type="radio" name="expires" value="7"> 7 days</label>
+                <label><input type="radio" name="expires" value="30" checked> 30 days</label>
+                <label><input type="radio" name="expires" value="90"> 90 days</label>
+                <label><input type="radio" name="expires" value="never"> Never</label>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" name="deny" value="1" class="btn btn-secondary">Deny</button>
+            <button type="submit" class="btn btn-primary">Approve</button>
+        </div>
+    </form>
+
+    <p class="warn">
+        You can revoke this access anytime from Profile → API tokens. Your project
+        roles and tier limits still apply — this grant can never let the client do
+        anything you can't do yourself.
+    </p>
+</div>
+</body>
+</html>

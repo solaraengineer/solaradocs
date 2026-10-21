@@ -3,6 +3,7 @@ from django.conf import settings
 from . import views
 from . import views_admin
 from . import views_import
+from . import views_oauth
 
 _ADMIN = settings.ADMIN_PANEL_PATH
 
@@ -74,6 +75,11 @@ urlpatterns = [
     path('profile/api-tokens/', views.list_api_tokens, name='list_api_tokens'),
     path('profile/api-tokens/create/', views.create_api_token, name='create_api_token'),
     path('profile/api-tokens/<int:token_id>/revoke/', views.revoke_api_token, name='revoke_api_token'),
+    path('.well-known/oauth-protected-resource', views_oauth.oauth_protected_resource_metadata, name='oauth_protected_resource_metadata'),
+    path('.well-known/oauth-authorization-server', views_oauth.oauth_authorization_server_metadata, name='oauth_authorization_server_metadata'),
+    path('oauth/register', views_oauth.oauth_register, name='oauth_register'),
+    path('oauth/authorize', views_oauth.oauth_authorize, name='oauth_authorize'),
+    path('oauth/token', views_oauth.oauth_token, name='oauth_token'),
     path('api/recent-projects/', views.recent_projects, name='recent_projects'),
     path('change-password/', views.change_password, name='change_password'),
     path('cancel-subscription/', views.cancel_subscription, name='cancel_subscription'),
