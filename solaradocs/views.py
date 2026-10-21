@@ -3038,18 +3038,10 @@ def profile(request):
         .order_by('-created_at')[:6]
     )
     has_more = len(invoices) > 5
-    owned_projects = Project.objects.filter(owner=request.user).only('id', 'project_name')
-    contrib_project_ids = Contributor.objects.filter(username=request.user.username).values_list('project_id', flat=True)
-    contrib_projects = Project.objects.filter(id__in=contrib_project_ids).only('id', 'project_name')
-    token_projects = sorted(
-        {p.id: p for p in list(owned_projects) + list(contrib_projects)}.values(),
-        key=lambda p: p.project_name.lower(),
-    )
     return render(request, 'profile.html', {
         'user': request.user,
         'invoices': invoices[:5],
         'has_more_invoices': has_more,
-        'token_projects': token_projects,
     })
 
 
@@ -3861,10 +3853,17 @@ def resubmit_pending(request):
 
 
 def token_allows(request, project_id, action):
+    """Token guard. Checks only the action permission (READ/WRITE/DELETE).
+
+    Tokens are account-wide — any project the user already has RBAC access to
+    is reachable. The caller's RBAC checks + tier limits still enforce
+    per-project scope. Legacy project-scoped tokens (project_id set) are
+    additionally restricted to that one project.
+    """
     tok = getattr(request, 'api_token', None)
     if tok is None:
         return (True, None)
-    if tok.project_id != int(project_id):
+    if tok.project_id is not None and tok.project_id != int(project_id):
         return (False, JsonResponse({'success': False, 'error': 'Token not scoped to this project'}, status=403))
     if not tok.can(action):
         return (False, JsonResponse({'success': False, 'error': f'Token lacks "{action}" permission'}, status=403))
@@ -3876,10 +3875,9 @@ def token_allows(request, project_id, action):
 @csrf_protect
 @require_POST
 def create_api_token(request):
-    from .models import UserApiToken, Project, MAX_TOKENS_PER_USER, TOKEN_ACCESS_LEVELS
+    from .models import UserApiToken, MAX_TOKENS_PER_USER, TOKEN_ACCESS_LEVELS
     try:
         name = (request.POST.get('name') or '').strip()
-        project_id = request.POST.get('project_id')
         access_level = request.POST.get('access_level') or 'READ'
         expires = request.POST.get('expires') or '30'
 
@@ -3890,18 +3888,6 @@ def create_api_token(request):
             return JsonResponse({'success': False, 'error': 'Invalid access level'}, status=400)
         if expires not in {'7', '30', '90', 'never'}:
             return JsonResponse({'success': False, 'error': 'Invalid expiry'}, status=400)
-        try:
-            project_id = int(project_id)
-        except (TypeError, ValueError):
-            return JsonResponse({'success': False, 'error': 'Invalid project id'}, status=400)
-
-        project = Project.objects.filter(id=project_id).first()
-        if project is None:
-            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
-        is_owner = project.owner_id == request.user.id
-        is_contrib = Contributor.objects.filter(project_id=project_id, username=request.user.username).exists()
-        if not (is_owner or is_contrib):
-            return JsonResponse({'success': False, 'error': 'No access to that project'}, status=403)
 
         active_count = UserApiToken.objects.filter(user=request.user, revoked_at__isnull=True).count()
         if active_count >= MAX_TOKENS_PER_USER:
@@ -3914,14 +3900,14 @@ def create_api_token(request):
         raw = UserApiToken.generate_raw_token()
         tok = UserApiToken.objects.create(
             user=request.user,
-            project=project,
+            project=None,
             name=name,
             token_hash=UserApiToken.hash_token(raw),
             token_prefix=raw[:10],
             access_level=access_level,
             expires_at=expires_at,
         )
-        Audit.objects.create(project=project, user=request.user, action=f'api_token.create:{tok.id}')
+        Audit.objects.create(project=None, user=request.user, action=f'api_token.create:{tok.id}')
         return JsonResponse({
             'success': True,
             'token': raw,
@@ -3966,7 +3952,8 @@ def list_api_tokens(request):
             'name': t.name,
             'prefix': t.token_prefix,
             'project_id': t.project_id,
-            'project_name': t.project.project_name,
+            'project_name': t.project.project_name if t.project_id else None,
+            'scope': 'All projects' if t.project_id is None else t.project.project_name,
             'access_level': t.access_level,
             'created_at': t.created_at.isoformat(),
             'last_used_at': t.last_used_at.isoformat() if t.last_used_at else None,

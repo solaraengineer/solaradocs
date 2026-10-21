@@ -240,7 +240,12 @@ MAX_TOKENS_PER_USER = 20
 
 class UserApiToken(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_tokens')
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='api_tokens')
+    # Account-wide tokens: project is nullable. Null = token can act on
+    # every project the user has RBAC access to (existing per-view
+    # permission checks + tier limits still gate everything). The column
+    # is kept for data preservation of any legacy project-scoped tokens;
+    # the UI only issues account-wide tokens going forward.
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='api_tokens')
     name = models.CharField(max_length=100)
     token_hash = models.CharField(max_length=64, unique=True, db_index=True)
     token_prefix = models.CharField(max_length=16, help_text='First 10 chars of raw token, shown in UI for identification.')
@@ -257,7 +262,8 @@ class UserApiToken(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.name} ({self.user.username} → {self.project.project_name})"
+        scope = self.project.project_name if self.project_id else 'all projects'
+        return f"{self.name} ({self.user.username} → {scope})"
 
     def is_valid(self):
         if self.revoked_at is not None:
