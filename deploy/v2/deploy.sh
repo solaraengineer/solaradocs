@@ -180,11 +180,8 @@ sed "s|__IMAGE_TAG__|${IMAGE_TAG}|g" "$SERVICES_MANIFEST" > "$RESOLVED_MANIFEST"
 log "validating manifests"
 solctl-v2 validate -f "$SOLARADOCS_DIR/manifests/vpc.yaml" > /dev/null \
   || fail "vpc.yaml failed validation"
-# Note: blue-green.yaml validation skipped — the installed solctl-v2 binary
-# doesn't yet recognize the BlueGreen kind. The feature isn't actually
-# wired to this deploy path (promote happens at step 9 via solctl-v2
-# promote regardless of a BlueGreen manifest being applied). Re-enable
-# this + the apply below when the binary ships with BlueGreen support.
+solctl-v2 validate -f "$SOLARADOCS_DIR/manifests/blue-green.yaml" > /dev/null \
+  || fail "blue-green.yaml failed validation"
 solctl-v2 validate -f "$RESOLVED_MANIFEST" > /dev/null \
   || { echo "--- failing manifest ---"; cat "$RESOLVED_MANIFEST"; fail "services-${VPC}.yaml failed validation"; }
 ok "manifests validated"
@@ -194,8 +191,9 @@ log "applying vpc.yaml (both sd-blue and sd-green)"
 solctl-v2 apply -f "$SOLARADOCS_DIR/manifests/vpc.yaml" || fail "vpc apply failed"
 sleep 2
 
-# blue-green.yaml apply skipped — see note above (BlueGreen kind not
-# supported by the installed binary). promote at step 9 works without it.
+log "applying blue-green.yaml (registers rollback monitor policy in etcd)"
+solctl-v2 apply -f "$SOLARADOCS_DIR/manifests/blue-green.yaml" || fail "blue-green apply failed"
+sleep 1
 
 log "applying services-${VPC}.yaml (image tag = $IMAGE_TAG)"
 solctl-v2 apply -f "$RESOLVED_MANIFEST" || fail "services apply failed"
