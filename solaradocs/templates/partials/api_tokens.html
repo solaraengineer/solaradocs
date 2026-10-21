@@ -1,0 +1,259 @@
+{% load static %}
+<div class="profile-card" id="api-tokens-card">
+    <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+        </svg>
+        API Tokens
+        <button class="btn btn-secondary" style="margin-left:auto;font-size:0.85rem;padding:4px 12px;" onclick="openCreateTokenModal()">+ New token</button>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 16px 0;">
+        Give Claude or other integrations limited access to one project at a time. Each token is scoped to one project and one permission level.
+    </p>
+    <div id="api-tokens-list" style="font-size:0.875rem;">
+        <div style="color: var(--text-tertiary); padding: 8px 0;">Loading…</div>
+    </div>
+</div>
+
+<style>
+    #api-tokens-card .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); cursor: pointer; border-radius: 6px; }
+    #api-tokens-card .btn-secondary:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
+    .token-row { display: grid; grid-template-columns: 1.4fr 1.2fr 1fr 1fr 1fr auto; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); align-items: center; }
+    .token-row:first-child { border-top: none; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); padding-bottom: 6px; }
+    .token-state { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .token-state-active { background: rgba(82, 183, 136, 0.15); color: #52B788; }
+    .token-state-expired { background: var(--bg-tertiary); color: var(--text-tertiary); }
+    .token-state-revoked { background: rgba(217, 84, 74, 0.15); color: #D9544A; }
+    .token-prefix { font-family: 'Courier New', monospace; color: var(--text-tertiary); font-size: 0.8rem; }
+    .token-revoke { background: none; border: 1px solid var(--border); color: var(--text-tertiary); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+    .token-revoke:hover { color: #D9544A; border-color: #D9544A; }
+
+    #tokenModalBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 200; }
+    #tokenModalBackdrop.open { display: flex; }
+    #tokenModal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 520px; width: calc(100% - 40px); max-height: 90vh; overflow: auto; }
+    #tokenModal h3 { margin: 0 0 16px 0; }
+    #tokenModal label { display: block; margin-bottom: 4px; font-size: 0.8rem; color: var(--text-secondary); }
+    #tokenModal .field { margin-bottom: 16px; }
+    #tokenModal input, #tokenModal select { width: 100%; padding: 8px 10px; background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; font: inherit; }
+    #tokenModal .radio-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; }
+    #tokenModal .radio-row input[type=radio] { width: auto; margin-top: 3px; }
+    #tokenModal .radio-row .radio-label { font-weight: 500; }
+    #tokenModal .radio-row .radio-desc { font-size: 0.8rem; color: var(--text-tertiary); margin-top: 2px; }
+    #tokenModal .expires-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    #tokenModal .expires-row label { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 0; cursor: pointer; }
+    #tokenModal .expires-row input { width: auto; }
+    #tokenModal .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    #tokenReveal { display: none; }
+    #tokenReveal .token-box { background: var(--bg-primary); border: 1px solid var(--border); padding: 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.85rem; word-break: break-all; margin: 12px 0; display: flex; align-items: center; gap: 10px; }
+    #tokenReveal .token-box code { flex: 1; }
+    #tokenReveal .copy-btn { background: var(--accent-orange); color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+    #tokenReveal .mcp-instructions { background: var(--bg-primary); border: 1px solid var(--border); padding: 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.8rem; margin-top: 12px; white-space: pre-wrap; }
+    #tokenReveal .warn { color: var(--accent-orange); font-size: 0.85rem; margin: 10px 0; }
+</style>
+
+<div id="tokenModalBackdrop">
+    <div id="tokenModal">
+        <div id="tokenForm">
+            <h3>Create API token</h3>
+            <div class="field">
+                <label>Name</label>
+                <input type="text" id="tokenName" placeholder="e.g. Claude home laptop" maxlength="100">
+            </div>
+            <div class="field">
+                <label>Project</label>
+                <select id="tokenProject">
+                    <option value="">Select a project…</option>
+                    {% for p in token_projects %}
+                        <option value="{{ p.id }}">{{ p.project_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>Access level</label>
+                <div class="radio-row">
+                    <input type="radio" name="access_level" value="READ" id="al-read" checked>
+                    <div><div class="radio-label"><label for="al-read" style="display:inline;margin:0;color:var(--text-primary);font-size:1rem;">Read only</label></div><div class="radio-desc">Read documents, see collaborators. No writes.</div></div>
+                </div>
+                <div class="radio-row">
+                    <input type="radio" name="access_level" value="WRITE" id="al-write">
+                    <div><div class="radio-label"><label for="al-write" style="display:inline;margin:0;color:var(--text-primary);font-size:1rem;">Read + write</label></div><div class="radio-desc">Read + edit existing docs + create new ones. Edits still go through your project's pending-approval flow if your role requires it.</div></div>
+                </div>
+                <div class="radio-row">
+                    <input type="radio" name="access_level" value="DELETE" id="al-delete">
+                    <div><div class="radio-label"><label for="al-delete" style="display:inline;margin:0;color:var(--text-primary);font-size:1rem;">Full access</label></div><div class="radio-desc">Everything above + delete documents. Use with caution.</div></div>
+                </div>
+            </div>
+            <div class="field">
+                <label>Expires</label>
+                <div class="expires-row">
+                    <label><input type="radio" name="expires" value="7"> 7 days</label>
+                    <label><input type="radio" name="expires" value="30" checked> 30 days</label>
+                    <label><input type="radio" name="expires" value="90"> 90 days</label>
+                    <label><input type="radio" name="expires" value="never"> Never</label>
+                </div>
+            </div>
+            <div id="tokenFormError" class="alert" style="display:none;"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeTokenModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitCreateToken()">Create token</button>
+            </div>
+        </div>
+        <div id="tokenReveal">
+            <h3>Token created ✓</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Copy this now — you won't be able to see it again.</p>
+            <div class="token-box">
+                <code id="revealTokenValue"></code>
+                <button class="copy-btn" onclick="copyRevealToken()">Copy</button>
+            </div>
+            <p class="warn">If you lose this token, revoke it and create a new one.</p>
+            <div>
+                <label style="font-size:0.8rem;color:var(--text-secondary);">In Claude:</label>
+                <div class="mcp-instructions" id="mcpInstructions"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeTokenModal(); loadApiTokens();">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    function fmtDate(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function fmtRelative(iso) {
+        if (!iso) return '—';
+        const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+        return `${Math.floor(diff/86400)}d ago`;
+    }
+    function esc(s) {
+        return String(s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    window.loadApiTokens = async function() {
+        const container = document.getElementById('api-tokens-list');
+        try {
+            const r = await fetch('/profile/api-tokens/', { headers: { 'Accept': 'application/json' } });
+            const data = await r.json();
+            if (!data.success) throw new Error(data.error || 'Load failed');
+            if (data.tokens.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-tertiary); padding: 8px 0;">No tokens yet.</div>';
+                return;
+            }
+            let html = '<div class="token-row"><div>Name</div><div>Project</div><div>Access</div><div>Expires</div><div>Last used</div><div></div></div>';
+            for (const t of data.tokens) {
+                const stateHtml = `<span class="token-state token-state-${t.state}">${t.state}</span>`;
+                const revokeBtn = t.state === 'active' ? `<button class="token-revoke" onclick="revokeApiToken(${t.id})">revoke</button>` : '';
+                html += `<div class="token-row">
+                    <div><div>${esc(t.name)}</div><div class="token-prefix">${esc(t.prefix)}…</div></div>
+                    <div>${esc(t.project_name)}</div>
+                    <div>${stateHtml} ${esc(t.access_level)}</div>
+                    <div>${t.expires_at ? fmtDate(t.expires_at) : 'Never'}</div>
+                    <div>${fmtRelative(t.last_used_at)}</div>
+                    <div>${revokeBtn}</div>
+                </div>`;
+            }
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = `<div style="color: #D9544A;">Failed to load tokens: ${esc(e.message)}</div>`;
+        }
+    };
+
+    window.openCreateTokenModal = function() {
+        document.getElementById('tokenModalBackdrop').classList.add('open');
+        document.getElementById('tokenForm').style.display = 'block';
+        document.getElementById('tokenReveal').style.display = 'none';
+        document.getElementById('tokenName').value = '';
+        document.getElementById('tokenProject').value = '';
+        document.getElementById('tokenFormError').style.display = 'none';
+        document.getElementById('al-read').checked = true;
+        document.querySelector('input[name=expires][value="30"]').checked = true;
+    };
+
+    window.closeTokenModal = function() {
+        document.getElementById('tokenModalBackdrop').classList.remove('open');
+    };
+
+    window.submitCreateToken = async function() {
+        const name = document.getElementById('tokenName').value.trim();
+        const project_id = document.getElementById('tokenProject').value;
+        const access_level = document.querySelector('input[name=access_level]:checked').value;
+        const expires = document.querySelector('input[name=expires]:checked').value;
+        const errEl = document.getElementById('tokenFormError');
+        errEl.style.display = 'none';
+
+        if (!name) { errEl.textContent = 'Name required'; errEl.style.display = 'block'; return; }
+        if (!project_id) { errEl.textContent = 'Pick a project'; errEl.style.display = 'block'; return; }
+
+        const body = new FormData();
+        body.set('name', name);
+        body.set('project_id', project_id);
+        body.set('access_level', access_level);
+        body.set('expires', expires);
+
+        try {
+            const r = await fetch('/profile/api-tokens/create/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF },
+                body,
+            });
+            const data = await r.json();
+            if (!data.success) { errEl.textContent = data.error || 'Create failed'; errEl.style.display = 'block'; return; }
+
+            document.getElementById('tokenForm').style.display = 'none';
+            document.getElementById('tokenReveal').style.display = 'block';
+            document.getElementById('revealTokenValue').textContent = data.token;
+            document.getElementById('mcpInstructions').textContent =
+                `Settings → Connectors → Add custom connector\n` +
+                `URL:    ${data.mcp_url || '(MCP server URL — not yet configured)'}\n` +
+                `Header: Authorization: Bearer ${data.token}`;
+        } catch (e) {
+            errEl.textContent = e.message || 'Something went wrong';
+            errEl.style.display = 'block';
+        }
+    };
+
+    window.copyRevealToken = function() {
+        const el = document.getElementById('revealTokenValue');
+        navigator.clipboard.writeText(el.textContent).then(() => {
+            const btn = document.querySelector('#tokenReveal .copy-btn');
+            const old = btn.textContent;
+            btn.textContent = 'Copied ✓';
+            setTimeout(() => btn.textContent = old, 1500);
+        });
+    };
+
+    window.revokeApiToken = async function(id) {
+        if (!confirm('Revoke this token? Any integrations using it will stop working immediately.')) return;
+        try {
+            const r = await fetch(`/profile/api-tokens/${id}/revoke/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF },
+            });
+            const data = await r.json();
+            if (!data.success) throw new Error(data.error || 'Revoke failed');
+            loadApiTokens();
+        } catch (e) {
+            alert('Failed to revoke: ' + e.message);
+        }
+    };
+
+    document.getElementById('tokenModalBackdrop').addEventListener('click', (e) => {
+        if (e.target.id === 'tokenModalBackdrop') closeTokenModal();
+    });
+
+    loadApiTokens();
+})();
+</script>

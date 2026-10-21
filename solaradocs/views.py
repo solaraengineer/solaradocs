@@ -199,6 +199,8 @@ def verify_auth_token(token, verify_expiration=True):
 def require_auth_token(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
+        if getattr(request, 'api_token', None) is not None:
+            return view_func(request, *args, **kwargs)
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             if not request.user.is_authenticated:
                 if _is_ajax_request(request):
@@ -1787,6 +1789,9 @@ def get_documents(request, project_id):
         if not isinstance(project_id, int) or project_id < 1:
             return JsonResponse({'success': False, 'error': 'Invalid project ID'}, status=400)
 
+        ok, resp = token_allows(request, project_id, 'read')
+        if not ok: return resp
+
         project = Project.objects.filter(id=project_id).first()
 
         if not project:
@@ -1857,6 +1862,9 @@ def get_document(request, project_id, doc_id):
         if not isinstance(doc_id, int) or doc_id < 1:
             return JsonResponse({'success': False, 'error': 'Invalid document ID'}, status=400)
 
+        ok, resp = token_allows(request, project_id, 'read')
+        if not ok: return resp
+
         project = Project.objects.filter(id=project_id).first()
 
         if not project:
@@ -1924,6 +1932,9 @@ def add_document(request, project_id):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    ok, resp = token_allows(request, project_id, 'create')
+    if not ok: return resp
 
     try:
         if not isinstance(project_id, int) or project_id < 1:
@@ -2037,6 +2048,9 @@ def save_document(request, project_id, doc_id):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    ok, resp = token_allows(request, project_id, 'write')
+    if not ok: return resp
 
     try:
         if not isinstance(project_id, int) or project_id < 1:
@@ -2168,6 +2182,9 @@ def rename_document(request, project_id, doc_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
+    ok, resp = token_allows(request, project_id, 'write')
+    if not ok: return resp
+
     try:
         new_name = data.get('document_name', '').strip()
 
@@ -2243,6 +2260,8 @@ def rename_document(request, project_id, doc_id):
 @ratelimit(key='ip', rate='10/m', block=True)
 @csrf_exempt
 def delete_document(request, project_id, doc_id):
+    ok, resp = token_allows(request, project_id, 'delete')
+    if not ok: return resp
     try:
         try:
             project = Project.objects.get(id=project_id)
@@ -3014,16 +3033,23 @@ def update_team_member_review(request, project_id, team_id):
 @ajax_login_required
 @require_GET
 def profile(request):
-    # Fetch one extra row so we can detect "has more" without a second COUNT query.
     invoices = list(
         InvoicePayment.objects.filter(username=request.user.username)
         .order_by('-created_at')[:6]
     )
     has_more = len(invoices) > 5
+    owned_projects = Project.objects.filter(owner=request.user).only('id', 'project_name')
+    contrib_project_ids = Contributor.objects.filter(username=request.user.username).values_list('project_id', flat=True)
+    contrib_projects = Project.objects.filter(id__in=contrib_project_ids).only('id', 'project_name')
+    token_projects = sorted(
+        {p.id: p for p in list(owned_projects) + list(contrib_projects)}.values(),
+        key=lambda p: p.project_name.lower(),
+    )
     return render(request, 'profile.html', {
         'user': request.user,
         'invoices': invoices[:5],
         'has_more_invoices': has_more,
+        'token_projects': token_projects,
     })
 
 
@@ -3832,4 +3858,124 @@ def resubmit_pending(request):
     except Exception:
         logger.exception("resubmit_pending failed")
         return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+def token_allows(request, project_id, action):
+    tok = getattr(request, 'api_token', None)
+    if tok is None:
+        return (True, None)
+    if tok.project_id != int(project_id):
+        return (False, JsonResponse({'success': False, 'error': 'Token not scoped to this project'}, status=403))
+    if not tok.can(action):
+        return (False, JsonResponse({'success': False, 'error': f'Token lacks "{action}" permission'}, status=403))
+    return (True, None)
+
+
+@require_auth_token
+@login_required
+@ratelimit(key='user', rate='5/h', block=True)
+@csrf_protect
+@require_POST
+def create_api_token(request):
+    from .models import UserApiToken, Project, MAX_TOKENS_PER_USER, TOKEN_ACCESS_LEVELS
+    try:
+        name = (request.POST.get('name') or '').strip()
+        project_id = request.POST.get('project_id')
+        access_level = request.POST.get('access_level') or 'READ'
+        expires = request.POST.get('expires') or '30'
+
+        if not name or len(name) > 100:
+            return JsonResponse({'success': False, 'error': 'Name required (1-100 chars)'}, status=400)
+        valid_levels = {k for k, _ in TOKEN_ACCESS_LEVELS}
+        if access_level not in valid_levels:
+            return JsonResponse({'success': False, 'error': 'Invalid access level'}, status=400)
+        if expires not in {'7', '30', '90', 'never'}:
+            return JsonResponse({'success': False, 'error': 'Invalid expiry'}, status=400)
+        try:
+            project_id = int(project_id)
+        except (TypeError, ValueError):
+            return JsonResponse({'success': False, 'error': 'Invalid project id'}, status=400)
+
+        project = Project.objects.filter(id=project_id).first()
+        if project is None:
+            return JsonResponse({'success': False, 'error': 'Project not found'}, status=404)
+        is_owner = project.owner_id == request.user.id
+        is_contrib = Contributor.objects.filter(project_id=project_id, username=request.user.username).exists()
+        if not (is_owner or is_contrib):
+            return JsonResponse({'success': False, 'error': 'No access to that project'}, status=403)
+
+        active_count = UserApiToken.objects.filter(user=request.user, revoked_at__isnull=True).count()
+        if active_count >= MAX_TOKENS_PER_USER:
+            return JsonResponse({'success': False, 'error': f'Max {MAX_TOKENS_PER_USER} active tokens per user'}, status=400)
+
+        expires_at = None
+        if expires != 'never':
+            expires_at = timezone.now() + timedelta(days=int(expires))
+
+        raw = UserApiToken.generate_raw_token()
+        tok = UserApiToken.objects.create(
+            user=request.user,
+            project=project,
+            name=name,
+            token_hash=UserApiToken.hash_token(raw),
+            token_prefix=raw[:10],
+            access_level=access_level,
+            expires_at=expires_at,
+        )
+        Audit.objects.create(project=project, user=request.user, action=f'api_token.create:{tok.id}')
+        return JsonResponse({
+            'success': True,
+            'token': raw,
+            'id': tok.id,
+            'prefix': tok.token_prefix,
+            'mcp_url': getattr(settings, 'MCP_PUBLIC_URL', ''),
+        })
+    except Exception:
+        logger.exception('create_api_token failed')
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_auth_token
+@login_required
+@csrf_protect
+@require_POST
+def revoke_api_token(request, token_id):
+    from .models import UserApiToken
+    try:
+        tok = UserApiToken.objects.filter(id=token_id, user=request.user).first()
+        if tok is None:
+            return JsonResponse({'success': False, 'error': 'Token not found'}, status=404)
+        if tok.revoked_at is None:
+            tok.revoked_at = timezone.now()
+            tok.save(update_fields=['revoked_at'])
+            Audit.objects.create(project=tok.project, user=request.user, action=f'api_token.revoke:{tok.id}')
+        return JsonResponse({'success': True})
+    except Exception:
+        logger.exception('revoke_api_token failed')
+        return JsonResponse({'success': False, 'error': 'Something went wrong'}, status=500)
+
+
+@require_auth_token
+@login_required
+@require_GET
+def list_api_tokens(request):
+    from .models import UserApiToken
+    tokens = UserApiToken.objects.filter(user=request.user).select_related('project')
+    now_ts = timezone.now()
+    def shape(t):
+        state = 'revoked' if t.revoked_at else ('expired' if (t.expires_at and t.expires_at <= now_ts) else 'active')
+        return {
+            'id': t.id,
+            'name': t.name,
+            'prefix': t.token_prefix,
+            'project_id': t.project_id,
+            'project_name': t.project.project_name,
+            'access_level': t.access_level,
+            'created_at': t.created_at.isoformat(),
+            'last_used_at': t.last_used_at.isoformat() if t.last_used_at else None,
+            'expires_at': t.expires_at.isoformat() if t.expires_at else None,
+            'revoked_at': t.revoked_at.isoformat() if t.revoked_at else None,
+            'state': state,
+        }
+    return JsonResponse({'success': True, 'tokens': [shape(t) for t in tokens]})
 

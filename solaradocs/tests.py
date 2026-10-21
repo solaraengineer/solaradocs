@@ -3470,5 +3470,133 @@ class CommandPaletteTests(TestCase):
         self.assertIn("'Escape'", body)
         # Fetches recent projects from the backend
         self.assertIn("/api/recent-projects/", body)
-        # XSS-safe: escapes user-controlled project names
         self.assertIn('escapeHtml', body)
+
+
+class ApiTokenTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from solaradocs.models import UserApiToken
+        self.UserApiToken = UserApiToken
+        self.raw = UserApiToken.generate_raw_token()
+        self.token = UserApiToken.objects.create(
+            user=self.owner,
+            project=self.project,
+            name='test token',
+            token_hash=UserApiToken.hash_token(self.raw),
+            token_prefix=self.raw[:10],
+            access_level='WRITE',
+        )
+
+    def test_token_prefix_is_sdtk(self):
+        self.assertTrue(self.raw.startswith('sdtk_'))
+        self.assertGreater(len(self.raw), 40)
+
+    def test_valid_token_authenticates_and_allows_read(self):
+        resp = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_invalid_token_falls_through_to_normal_auth(self):
+        resp = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION='Bearer sdtk_notarealtokendoesntmatchanyhash',
+        )
+        self.assertIn(resp.status_code, (302, 401))
+
+    def test_expired_token_rejected(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        self.token.expires_at = timezone.now() - timedelta(hours=1)
+        self.token.save()
+        resp = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertIn(resp.status_code, (302, 401))
+
+    def test_revoked_token_rejected(self):
+        from django.utils import timezone
+        self.token.revoked_at = timezone.now()
+        self.token.save()
+        resp = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertIn(resp.status_code, (302, 401))
+
+    def test_token_scope_mismatch_returns_403(self):
+        other_project = Project.objects.create(owner=self.owner, project_name='other', tier='team')
+        resp = self.client.get(
+            f'/api/project/{other_project.id}/documents',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn('scoped', resp.json()['error'].lower())
+
+    def test_read_only_token_blocks_write(self):
+        self.token.access_level = 'READ'
+        self.token.save()
+        with patch('solaradocs.views.verify_auth_token', return_value={'user_id': self.owner.id}):
+            resp = self.client.post(
+                f'/api/project/{self.project.id}/documents/{self.doc.id}/save',
+                data=json.dumps({'content': '<p>new</p>'}),
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+            )
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn('write', resp.json()['error'].lower())
+
+    def test_write_token_allows_write(self):
+        self.token.access_level = 'WRITE'
+        self.token.save()
+        resp = self.client.post(
+            f'/api/project/{self.project.id}/documents/{self.doc.id}/save',
+            data=json.dumps({'content': '<p>via write token</p>'}),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.doc.refresh_from_db()
+        self.assertIn('via write token', self.doc.content)
+
+    def test_write_token_blocks_delete(self):
+        self.token.access_level = 'WRITE'
+        self.token.save()
+        resp = self.client.post(
+            f'/api/project/{self.project.id}/documents/{self.doc.id}/delete',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_token_allows_delete(self):
+        self.token.access_level = 'DELETE'
+        self.token.save()
+        resp = self.client.post(
+            f'/api/project/{self.project.id}/documents/{self.doc.id}/delete',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_password_change_revokes_all_tokens(self):
+        self.assertIsNone(self.token.revoked_at)
+        self.owner.set_password('newpassword123456')
+        self.owner.save()
+        self.token.refresh_from_db()
+        self.assertIsNotNone(self.token.revoked_at)
+
+    def test_token_hash_stored_not_raw(self):
+        self.assertNotEqual(self.token.token_hash, self.raw)
+        self.assertEqual(len(self.token.token_hash), 64)
+        self.assertEqual(self.token.token_prefix, self.raw[:10])
+
+    def test_last_used_at_updates_on_use(self):
+        self.assertIsNone(self.token.last_used_at)
+        self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=f'Bearer {self.raw}',
+        )
+        self.token.refresh_from_db()
+        self.assertIsNotNone(self.token.last_used_at)

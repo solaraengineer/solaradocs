@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.timezone import now
@@ -219,6 +222,60 @@ class PromoCodes(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     left_uses = models.PositiveIntegerField(default=0)
+
+
+TOKEN_PREFIX = 'sdtk_'
+TOKEN_ACCESS_LEVELS = [
+    ('READ',   'Read only'),
+    ('WRITE',  'Read + write + create'),
+    ('DELETE', 'Read + write + create + delete'),
+]
+TOKEN_ACTIONS = {
+    'READ':   {'read'},
+    'WRITE':  {'read', 'write', 'create'},
+    'DELETE': {'read', 'write', 'create', 'delete'},
+}
+MAX_TOKENS_PER_USER = 20
+
+
+class UserApiToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_tokens')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='api_tokens')
+    name = models.CharField(max_length=100)
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    token_prefix = models.CharField(max_length=16, help_text='First 10 chars of raw token, shown in UI for identification.')
+    access_level = models.CharField(max_length=10, choices=TOKEN_ACCESS_LEVELS, default='READ')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.user.username} → {self.project.project_name})"
+
+    def is_valid(self):
+        if self.revoked_at is not None:
+            return False
+        if self.expires_at is not None and self.expires_at <= now():
+            return False
+        return True
+
+    def can(self, action):
+        return action in TOKEN_ACTIONS.get(self.access_level, set())
+
+    @staticmethod
+    def generate_raw_token():
+        return TOKEN_PREFIX + secrets.token_urlsafe(32)
+
+    @staticmethod
+    def hash_token(raw):
+        return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
 class InvoicePayment(models.Model):

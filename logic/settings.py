@@ -61,11 +61,14 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'solaradocs.middleware.ApiTokenAuthMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
+
+MCP_PUBLIC_URL = os.getenv('MCP_PUBLIC_URL', 'https://mcp.solaradocs.net')
 
 ROOT_URLCONF = 'logic.urls'
 
