@@ -1,0 +1,78 @@
+# VCS
+.git
+.gitignore
+.gitattributes
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+venv
+env
+*.egg-info
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+.tox
+.mypy_cache
+.ruff_cache
+
+# Secrets — never bake these into an image
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+credentials.json
+
+# Local data / logs
+*.sqlite3
+*.db
+*.log
+logs/
+media/
+staticfiles/
+.r2-backups/
+*.bak
+*.bak.*
+
+# Observability + ops configs (built-in to the stack, not needed in web image)
+docker-compose*.yml
+grafana/
+prometheus/
+alertmanager/
+loki/
+promtail/
+tempo/
+otel-collector/
+monitoring/
+
+# Infra
+terraform/
+deploy/
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Docs / editors
+*.md
+!README.md
+.vscode
+.idea
+.DS_Store
+*.swp
+*.swo
+
+# Node (frontend assets if any)
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Tests (built into image only if you need to run them inside — we don't)
+tests/
