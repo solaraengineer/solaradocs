@@ -11,6 +11,12 @@ Both run manually over SSH after `git pull` on the server. No CI. No auto-deploy
 
 ## Normal deploy (deploy.sh)
 
+Automatic on push to master via `.github/workflows/deploy.yml` — validates
+manifests, SSHes to the server, git-pulls, runs `deploy.sh`, then smokes
+the new active VPC via the router. Also triggerable manually from the
+Actions tab (workflow_dispatch).
+
+Manual fallback (when CI is down or you want to deploy without pushing):
 ```bash
 ssh -i ~/Downloads/SOLARA.pem ubuntu@52.58.203.176
 cd /home/ubuntu && git pull

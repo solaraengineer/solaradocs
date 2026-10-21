@@ -1,0 +1,122 @@
+name: Deploy (v2 sol-ctl)
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+jobs:
+  validate:
+    name: Validate manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: No .env in repo
+        run: |
+          FOUND=$(find . -name '.env' -not -path './.git/*' | head -5)
+          if [ -n "$FOUND" ]; then
+            echo "::error::.env found in repo: $FOUND"; exit 1
+          fi
+
+      - name: Required files present
+        run: |
+          for f in manifests/vpc.yaml manifests/blue-green.yaml \
+                   manifests/services-sd-blue.yaml manifests/services-sd-green.yaml \
+                   deploy/v2/deploy.sh; do
+            test -f "$f" || { echo "::error::$f missing"; exit 1; }
+          done
+
+      - name: YAML parses + has apiVersion/kind
+        run: |
+          python3 -c "
+          import yaml, sys
+          for f in ['manifests/vpc.yaml', 'manifests/blue-green.yaml',
+                    'manifests/services-sd-blue.yaml',
+                    'manifests/services-sd-green.yaml']:
+              docs = [d for d in yaml.safe_load_all(open(f)) if d is not None]
+              for i, d in enumerate(docs):
+                  if not isinstance(d, dict):
+                      sys.exit(f'{f} doc #{i} not a mapping')
+                  if 'apiVersion' not in d or 'kind' not in d:
+                      sys.exit(f'{f} doc #{i} missing apiVersion/kind')
+              print(f'{f}: {len(docs)} document(s) OK')
+          "
+
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Write SSH key
+        env:
+          SSH_PRIVATE_KEY_BASE64: ${{ secrets.SOLARA_BASE64 }}
+        run: |
+          # Secret stores the raw PEM despite the `_BASE64` name; match
+          # the old workflow's behavior (no decode).
+          echo "$SSH_PRIVATE_KEY_BASE64" > SOLARA
+          chmod 600 SOLARA
+
+      - name: Wait for SSH
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP_1 }}
+        run: |
+          for i in $(seq 1 10); do
+            if ssh -i SOLARA -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+                ubuntu@$SERVER_IP "echo ready" 2>/dev/null; then
+              echo "SSH up"; exit 0
+            fi
+            echo "waiting for SSH... ($i/10)"; sleep 10
+          done
+          echo "::error::SSH never came up"; exit 1
+
+      - name: Git pull + deploy.sh (blue/green)
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP_1 }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          SHORT_SHA="$(echo "$GIT_SHA" | cut -c1-7)"
+          ssh -i SOLARA -o StrictHostKeyChecking=no \
+              -o ServerAliveInterval=30 -o ServerAliveCountMax=40 \
+              ubuntu@$SERVER_IP "
+            set -euo pipefail
+            cd /home/ubuntu
+            git fetch --quiet origin
+            git reset --hard origin/master
+            SERVER_SHA=\$(git rev-parse --short HEAD)
+            if [ \"\$SERVER_SHA\" != \"$SHORT_SHA\" ]; then
+              echo '::error::server HEAD ('\$SERVER_SHA') != CI HEAD ($SHORT_SHA) after pull'
+              exit 1
+            fi
+            sudo GIT_SHA=$SHORT_SHA bash /home/ubuntu/deploy/v2/deploy.sh
+          "
+
+      - name: External smoke via router
+        if: success()
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP_1 }}
+        run: |
+          set -euo pipefail
+          # deploy.sh just promoted a new active; look it up so we smoke the RIGHT VPC.
+          ACTIVE_VPC=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+            "sudo etcdctl get /solctl/deploy/active --print-value-only \
+             | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((k for k,v in d.items() if v==1), \"\"))'")
+          if [ -z "$ACTIVE_VPC" ]; then
+            echo "::warning::no active VPC in /solctl/deploy/active — skipping smoke"; exit 0
+          fi
+          WARDENT_SECRET=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+            "sudo grep -E '^WARDENT_SECRET=' /var/sol-ctl/${ACTIVE_VPC}/.env | cut -d= -f2- | tr -d '\"'")
+          if [ -z "$WARDENT_SECRET" ]; then
+            echo "::warning::WARDENT_SECRET missing in /var/sol-ctl/${ACTIVE_VPC}/.env — skipping smoke"; exit 0
+          fi
+          CODE=$(ssh -i SOLARA -o StrictHostKeyChecking=no ubuntu@$SERVER_IP \
+            "curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+             -H 'X-Wardent-Secret: $WARDENT_SECRET' \
+             -H 'X-Sol-Environment: $ACTIVE_VPC' \
+             http://127.0.0.1:9040/metrics")
+          if [ "$CODE" != "200" ]; then
+            echo "::error::router /metrics returned $CODE (active=$ACTIVE_VPC)"; exit 1
+          fi
+          echo "router /metrics -> 200 (active=$ACTIVE_VPC)"
