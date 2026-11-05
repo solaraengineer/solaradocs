@@ -47,9 +47,19 @@ class ApiTokenAuthMiddleware:
 
     def __call__(self, request):
         from django.http import JsonResponse
-        auth = request.headers.get('Authorization', '')
-        if auth.startswith('Bearer sdtk_'):
-            raw = auth[7:].strip()
+        auth = request.headers.get('Authorization', '').strip()
+        # Accept "Bearer sdtk_...", "bearer sdtk_...", or a bare "sdtk_..."
+        # pasted straight into a client's token field.
+        raw = None
+        if auth:
+            lower = auth.lower()
+            if lower.startswith('bearer '):
+                candidate = auth[7:].strip()
+                if candidate.startswith('sdtk_'):
+                    raw = candidate
+            elif auth.startswith('sdtk_'):
+                raw = auth
+        if raw:
             from solaradocs.models import UserApiToken, user_has_mcp
             token_hash = UserApiToken.hash_token(raw)
             tok = (UserApiToken.objects

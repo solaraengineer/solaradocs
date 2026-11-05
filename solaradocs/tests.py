@@ -3504,6 +3504,22 @@ class ApiTokenTests(BaseTestCase):
         )
         self.assertEqual(resp.status_code, 200)
 
+    def test_bare_token_without_bearer_prefix_authenticates(self):
+        """Clients that paste the raw sdtk_... into a header value field should still work."""
+        resp = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=self.raw,
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_lowercase_bearer_prefix_authenticates(self):
+        """Some clients send 'bearer' lowercase."""
+        resp = self.client.get(
+            f'/api/project/{self.project.id}/documents',
+            HTTP_AUTHORIZATION=f'bearer {self.raw}',
+        )
+        self.assertEqual(resp.status_code, 200)
+
     def test_invalid_token_falls_through_to_normal_auth(self):
         resp = self.client.get(
             f'/api/project/{self.project.id}/documents',
