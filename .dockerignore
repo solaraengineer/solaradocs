@@ -76,3 +76,23 @@ yarn-error.log
 
 # Tests (built into image only if you need to run them inside — we don't)
 tests/
+
+# Rust toolchain + build artifacts — on prod the repo root IS /home/ubuntu
+# so .rustup / .cargo / target live next to the source and get slurped by
+# `COPY . .`. Each weighs multiple GB; leaving these in the context has
+# filled the 38G EC2 disk and failed deploys. Keep them out.
+.rustup
+.cargo
+target/
+**/target/
+
+# Local caches
+.cache
+.local
+
+# Backup/log files that aren't runtime artifacts
+*.log
+*.bak
+*.bak.*
+errors.log
+dump.rdb
