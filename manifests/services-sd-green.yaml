@@ -116,7 +116,7 @@ spec:
   # `tag:` line with the git SHA before apply. Keep the placeholder as
   # the literal string `__IMAGE_TAG__` so the substitution is precise.
   image: localhost:5000/solaradocs
-  tag: __IMAGE_TAG__
+  tag: "__IMAGE_TAG__"
   replicas: 1
   ports: [8000]
   env_file: /var/sol-ctl/sd-green/.env
@@ -143,7 +143,7 @@ metadata:
   assign_to: sd-green
 spec:
   image: localhost:5000/solaradocs
-  tag: __IMAGE_TAG__
+  tag: "__IMAGE_TAG__"
   replicas: 1
   ports: []
   env_file: /var/sol-ctl/sd-green/.env
